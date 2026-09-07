@@ -4,14 +4,13 @@ import {
   Download,
   CheckCircle2,
   ArrowUpRight,
-  Mail,
   Check,
   Clock3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { EvidenceSource } from '@/data';
 import { useWorkspace } from './workspace-context';
-import { holdings as baseHoldings, tasks } from '@/data';
-import { money, dateLabel, Status } from './primitives';
+import { dateLabel, Status } from './primitives';
 export const REVIEW_IDS = [
   'source-event-01',
   'source-event-03',
@@ -27,21 +26,19 @@ export function EvidencePanel({
   embedded?: boolean;
 }) {
   const { state, data, mutate } = useWorkspace();
-  const source = data.evidence.find((s) => s.id === sourceId);
+  const source: EvidenceSource | undefined = data.evidence.find(
+    (s) => s.id === sourceId,
+  );
   if (!source)
     return (
       <div className="empty-inline">
         <FileText />
         <h3>Source unavailable</h3>
-        <p>This record has no source in the demo dataset.</p>
+        <p>This record has no source in the current workspace.</p>
       </div>
     );
-  const base = baseHoldings.find((h) => h.id === source.holdingId)!;
-  const value =
-    sourceId === 'source-demo-northstar-revision'
-      ? base.valueEUR + 120000
-      : base.valueEUR;
-  const relatedTasks = tasks.filter((t) => t.sourceId === sourceId);
+  const base = data.holdings.find((h) => h.id === source.holdingId);
+  const relatedTasks = data.tasks.filter((t) => t.sourceId === sourceId);
   const reviewed =
     state.reviews[sourceId] !== undefined
       ? state.reviews[sourceId] === 'Accepted'
@@ -73,8 +70,8 @@ export function EvidencePanel({
           v.status === 'active' && v.evidenceCitationIds.includes(sourceId),
       ) ? (
         <p className="method-note">
-          Candidate correction · Run the demo workflow to reconcile this
-          statement. Portfolio values have not changed.
+          Sample candidate correction · Run the sample workflow to reconcile
+          this statement. Portfolio values have not changed.
         </p>
       ) : null}
       <h3 className="source-subject">{source.subject}</h3>
@@ -82,65 +79,49 @@ export function EvidencePanel({
         Received {dateLabel(source.receivedAt.slice(0, 10))} ·{' '}
         {isStatement ? 'Page ' + source.page : 'Email'}
       </p>
-      {isStatement ? (
-        <div className="document-paper">
-          <div className="document-letterhead">
-            {base.manager.toUpperCase()}
-          </div>
-          <div className="document-rule" />
-          <h3>Investor valuation statement</h3>
-          <p>Period ended {dateLabel(source.effectiveDate)}</p>
-          <div className="document-owner">
-            {base.familyId[0].toUpperCase() + base.familyId.slice(1)} Capital ·
-            Investor account
-          </div>
-          <dl>
-            <div>
-              <dt>Investment</dt>
-              <dd>{base.name}</dd>
-            </div>
-            <div>
-              <dt>Cost basis</dt>
-              <dd>{money(base.costBasisEUR, 2)}</dd>
-            </div>
-            <div className="highlight-value">
-              <dt>Net asset value</dt>
-              <dd>{money(value, 2)}</dd>
-            </div>
-            <div>
-              <dt>Unfunded commitment</dt>
-              <dd>{money(base.unfundedCommitmentEUR, 2)}</dd>
-            </div>
-          </dl>
-          <span className="document-demo">
-            SYNTHETIC STATEMENT · DEMONSTRATION ONLY
-          </span>
+      <div className={isStatement ? 'document-paper' : 'email-paper'}>
+        <div className="document-letterhead">
+          {source.synthetic
+            ? 'SAMPLE SOURCE'
+            : source.documentId
+              ? 'UPLOADED SOURCE'
+              : 'MANUAL RECORD'}
         </div>
-      ) : (
-        <div className="email-paper">
-          <div className="email-from">
-            <Mail />
-            <div>
-              <strong>{source.sender.split('<')[0]}</strong>
-              <span>To Aster investment team</span>
-            </div>
-          </div>
-          <p>{source.excerpt.replace('SYNTHETIC DEMONSTRATION. ', '')}</p>
-          <div className="email-signature">
-            Kind regards,
-            <br />
-            {base.manager} reporting team
-          </div>
-          <span className="document-demo">
-            SYNTHETIC EMAIL · DEMONSTRATION ONLY
-          </span>
-        </div>
-      )}
+        <div className="document-rule" />
+        <h3>{source.filename}</h3>
+        <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          {source.excerpt}
+        </p>
+        <span className="document-demo">
+          {source.synthetic
+            ? 'SYNTHETIC SOURCE · DEMONSTRATION ONLY'
+            : source.documentId
+              ? 'EXTRACTED PASSAGE · CHECK AGAINST THE ORIGINAL'
+              : 'MANUAL ENTRY · NOT INDEPENDENT SOURCE EVIDENCE'}
+        </span>
+      </div>
       <div className="evidence-status">
         <span>
           <i />
-          {isStatement ? 'Matched to source statement' : 'Source-linked update'}
+          {source.synthetic
+            ? 'Sample evidence'
+            : source.documentId
+              ? 'Source passage retained'
+              : 'Manually entered record'}
         </span>
+        {source.documentId && !source.synthetic ? (
+          <Button
+            variant="outline"
+            onClick={() =>
+              window.location.assign(
+                '/api/documents/' + encodeURIComponent(source.documentId!),
+              )
+            }
+          >
+            <Download data-icon="inline-start" />
+            Download original
+          </Button>
+        ) : null}
         <Button variant="outline" onClick={download}>
           <Download data-icon="inline-start" />
           Download excerpt
@@ -155,13 +136,20 @@ export function EvidencePanel({
         <strong>{dateLabel(source.effectiveDate)}</strong>
         <span>Linked investment</span>
         <button onClick={() => onHolding?.(source.holdingId)}>
-          {base.name}
+          {base?.name ?? 'Unlinked investment'}
           <ArrowUpRight />
         </button>
         <span>Source mailbox</span>
-        <strong>{source.mailboxId.replace('mailbox-', '')}</strong>
+        <strong>
+          {data.mailboxes.find((m) => m.id === source.mailboxId)?.person ??
+            (source.mailboxId === 'upload'
+              ? 'Document upload'
+              : source.mailboxId === 'manual'
+                ? 'Manual entry'
+                : 'Unavailable')}
+        </strong>
       </div>
-      {sourceId === 'source-event-01' ? (
+      {source.synthetic && sourceId === 'source-event-01' ? (
         <div className="copy-evidence">
           <div className="avatar-stack">
             <span>CL</span>

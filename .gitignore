@@ -40,3 +40,15 @@ next-env.d.ts
 *.tsbuildinfo
 /test-results/
 /playwright-report/
+
+/dist-worker/
+/dist-ops/
+/.local-data/
+!.env.example
+
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/.runtime/
+/operations/secrets/
+/operations/backups/

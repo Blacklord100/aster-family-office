@@ -1,0 +1,290 @@
+[
+  {
+    "id": "train-00",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Capital call notice for Alpine Growth Fund. Contribution amount EUR 420,000.00 payment due next month."
+  },
+  {
+    "id": "train-01",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Quarterly valuation statement: your investment net asset value is EUR 2,800,000.00 as of quarter end."
+  },
+  {
+    "id": "train-02",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Distribution notice: proceeds from the sale of a portfolio company will be paid to investors."
+  },
+  {
+    "id": "train-03",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Portfolio update: the investment company completed a financing round and appointed a new director."
+  },
+  {
+    "id": "train-04",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Fund investor report detailing holdings, NAV, capital commitments and unfunded amounts."
+  },
+  {
+    "id": "train-05",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Drawdown notice requesting the next investment commitment installment from limited partners."
+  },
+  {
+    "id": "train-06",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Investment update for a private equity holding: new revenue and operating performance figures."
+  },
+  {
+    "id": "train-07",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Annual real estate fund statement with property valuation and investor ownership."
+  },
+  {
+    "id": "train-08",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Net asset value confirmation for a private market investment held through the family trust."
+  },
+  {
+    "id": "train-09",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Company update: portfolio business announces audited results and a change of chief executive."
+  },
+  {
+    "id": "train-10",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Capital account statement records a distribution and outstanding commitment."
+  },
+  {
+    "id": "train-11",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Custodian investment valuation report lists holdings and market values in EUR."
+  },
+  {
+    "id": "train-12",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The fund has issued a capital call with a payment due date and bank reference."
+  },
+  {
+    "id": "train-13",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Limited partner distribution proceeds include return of capital and realized income."
+  },
+  {
+    "id": "train-14",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Your venture investment valuation has been revised after a financing transaction."
+  },
+  {
+    "id": "train-15",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Property investment manager sends net asset value and income distribution statement."
+  },
+  {
+    "id": "train-16",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Growth Fund reports portfolio company trading performance to its investors."
+  },
+  {
+    "id": "train-17",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The investment committee received a fund capital call and revised holding valuation."
+  },
+  {
+    "id": "train-18",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Quarterly investor newsletter includes a portfolio company acquisition and fund update."
+  },
+  {
+    "id": "train-19",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Investment holding reconciliation shows revised unit price and fund NAV."
+  },
+  {
+    "id": "train-20",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Private equity capital drawdown for previously committed investment capital."
+  },
+  {
+    "id": "train-21",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Fund distribution confirmation stating the amount paid to the limited partner."
+  },
+  {
+    "id": "train-22",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Valuation report for the investment property owned by the family holding company."
+  },
+  {
+    "id": "train-23",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Board report for an invested company with revenue and financing updates."
+  },
+  {
+    "id": "train-24",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Please book a table for dinner at eight for four guests."
+  },
+  {
+    "id": "train-25",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The parcel has shipped. Track your delivery using the order reference."
+  },
+  {
+    "id": "train-26",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Your password reset link expires in ten minutes. Account security notification."
+  },
+  {
+    "id": "train-27",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The weather forecast predicts light rain tomorrow morning."
+  },
+  {
+    "id": "train-28",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Team lunch moved to Tuesday. Please select your preferred meal."
+  },
+  {
+    "id": "train-29",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Your hotel reservation is confirmed for two nights next weekend."
+  },
+  {
+    "id": "train-30",
+    "synthetic": true,
+    "relevant": false,
+    "text": "New fashion collection is available in our seasonal shop sale."
+  },
+  {
+    "id": "train-31",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The school sports meeting begins at four in the main hall."
+  },
+  {
+    "id": "train-32",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Thank you for your customer feedback on your recent purchase."
+  },
+  {
+    "id": "train-33",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Flight check-in is open. Download your boarding pass before departure."
+  },
+  {
+    "id": "train-34",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The office printer requires replacement ink cartridges."
+  },
+  {
+    "id": "train-35",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Happy birthday! Have a wonderful celebration with your friends."
+  },
+  {
+    "id": "train-36",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Monthly electricity bill for your apartment. Meter reading attached."
+  },
+  {
+    "id": "train-37",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Your streaming subscription will renew automatically this month."
+  },
+  {
+    "id": "train-38",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The gardener will visit tomorrow to cut the grass."
+  },
+  {
+    "id": "train-39",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Appointment reminder for your dental cleaning on Friday."
+  },
+  {
+    "id": "train-40",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Join our cooking workshop and learn to make fresh pasta."
+  },
+  {
+    "id": "train-41",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Your online order receipt includes shipping and VAT."
+  },
+  {
+    "id": "train-42",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Call me when you arrive at the station; I will pick you up."
+  },
+  {
+    "id": "train-43",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Family holiday photos are ready to view in the shared album."
+  },
+  {
+    "id": "train-44",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Conference invitation: networking lunch and guest speaker registration."
+  },
+  {
+    "id": "train-45",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Email service maintenance scheduled this weekend."
+  },
+  {
+    "id": "train-46",
+    "synthetic": true,
+    "relevant": false,
+    "text": "A news digest of celebrity interviews and movie reviews."
+  },
+  {
+    "id": "train-47",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Special offer on gym membership and personal training sessions."
+  }
+]

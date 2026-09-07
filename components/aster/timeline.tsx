@@ -36,6 +36,7 @@ export function TimelineList({
   selectedId?: string;
   compact?: boolean;
 }) {
+  const { data } = useWorkspace();
   if (!events.length)
     return (
       <div className="empty-inline">
@@ -81,15 +82,14 @@ export function TimelineList({
                         : 'neutral'
                   }
                 >
-                  {e.status === 'Accepted' ? 'Verified' : e.status}
+                  {e.status}
                 </Status>
               </div>
               <p>{e.summary}</p>
               <small>
                 {e.type} ·{' '}
-                {e.familyId === 'bergstrom'
-                  ? 'Bergström'
-                  : e.familyId[0].toUpperCase() + e.familyId.slice(1)}{' '}
+                {data.families.find((f) => f.id === e.familyId)?.name ??
+                  'Unassigned'}{' '}
                 family
               </small>
               <span className="source-link">

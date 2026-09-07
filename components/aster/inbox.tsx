@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Search, Mail, FileText, CheckCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { sources } from '@/data';
 import { useWorkspace } from './workspace-context';
 import {
   PageHeading,
@@ -26,7 +25,7 @@ export function InboxView({
   const [tab, setTab] = useState('needs review'),
     [owner, setOwner] = useState('all'),
     [query, setQuery] = useState(''),
-    [selected, setSelected] = useState('source-event-01');
+    [selected, setSelected] = useState('');
   const items = data.evidence
     .filter(
       (s) =>
@@ -35,7 +34,8 @@ export function InboxView({
         s.subject.toLowerCase().includes(query.toLowerCase()) &&
         (tab === 'all sources' ||
           (tab === 'needs review' &&
-            (REVIEW_IDS.includes(s.id) ||
+            (s.status === 'Needs review' ||
+              (state.sampleData && REVIEW_IDS.includes(s.id)) ||
               state.reviews[s.id] === 'Needs review') &&
             state.reviews[s.id] !== 'Accepted') ||
           (tab === 'reviewed' &&
@@ -74,7 +74,7 @@ export function InboxView({
           onChange={setOwner}
           options={[
             { value: 'all', label: 'All mailboxes' },
-            ...sources.map((s) => ({ value: s.id, label: s.person })),
+            ...data.mailboxes.map((s) => ({ value: s.id, label: s.person })),
           ]}
         />
         <span className="toolbar-count">{items.length} sources</span>
@@ -138,7 +138,10 @@ export function InboxView({
             <div className="empty-inline">
               <Mail />
               <h3>A clear inbox</h3>
-              <p>New information will appear here in the demo workflow.</p>
+              <p>
+                Import a PDF, TXT or EML in Processing, then review its
+                extracted candidates.
+              </p>
             </div>
           )}
         </div>

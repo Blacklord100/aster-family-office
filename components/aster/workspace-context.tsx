@@ -13,7 +13,7 @@ export type WorkspaceContextValue = {
   error: string | null;
   reload: () => void;
 };
-const state = initialWorkspace();
+const state = initialWorkspace(false);
 export const WorkspaceContext = createContext<WorkspaceContextValue>({
   state,
   data: deriveWorkspace(state),

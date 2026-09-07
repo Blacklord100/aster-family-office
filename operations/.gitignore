@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+secrets/
+local-models/
+model-import/
+backups/
+*.dump
+*.age
+*.partial

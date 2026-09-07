@@ -1,0 +1,46 @@
+{
+  "syntheticOnly": true,
+  "seed": 42,
+  "trainingDocuments": 48,
+  "heldoutDocuments": 1,
+  "modelResponses": "actual local Ollama",
+  "classificationConfusion": {
+    "tp": 1
+  },
+  "classificationAccuracy": 1.0,
+  "rulesDocumentCoverage": 1.0,
+  "workflowDocumentCoverage": 1.0,
+  "agenticDocumentCoverage": 0.0,
+  "limitations": [
+    "Tiny English synthetic set; no production generalization claim.",
+    "Confidence is uncalibrated relevance probability.",
+    "Coverage requires expected kind and amount only; this is not complete financial accuracy.",
+    "Contract-server scores validate plumbing and evidence checks, not model reasoning.",
+    "No scanned PDF/OCR accuracy benchmark or multilingual layouts."
+  ],
+  "results": [
+    {
+      "id": "holdout-00",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8203,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.0,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 120.851,
+        "model": "qwen3.8:27b-m3",
+        "warnings": [
+          "Local inference failed closed: local_model_unavailable_or_invalid_json. No cloud fallback was attempted."
+        ]
+      }
+    }
+  ]
+}

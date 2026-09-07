@@ -3527,15 +3527,23 @@ a:focus-visible {
     width: auto !important;
   }
   .report-dialog {
+    /* Reset Tailwind's individual transform variables as well as transform.
+       CSS optimization can fold translate:none into transform:none while
+       the dialog utility still resolves translate from these variables. */
+    --tw-translate-x: 0px !important;
+    --tw-translate-y: 0px !important;
+    --tw-scale-x: 1 !important;
+    --tw-scale-y: 1 !important;
     translate: none !important;
     scale: none !important;
     transform: none !important;
+    transition: none !important;
     animation: none !important;
     inset: auto !important;
     position: static !important;
     display: block !important;
-    width: 100% !important;
-    max-width: none !important;
+    width: 180mm !important;
+    max-width: 100% !important;
     overflow: visible !important;
   }
 }
@@ -3552,5 +3560,11 @@ a:focus-visible {
   .view-tabs [data-slot='tabs-trigger'] {
     padding-left: 10px;
     padding-right: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .holdings-table .compact-asset-class {
+    display: none;
   }
 }

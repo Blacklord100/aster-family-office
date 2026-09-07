@@ -35,7 +35,7 @@ export const classColors: Record<string, string> = {
 export type ChartPoint = {
   date: string;
   value: number;
-  flow: number;
+  flow: number | null;
   index: number | null;
 };
 export function makeHistory(
@@ -89,19 +89,23 @@ export function ValueChart({
   data,
   performance = false,
   small = false,
+  recorded = false,
 }: {
   data: ChartPoint[];
   performance?: boolean;
   small?: boolean;
+  recorded?: boolean;
 }) {
   const points = useMemo(
     () =>
-      data.filter(
-        (_, i) =>
-          i % Math.max(1, Math.floor(data.length / 100)) === 0 ||
-          i === data.length - 1,
-      ),
-    [data],
+      recorded
+        ? data
+        : data.filter(
+            (_, i) =>
+              i % Math.max(1, Math.floor(data.length / 100)) === 0 ||
+              i === data.length - 1,
+          ),
+    [data, recorded],
   );
   const shortPeriod =
     points.length > 1 &&
@@ -128,7 +132,9 @@ export function ValueChart({
       aria-label={
         performance
           ? 'Synthetic time-weighted return over the selected period'
-          : 'Synthetic portfolio value over the selected period'
+          : recorded
+            ? 'Recorded portfolio marks carried forward over the selected period'
+            : 'Synthetic portfolio value over the selected period'
       }
     >
       <ResponsiveContainer
@@ -189,9 +195,7 @@ export function ValueChart({
             tick={{ fill: '#82828c', fontSize: 12 }}
             tickFormatter={(v) =>
               performance
-                ? (Math.abs(v - 100) < 0.00001 ? 0 : v - 100).toFixed(
-                    span < 2 ? 1 : 0,
-                  ) + '%'
+                ? (Math.abs(v - 100) < 0.05 ? 0 : v - 100).toFixed(1) + '%'
                 : money(v, span < 5000000 ? 1 : 0)
             }
           />
@@ -200,7 +204,7 @@ export function ValueChart({
             cursor={{ stroke: '#ab99ec', strokeDasharray: '4 4' }}
           />
           <Area
-            type="monotone"
+            type={recorded ? 'stepAfter' : 'monotone'}
             dataKey={performance ? 'index' : 'value'}
             stroke="#8064e5"
             strokeWidth={2.3}

@@ -1,0 +1,15 @@
+# Evaluation interpretation
+
+All inputs are synthetic; seed 42. Training is 48 separate synthetic documents, with 12 held-out documents (8 financial notices and 4 irrelevant messages).
+
+`synthetic-contract.json` reports the relevance classifier, conservative rules and both orchestration modes. Relevance accuracy was 12/12; deterministic extraction covered 4/8 positive documents. With **scripted golden replies from a local HTTP contract server**, both modes returned the expected kind/amount on 8/8. Those latter scores test transport, schema, stage execution and evidence validation. They do not measure a real model's extraction quality.
+
+`real-local.json` is the final bounded smoke test with **qwen3:1.7b**, an operator-authorized approximately 1.4 GB local model. Both workflow and agentic modes recovered the expected kind/amount on **8/8 synthetic positive documents**, with no validation warnings. Workflow local calls took 3.07–4.02 seconds, agentic runs 4.07–5.79 seconds. Rules alone still cover 4/8. The final harness supplies its JSON schema in the prompt as well as Ollama's format parameter, explicitly illustrates plain decimal output, and requires at least one page extraction before the agent may finish. Financial schema/evidence checks remain strict. This is still a tiny synthetic engineering smoke set, not production extraction accuracy.
+
+Earlier runs are retained below to show the limitations and changes. `real-local-1.7b-initial.json` records the initial weaker prompt/planning policy (5/8 workflow and 0/8 agentic).
+
+`real-local-0.6b-final.json` records actual `qwen3:0.6b` calls on eight positive notices and four irrelevant documents. Workflow recovered the expected kind/amount on **7/8**, agentic on **4/8**. Model-backed workflow calls took about 1.1–1.5 seconds; agentic runs 0.17–2.16 seconds. Misses remain visible: invalid schemas, a quote missing the investment name, or agent abstention. That earlier agent planning schema allowed only actions/pages valid for the current read/extract state. The initial unrestricted planning evaluation (0/8 agentic) is retained in `real-local-small-initial.json`. This small model proves real local execution but is not validated for production extraction.
+
+`real-local-27b-timeout.json` preserves the earlier attempt with installed `qwen3.8:27b-m3`. Its first planning call timed out at 120.851 seconds, correctly returning zero facts. A minimal two-token request also timed out at 45 seconds. The host has 16 GiB RAM while that GGUF is approximately 17.7 GB; memory pressure is a plausible cause, not a proven diagnosis. The operator then authorized downloading the official approximately 523 MB [qwen3:0.6b](https://ollama.com/library/qwen3:0.6b) model. Existing models were not modified or removed. No source document was sent to a cloud inference endpoint.
+
+Do not treat this small smoke set, the uncalibrated classifier probability, or quote matching as production financial accuracy. The service is designed to abstain/flag; application review is mandatory.

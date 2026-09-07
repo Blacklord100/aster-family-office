@@ -6,7 +6,7 @@ import type {
 } from '../data/types';
 
 export interface ScopeFilters {
-  familyId?: FamilyId | 'all';
+  familyId?: FamilyId;
   assetClass?: AssetClass | 'all';
   entityId?: string;
   query?: string;

@@ -17,34 +17,43 @@ import {
   TooltipContent,
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { useWorkspace } from './workspace-context';
 export const money = (n: number, digits = 1) =>
-  new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'EUR',
-    notation: Math.abs(n) >= 1e6 ? 'compact' : 'standard',
-    minimumFractionDigits: Math.abs(n) >= 1e6 ? digits : 0,
-    maximumFractionDigits: Math.abs(n) >= 1e6 ? digits : 0,
-  })
-    .format(n)
-    .replace('m', 'M');
+  !Number.isFinite(n)
+    ? '—'
+    : new Intl.NumberFormat('en-GB', {
+        style: 'currency',
+        currency: 'EUR',
+        notation: Math.abs(n) >= 1e6 ? 'compact' : 'standard',
+        minimumFractionDigits:
+          Math.abs(n) >= 1e6 ? digits : digits === 2 ? 2 : 0,
+        maximumFractionDigits:
+          Math.abs(n) >= 1e6 ? digits : digits === 2 ? 2 : 0,
+      })
+        .format(n)
+        .replace('m', 'M');
 export const percent = (n: number, digits = 1) =>
-  (n * 100).toFixed(digits) + '%';
+  Number.isFinite(n) ? (n * 100).toFixed(digits) + '%' : '—';
 export const dateLabel = (s: string) =>
-  new Date(s + 'T12:00:00Z').toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  !s || !Number.isFinite(Date.parse(s + 'T12:00:00Z'))
+    ? 'Unavailable'
+    : new Date(s + 'T12:00:00Z').toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
 export function Picker({
   value,
   onChange,
   options,
   label,
+  id,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   label: string;
+  id?: string;
 }) {
   return (
     <Select
@@ -54,7 +63,7 @@ export function Picker({
       }}
       items={options}
     >
-      <SelectTrigger aria-label={label}>
+      <SelectTrigger id={id} aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end">
@@ -76,6 +85,7 @@ export function FamilyPicker({
   value: string;
   onChange: (s: string) => void;
 }) {
+  const { data } = useWorkspace();
   return (
     <Picker
       label="Family scope"
@@ -83,9 +93,10 @@ export function FamilyPicker({
       onChange={onChange}
       options={[
         { value: 'all', label: 'All families' },
-        { value: 'laurent', label: 'Laurent family' },
-        { value: 'bergstrom', label: 'Bergström family' },
-        { value: 'chen', label: 'Chen family' },
+        ...data.families.map((f) => ({
+          value: f.id,
+          label: f.name + ' family',
+        })),
       ]}
     />
   );
@@ -234,5 +245,15 @@ export function TextAction({
       {children}
       <ChevronRight data-icon="inline-end" />
     </Button>
+  );
+}
+
+/** Live uploads do not establish complete external-flow history. */
+export function usePerformanceAvailable() {
+  const { state, data } = useWorkspace();
+  return (
+    state.sampleData === true &&
+    data.evidence.every((s) => s.synthetic) &&
+    !data.history.some((h) => h.valuationBasis === 'Reported mark')
   );
 }

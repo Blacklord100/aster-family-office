@@ -1,0 +1,201 @@
+{
+  "syntheticOnly": true,
+  "seed": 42,
+  "trainingDocuments": 48,
+  "heldoutDocuments": 8,
+  "modelResponses": "actual local Ollama",
+  "classificationConfusion": {
+    "tp": 8
+  },
+  "classificationAccuracy": 1.0,
+  "rulesDocumentCoverage": 0.5,
+  "workflowDocumentCoverage": 0.875,
+  "agenticDocumentCoverage": 0.5,
+  "limitations": [
+    "Tiny English synthetic set; no production generalization claim.",
+    "Confidence is uncalibrated relevance probability.",
+    "Coverage requires expected kind and amount only; this is not complete financial accuracy.",
+    "Contract-server scores validate plumbing and evidence checks, not model reasoning.",
+    "No scanned PDF/OCR accuracy benchmark or multilingual layouts."
+  ],
+  "results": [
+    {
+      "id": "holdout-00",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8203,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.0,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 1.543,
+        "model": "qwen3:0.6b",
+        "warnings": [
+          "Local inference failed closed: model_schema_invalid. No cloud fallback was attempted."
+        ]
+      }
+    },
+    {
+      "id": "holdout-01",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8358,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.002,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.91,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-02",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8627,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.002,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 1.56,
+        "model": "qwen3:0.6b",
+        "warnings": [
+          "Local inference failed closed: model_schema_invalid. No cloud fallback was attempted."
+        ]
+      }
+    },
+    {
+      "id": "holdout-03",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7711,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.002,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 1.402,
+        "model": "qwen3:0.6b",
+        "warnings": [
+          "Candidate rejected by evidence validator: investment_not_in_quote."
+        ]
+      }
+    },
+    {
+      "id": "holdout-04",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.679,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.517,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 2.161,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-05",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7021,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.258,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.808,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-06",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7358,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.2,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 1.722,
+        "model": "qwen3:0.6b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-07",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.6955,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 1.078,
+        "model": "qwen3:0.6b",
+        "warnings": [
+          "Local inference failed closed: model_schema_invalid. No cloud fallback was attempted."
+        ]
+      },
+      "agentic": {
+        "candidateCount": 0,
+        "expectedFactRecovered": false,
+        "seconds": 0.174,
+        "model": "qwen3:0.6b",
+        "warnings": [
+          "Agent extracted 0 of 1 pages; other pages may contain facts."
+        ]
+      }
+    }
+  ]
+}

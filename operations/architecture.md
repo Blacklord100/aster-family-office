@@ -1,0 +1,31 @@
+# Portable Aster deployment and security boundaries
+
+Aster can run on a host or container platform that supports Node.js, PostgreSQL, Python and an operator-provisioned Ollama model. This directory contains a single-host deployment template, not a deployed service or a production certification. No Sites service is used.
+
+| Process | Role | Network and credential boundary |
+| --- | --- | --- |
+| Caddy, optional | HTTPS ingress | Publishes 80/443; reaches web only |
+| Next.js web | Authenticated UI/API | Loopback 3000; runtime DB credentials; authenticated processor calls |
+| Node worker | Durable document jobs | Internal networks only; same least-privilege DB role initially |
+| PostgreSQL 17 | Accounts, sessions, tenant data, encrypted originals/results | Internal database network; no published port |
+| Processor | Classical extraction or bounded local agentic extraction | Internal confidential network only; shared processor token |
+| Ollama | Local model inference | Same internal network; no published 11434 port; cloud disabled |
+| Migrator/bootstrap | Schema changes and initial owner provisioning | Explicit one-off maintenance command; owner credential never mounted into web/worker |
+
+Next standalone output makes the web server portable as a Node process. Public deployment should use a reverse proxy; Next.js recommends one for handling hostile or malformed requests. This template forwards only to port 3000 and does not use a platform-specific runtime. [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
+
+Both workflow modes use the same authenticated job path and local processor. Classical mode follows fixed local classification and parsing stages, with optional local-model extraction for unresolved fields. Agentic mode may call only the configured local Ollama endpoint through bounded, validated tools. Model output and uploaded document instructions are untrusted input; extraction produces reviewable evidence, not authority to change users, send messages, move funds or run arbitrary commands.
+
+The processor and Ollama attach only to an `internal: true` network, with no published ports. Worker networks are also internal. Web has an external-facing network and remains a trusted boundary: Docker explicitly notes that a process on internal and ordinary networks can still reach the internet. Internal networking is not protection against a compromised Docker host, host-accessible services, a privileged peer, DNS leakage, or a web endpoint that acts as an outbound proxy. Verify host firewall and DNS egress policy before describing the installation as air-gapped. [Docker Compose networking](https://docs.docker.com/compose/how-tos/networking/), [Docker internal-network limits](https://docs.docker.com/reference/cli/docker/network/create/)
+
+`OLLAMA_NO_CLOUD=1` disables Ollama cloud models and web search. Operators must verify the startup log confirms cloud is disabled. No startup command downloads or pulls models. A reviewed local GGUF can be imported manually using a Modelfile; the configured model must be present or agentic processing must fail explicitly. [Ollama FAQ](https://docs.ollama.com/faq), [Ollama model import](https://docs.ollama.com/import)
+
+Accepted document facts require a reviewer to select an existing holding. Replaying an already accepted fact is idempotent; replaying a valuation whose same-date mark has since been superseded returns an explicit correction-review conflict. There is no general revision or supersedes workflow yet. Recorded valuation marks do not establish complete cash flows or a time-weighted return. Capital-call and distribution notices create timeline evidence (and call tasks) without transferring money or changing balances. Queue leases fence stale worker results; cancellation stops the request when the next lease renewal detects its removal (normally within 20 seconds), then the processor terminates the document subprocess. Verify this combined cancellation path under container load before release.
+
+PostgreSQL bootstrap uses three logins: `postgres` for cluster administration, schema-owning `aster_migrator` for maintenance, and `aster_runtime` for the app. Runtime has neither schema ownership nor `BYPASSRLS`; migrations must enable tenant policies and apply narrower table grants where needed. Table owners normally bypass RLS, so testing with the migration role is insufficient. [PostgreSQL row security](https://www.postgresql.org/docs/17/ddl-rowsecurity.html)
+
+Production auth requires an exact HTTPS `BETTER_AUTH_URL`, a random secret, secure HttpOnly SameSite session cookies, CSRF origin enforcement, persisted throttling and per-session MFA. Bootstrap is an explicit CLI operation that refuses an existing owner; public registration and password reset are disabled. The proxy replaces `X-Real-IP`; additional proxies require explicit trusted-chain configuration. Verify account recovery and invite handling before real onboarding. [OWASP sessions](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [OWASP authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+
+Originals and extracted JSON are AES-256-GCM encrypted in database bytea, with key material outside the database. Encryption does not remove the need for authorization or key recovery. File-mounted Compose secrets are host bind mounts, not an encrypted secret manager; host administrators and Docker administrators remain trusted. Production should use a managed secret store or tightly controlled host files, with independent recovery of encryption/auth keys. [Docker Compose secrets](https://docs.docker.com/compose/how-tos/use-secrets/)
+
+Remaining release gates are the actual container build/boot, tenant isolation and authentication tests, restore/decryption drill, model licensing and extraction accuracy evaluation, dependency/image review, host hardening and an independent security assessment. See readiness.md for a precise tested/untested record.

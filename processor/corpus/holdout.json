@@ -1,0 +1,98 @@
+[
+  {
+    "id": "holdout-00",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "capital_call",
+    "amount": "420000.00",
+    "text": "Synthetic capital call\nInvestment: Cedar Partners IV\nEffective date: 2026-08-31\nAmount: EUR 420,000.00\nDue date: 2026-09-30"
+  },
+  {
+    "id": "holdout-01",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "valuation",
+    "amount": "8250000.00",
+    "text": "Synthetic valuation statement\nFund: Meridian Real Assets\nValuation date: 2026-06-30\nNAV: EUR 8,250,000.00"
+  },
+  {
+    "id": "holdout-02",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "distribution",
+    "amount": "75000.00",
+    "text": "Synthetic distribution notice\nInvestment: Harbor Income Fund\nEffective date: 2026-08-15\nDistribution amount: USD 75,000.00"
+  },
+  {
+    "id": "holdout-03",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "news",
+    "amount": null,
+    "text": "Synthetic portfolio update\nCompany: Pine Robotics\nEffective date: 2026-09-01\nThe company appointed a new director."
+  },
+  {
+    "id": "holdout-04",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "capital_call",
+    "amount": "420000.00",
+    "text": "Cedar Partners IV issues this capital call on 2026-08-31 for EUR 420,000.00, due 2026-09-30. Synthetic example."
+  },
+  {
+    "id": "holdout-05",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "valuation",
+    "amount": "8250000.00",
+    "text": "Meridian Real Assets valuation at 2026-06-30 is EUR 8,250,000.00. Synthetic investor report."
+  },
+  {
+    "id": "holdout-06",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "distribution",
+    "amount": "75000.00",
+    "text": "Harbor Income Fund distribution effective 2026-08-15 is USD 75,000.00. Synthetic example."
+  },
+  {
+    "id": "holdout-07",
+    "synthetic": true,
+    "relevant": true,
+    "kind": "news",
+    "amount": null,
+    "text": "Pine Robotics company update dated 2026-09-01: a new director joins the board. Synthetic example."
+  },
+  {
+    "id": "negative-00",
+    "synthetic": true,
+    "relevant": false,
+    "kind": null,
+    "amount": null,
+    "text": "Please confirm the ski chalet booking for our winter holiday."
+  },
+  {
+    "id": "negative-01",
+    "synthetic": true,
+    "relevant": false,
+    "kind": null,
+    "amount": null,
+    "text": "Your verification code is 428916. Never share it with anyone."
+  },
+  {
+    "id": "negative-02",
+    "synthetic": true,
+    "relevant": false,
+    "kind": null,
+    "amount": null,
+    "text": "The courier left your new shoes with the neighbor."
+  },
+  {
+    "id": "negative-03",
+    "synthetic": true,
+    "relevant": false,
+    "kind": null,
+    "amount": null,
+    "text": "Community newsletter: the summer picnic starts on Saturday."
+  }
+]

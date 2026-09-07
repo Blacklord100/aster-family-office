@@ -1,0 +1,248 @@
+{
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "maximum": 60,
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "quote": {
+          "maxLength": 3000,
+          "minLength": 8,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "valuation",
+            "capital_call",
+            "distribution",
+            "news"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "investmentName": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Investmentname",
+          "type": "string"
+        },
+        "effectiveDate": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effectivedate"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "pattern": "^-?(?:0|[1-9]\\d{0,17})(?:\\.\\d{1,8})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Amount"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "enum": [
+                "EUR",
+                "USD",
+                "GBP",
+                "CHF",
+                "SEK",
+                "NOK",
+                "DKK",
+                "JPY",
+                "CAD",
+                "AUD",
+                "SGD",
+                "HKD",
+                "CNY"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Currency"
+        },
+        "dueDate": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duedate"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "kind",
+        "investmentName",
+        "effectiveDate",
+        "amount",
+        "currency",
+        "dueDate",
+        "summary",
+        "evidence"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "Trace": {
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "skipped",
+            "warning",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "status",
+        "detail"
+      ],
+      "title": "Trace",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "default": 1,
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "documentId": {
+      "title": "Documentid",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "workflow",
+        "agentic"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "execution": {
+      "const": "local",
+      "default": "local",
+      "title": "Execution",
+      "type": "string"
+    },
+    "documentType": {
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "relevant": {
+      "title": "Relevant",
+      "type": "boolean"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "facts": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "maxItems": 100,
+      "title": "Facts",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "trace": {
+      "items": {
+        "$ref": "#/$defs/Trace"
+      },
+      "title": "Trace",
+      "type": "array"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Model"
+    }
+  },
+  "required": [
+    "documentId",
+    "mode",
+    "documentType",
+    "relevant",
+    "confidence",
+    "facts",
+    "warnings",
+    "trace",
+    "model"
+  ],
+  "title": "Extraction",
+  "type": "object"
+}

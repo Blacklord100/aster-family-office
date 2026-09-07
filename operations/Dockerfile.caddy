@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+ARG CADDY_IMAGE=caddy:2-alpine
+FROM ${CADDY_IMAGE}
+RUN addgroup -g 10001 asterproxy && adduser -D -H -u 10001 -G asterproxy asterproxy \
+    && chown -R 10001:10001 /data /config
+USER 10001:10001

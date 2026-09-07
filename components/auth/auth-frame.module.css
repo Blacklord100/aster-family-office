@@ -1,0 +1,9 @@
+/* The existing dashboard has unlayered element resets. Within auth screens,
+   let Tailwind's spacing and typography utilities take their intended values. */
+.frame :where(p, h1, h2, h3) {
+  margin: revert-layer;
+}
+
+.frame :where(button, a, input, select) {
+  font: revert-layer;
+}

@@ -1,0 +1,5 @@
+# Caddy and Ollama builds need no local COPY/ADD inputs.
+# Never send operational secrets, backups, or model artifacts as build context.
+**
+!Dockerfile.caddy
+!Dockerfile.ollama

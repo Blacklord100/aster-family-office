@@ -1,0 +1,245 @@
+name: aster
+x-hardening: &hardening
+  init: true
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging: {driver: local, options: {max-size: "10m", max-file: "3"}}
+x-app-environment: &app-environment
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+  PORT: "3000"
+  HOSTNAME: "0.0.0.0"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: aster
+  DB_USER: aster_runtime
+  DB_PASSWORD_FILE: /run/secrets/db_password
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
+  BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+  ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+  PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+  AUTH_REQUIRE_MFA: "true"
+  AUTH_CLIENT_IP_HEADER: x-real-ip
+  PROCESSOR_URL: http://processor:8000
+  OLLAMA_BASE_URL: http://ollama:11434
+  OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+  WORKER_HEARTBEAT_FILE: /tmp/aster-worker-heartbeat
+x-app-secrets: &app-secrets
+  - source: runtime_password
+    target: db_password
+  - better_auth_secret
+  - encryption_key
+  - processor_token
+services:
+  postgres:
+    <<: *hardening
+    image: ${POSTGRES_IMAGE:-postgres:17-bookworm}
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aster
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets: [postgres_password, migration_password, runtime_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=999,gid=999
+      - /var/run/postgresql:rw,noexec,nosuid,size=8m,uid=999,gid=999
+    networks: [database]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aster"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 60s
+    mem_limit: ${POSTGRES_MEMORY:-2g}
+    pids_limit: 256
+  web:
+    <<: *hardening
+    image: ${ASTER_IMAGE:-aster-web:local}
+    build:
+      context: ..
+      dockerfile: operations/Dockerfile.app
+      args: {NODE_IMAGE: "${NODE_IMAGE:-node:24-bookworm-slim}"}
+    user: "1000:1000"
+    environment: *app-environment
+    secrets: *app-secrets
+    command: ["node", ".next/standalone/server.js"]
+    # Only loopback published. Use Caddy or your own TLS ingress for remote access.
+    ports: ["127.0.0.1:${ASTER_LOCAL_PORT:-3000}:3000"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+      - /app/.next/standalone/.next/cache:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+    networks: [edge, database, local-confidential]
+    depends_on:
+      postgres: {condition: service_healthy}
+      processor: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    mem_limit: ${WEB_MEMORY:-1g}
+    pids_limit: 128
+  worker:
+    <<: *hardening
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment: *app-environment
+    secrets: *app-secrets
+    command: ["npm", "run", "worker"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=256m,uid=1000,gid=1000"]
+    # Both networks are internal. Worker has no normal internet route.
+    networks: [database, local-confidential]
+    depends_on:
+      postgres: {condition: service_healthy}
+      processor: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "/opt/aster/worker-healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 150s
+    mem_limit: ${WORKER_MEMORY:-1g}
+    pids_limit: 128
+  migrate:
+    <<: *hardening
+    profiles: [maintenance]
+    restart: "no"
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment:
+      <<: *app-environment
+      DB_USER: aster_migrator
+      ASTER_DB_MIGRATION: "1"
+    secrets:
+      - source: migration_password
+        target: db_password
+      - better_auth_secret
+      - encryption_key
+      - processor_token
+    command: ["npm", "run", "db:migrate"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
+    networks: [database]
+    depends_on:
+      postgres: {condition: service_healthy}
+    mem_limit: 1g
+    pids_limit: 128
+  processor:
+    <<: *hardening
+    build: {context: ../processor, dockerfile: Dockerfile}
+    image: ${PROCESSOR_IMAGE:-aster-processor:local}
+    user: "10001:10001"
+    entrypoint: ["/bin/sh", "/opt/aster/processor-entrypoint.sh"]
+    # Explicit command is necessary: Compose entrypoint replacement ignores image CMD.
+    command: ["uvicorn", "service.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--limit-concurrency", "8", "--timeout-keep-alive", "5"]
+    environment:
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      OLLAMA_TIMEOUT_SECONDS: "120"
+      OCR_ENABLED: ${OCR_ENABLED:-false}
+      MAX_AGENT_STEPS: "6"
+    secrets: [processor_token]
+    volumes: ["./scripts/processor-entrypoint.sh:/opt/aster/processor-entrypoint.sh:ro"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=512m,uid=10001,gid=10001"]
+    networks: [local-confidential]
+    # NO host ports. Only authenticated web/worker requests.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    mem_limit: ${PROCESSOR_MEMORY:-2g}
+    pids_limit: 128
+  ollama:
+    <<: *hardening
+    image: aster-ollama:local
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+      args: {OLLAMA_IMAGE: "${OLLAMA_IMAGE:?Set a reviewed Ollama image version or digest}"}
+    user: "10001:10001"
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_MODELS: /models
+      OLLAMA_NO_CLOUD: "1"
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "8"
+    volumes:
+      - type: bind
+        source: ${OLLAMA_MODELS_DIR:-./local-models}
+        target: /models
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${OLLAMA_IMPORT_DIR:-./model-import}
+        target: /model-import
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs:
+      - /tmp:rw,nosuid,size=256m,uid=10001,gid=10001
+      - /home/aster:rw,noexec,nosuid,size=8m,uid=10001,gid=10001,mode=0700
+    networks: [local-confidential]
+    # NO published 11434 port. No automatic model pull/create.
+    command: ["serve"]
+    healthcheck:
+      test: ["CMD", "/bin/ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: ${OLLAMA_MEMORY:-8g}
+    pids_limit: 256
+  caddy:
+    <<: *hardening
+    profiles: [tls]
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+      args: {CADDY_IMAGE: "${CADDY_IMAGE:-caddy:2-alpine}"}
+    user: "10001:10001"
+    environment:
+      ASTER_DOMAIN: ${ASTER_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports: ["80:8080", "443:8443", "443:8443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001"]
+    networks: [edge]
+    depends_on:
+      web: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    pids_limit: 64
+networks:
+  edge: {}
+  database: {internal: true}
+  local-confidential: {internal: true}
+volumes:
+  postgres_data: {}
+  caddy_data: {}
+  caddy_config: {}
+secrets:
+  postgres_password: {file: "${ASTER_SECRETS_DIR:-./secrets}/postgres_password"}
+  migration_password: {file: "${ASTER_SECRETS_DIR:-./secrets}/migration_password"}
+  runtime_password: {file: "${ASTER_SECRETS_DIR:-./secrets}/runtime_password"}
+  better_auth_secret: {file: "${ASTER_SECRETS_DIR:-./secrets}/better_auth_secret"}
+  encryption_key: {file: "${ASTER_SECRETS_DIR:-./secrets}/encryption_key"}
+  processor_token: {file: "${ASTER_SECRETS_DIR:-./secrets}/processor_token"}

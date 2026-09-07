@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useWorkspace } from './workspace-context';
 
 export type View =
   | 'overview'
@@ -47,7 +48,7 @@ export const navigation = [
   { id: 'timeline', label: 'Timeline', icon: Clock3 },
   { id: 'inbox', label: 'Inbox', icon: Mail },
   { id: 'reports', label: 'Reports', icon: ChartNoAxesCombined },
-  { id: 'agents', label: 'Agents', icon: Bot },
+  { id: 'agents', label: 'Processing', icon: Bot },
   { id: 'connections', label: 'Connections', icon: Link2 },
 ] as const;
 type Props = {
@@ -71,9 +72,11 @@ function Navigation({
   onSearch,
   onSettings,
   workspaceName,
-  inboxCount = 3,
+  inboxCount = 0,
 }: Omit<Props, 'children' | 'onAsk'>) {
   const { setOpenMobile } = useSidebar();
+  const { state, data } = useWorkspace();
+  const userName = state.identity?.user.name ?? 'Workspace member';
   const go = (v: View) => {
     onNavigate(v);
     setOpenMobile(false);
@@ -120,11 +123,7 @@ function Navigation({
         <SidebarGroup>
           <SidebarGroupLabel>Families</SidebarGroupLabel>
           <SidebarMenu>
-            {[
-              ['laurent', 'Laurent'],
-              ['bergstrom', 'Bergström'],
-              ['chen', 'Chen'],
-            ].map(([id, label]) => (
+            {data.families.map(({ id, name: label }) => (
               <SidebarMenuItem key={id}>
                 <SidebarMenuButton
                   className="family-nav"
@@ -146,13 +145,23 @@ function Navigation({
         <Separator />
         <div className="demo-label">
           <i />
-          Synthetic demo
+          {state.sampleData ? 'Sample workspace' : 'Private workspace'}
         </div>
         <div className="profile-row">
-          <span className="profile-avatar">ML</span>
+          <span className="profile-avatar">
+            {userName
+              .split(' ')
+              .map((p) => p[0])
+              .slice(0, 2)
+              .join('')}
+          </span>
           <div>
-            <strong>Marie Laurent</strong>
-            <small>{workspaceName ?? 'Aster Family Office'}</small>
+            <strong>{userName}</strong>
+            <small>
+              {workspaceName ??
+                state.identity?.organizationName ??
+                state.officeName}
+            </small>
           </div>
           <Button
             variant="ghost"
@@ -214,6 +223,11 @@ function Topbar({
   );
 }
 export function Shell(props: Props) {
+  const { state, data } = useWorkspace();
+  const latest = data.holdings
+    .map((h) => h.valuationDate)
+    .sort()
+    .at(-1);
   return (
     <SidebarProvider style={{ '--sidebar-width': '248px' } as CSSProperties}>
       <Navigation {...props} />
@@ -221,7 +235,12 @@ export function Shell(props: Props) {
         <Topbar {...props} />
         <main className="workspace-content">{props.children}</main>
         <footer className="workspace-footer">
-          <span>Demo data · As of 7 September 2026</span>
+          <span>
+            {state.sampleData ? 'Sample data' : 'Workspace records'}
+            {latest
+              ? ' · Latest mark ' + latest
+              : ' · No portfolio records yet'}
+          </span>
           <span>
             A clear view of what matters <ArrowUpRight />
           </span>

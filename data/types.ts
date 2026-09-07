@@ -1,4 +1,4 @@
-export type FamilyId = 'laurent' | 'bergstrom' | 'chen';
+export type FamilyId = string;
 export type Currency = 'EUR' | 'USD' | 'GBP' | 'CHF';
 export type AssetClass =
   | 'Public equities'
@@ -75,7 +75,8 @@ export interface HoldingValuation {
   valuationBasis:
     | 'Synthetic market mark'
     | 'Synthetic reported mark'
-    | 'Carried forward';
+    | 'Carried forward'
+    | 'Reported mark';
 }
 export interface MailboxSource {
   id: string;
@@ -103,7 +104,8 @@ export interface EvidenceSource {
   page: number;
   excerpt: string;
   status: 'Accepted' | 'Needs review';
-  synthetic: true;
+  synthetic: boolean;
+  documentId?: string;
 }
 export interface TimelineEvent {
   id: string;

@@ -1,12 +1,18 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
-const sans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const mono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+const sans = localFont({
+  src: './fonts/Geist.woff2',
+  variable: '--font-geist-sans',
+});
+const mono = localFont({
+  src: './fonts/GeistMono.woff2',
+  variable: '--font-geist-mono',
+});
 export const metadata: Metadata = {
   title: 'Aster — Family Office',
   description:
-    'Your family office, connected. Explore portfolio reporting, investment intelligence and agent workflows with synthetic demo data.',
+    'Your family office, connected. Private investment operations and source-linked reporting.',
 };
 export default function RootLayout({
   children,

@@ -48,7 +48,7 @@ export const sources: MailboxSource[] = [
     coverageEnd: AS_OF_DATE,
   },
 ];
-const mailboxFor = {
+const mailboxFor: Record<string, string> = {
   laurent: 'mailbox-camille',
   bergstrom: 'mailbox-sofia',
   chen: 'mailbox-daniel',

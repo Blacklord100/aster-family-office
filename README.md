@@ -1,48 +1,84 @@
-# Aster Family Office
+# Aster
 
-A working, persistent family-office demonstration with a Linear/Notion-inspired workspace. All financial records, people, source messages and connected mailboxes are synthetic, fixed as of 7 September 2026.
+A portable family-office workspace with a Linear/Notion-inspired interface, PostgreSQL, invitation-only authentication, mandatory production MFA, and two local document-processing modes. This application no longer depends on ChatGPT Sites, Cloudflare D1 or Vinext.
 
-## What works
+## What is implemented
 
-- Consolidated EUR128m portfolio across three families, six entities and 21 holdings.
-- Family, asset-class and entity filters; allocation by asset class, geography and currency; daily-linked time-weighted returns; liquidity and commitments.
-- Investment timelines, original/revised statement excerpts, inbox review and linked tasks.
-- A deterministic five-stage agent workflow: three copies of one capital call become one expected obligation; a corrected NAV restates the right historical period; news updates the timeline without altering cash.
-- Repeat-run deduplication, cancellation before publication, persistent state, keyboard search and grounded sample answers.
-- Immutable report snapshots, accurate CSV downloads and an A4 print / Save PDF view.
-- Responsive desktop and mobile navigation.
+- Organization membership and owner/admin/analyst/viewer permissions, enforced at APIs; PostgreSQL row-level security for workspace, documents, jobs, facts and audit records.
+- Better Auth email/password sign-in, TOTP enrollment and per-session verification, single-use recovery codes, eight-hour sessions, session revocation and hashed one-time invitations. Public signup is closed.
+- AES-256-GCM encryption for original files, extraction results and workspace payloads, bound to the organization and record. Restricted runtime database credentials are separate from migration credentials.
+- PDF/TXT/EML import, retained original downloads, content deduplication, durable PostgreSQL job leases, bounded retries, cancellation and processor deadlines.
+- **Classical workflow:** fitted TF-IDF/logistic relevance classification, deterministic extraction and optional local Ollama extraction for unresolved relevant fields.
+- **Agentic:** bounded local-model planning and document-reading actions. No arbitrary commands or unrestricted tool execution.
+- A common versioned output schema, quoted source evidence, reviewer-to-holding matching, accepted-event timeline, valuation updates and capital-call tasks. Switching modes changes new jobs; accepted records are retained.
+- Holdings, allocation views, recorded marks, liquidity, commitments, immutable report snapshots, CSV and print/PDF reports. Sample returns remain available only for a wholly synthetic dataset; incomplete live cash-flow histories do not generate invented performance metrics.
+- Organization settings, team invitations, role changes, access removal/restoration, audit activity, private account security and responsive desktop/mobile navigation.
 
-## Run locally
+Both modes run locally in this build. Processing mode and data location are separate concerns. There is no external-provider fallback. A common schema does **not** guarantee identical extracted facts or accuracy; see [the measured local evaluation](processor/eval/README.md).
 
-Node 22.13 or later is required. Node 24 was used for validation.
+## Run on your own infrastructure
+
+Use [operations/README.md](operations/README.md) for the single-repository Docker Compose setup, private processor/Ollama network, optional Caddy TLS, secret provisioning and backup procedures. Build context is this repository. No external deployment runs automatically.
+
+The [readiness record](operations/readiness.md) separates checks completed here from checks required on the target host. Docker is not installed on this development machine; container startup, Linux permissions, enforced egress restrictions and backup/restore drills remain to be exercised there.
+
+## Local development
+
+Requires Node 24+, Python 3.12 and a local Ollama runtime for model-assisted extraction. No cloud API key is required.
 
 ```sh
 npm ci
-npx wrangler d1 migrations apply DB --local --config wrangler.local.jsonc
-npm run dev -- --host 127.0.0.1 --port 3000
+npm run db:local
 ```
 
-The D1 migration creates the workspace table; the first API request lazily seeds the sample state. Database writes use an optimistic revision check. Reset sample data from Workspace settings.
+The development-only database helper creates an isolated PostgreSQL cluster on 127.0.0.1:55439, random credentials and a private `.env.local`. It does not touch other local databases. In another terminal:
+
+```sh
+npm run db:migrate:dev
+npm run build:services
+npm run dev
+npm run worker:dev
+```
+
+Run the web server and worker in separate terminals. The app uses http://localhost:3000. Production requires HTTPS and does not permit the development origin.
+
+Create the processor environment once:
+
+```sh
+python3.12 -m venv processor/.venv
+processor/.venv/bin/pip install -r processor/requirements.lock.txt
+npm run processor:dev
+```
+
+Set `OLLAMA_MODEL` to an installed, reviewed local model. The development helper selects `qwen3:1.7b`, tested here; the application does not download it automatically. The original 27B model exceeded this machine's memory budget. See [processor/README.md](processor/README.md) for limits, OCR and model configuration.
+
+Provision the first owner explicitly with a private mode-0600 password file (15–128 characters). There are no built-in production credentials:
+
+```sh
+BOOTSTRAP_PASSWORD_FILE=/absolute/private/password-file npm run bootstrap:dev -- --email owner@example.com --name "Office Owner" --organization "Family Office"
+```
+
+Store the password securely and remove its provisioning file. Sign in and enroll an authenticator before opening the workspace. The bootstrap command refuses to run once an owner exists. Owners invite colleagues from Workspace settings; no invitation email is sent automatically. Optional sample data can be loaded into an empty workspace when `ASTER_ALLOW_SAMPLE_DATA=true`; live records cannot be reset.
+
+## Verification
 
 ```sh
 npm test
 npm run typecheck
 npm run lint
 npm run build
+npm audit
 ```
 
-## Architecture and limits
+Real PostgreSQL suites are explicit opt-ins. `AUTH_TEST_DATABASE_URL` and `APP_TEST_DATABASE_URL` must use the restricted runtime role on a migrated disposable database; cleanup of append-only audit fixtures additionally requires the explicitly configured test maintenance URL. Application-worker tests need the processor and worker running with matching encryption key and processor token. Test fixtures use generated IDs and example.invalid emails.
 
-Vinext/React on Cloudflare Workers, shadcn/Base UI primitives, Recharts, TypeScript, D1 persistence and Vitest. Financial calculations live in lib/finance.ts; the simulation lives in lib/demo-engine; lib/workspace.ts connects its accepted results to the UI.
+See [VALIDATION.md](VALIDATION.md) for the actual build, browser, database and local-inference evidence from this upgrade.
 
-This version has no live mailbox access, OCR, language-model calls, MCP servers, scheduled background workers, payment execution or production multi-tenant permission model. The agent stages advance while the workspace is open and resume on reload. Mailbox inventory totals are illustrative; only the included fixture evidence is inspectable. PDF-looking statement panels are synthetic HTML previews; their source excerpt downloads are text files.
+## Boundaries before a live office rollout
 
-Private marks carry forward between synthetic statements. Unrealized gain means NAV minus remaining cost basis. Value / cost is not TVPI. Notice amounts do not count as settled cash. The correction model currently handles one known restatement before the next independent valuation; broader accounting and live feeds require additional integration.
-
-Live integration should preserve the existing evidence IDs, run stages and accepted-event boundary while replacing fixture intake with provider APIs, durable jobs, extraction and reconciliation. Keep financial calculations deterministic.
-
-## Validation
-
-Application lint excludes unchanged scaffold UI primitives.
-
-29 financial, query, replay, cancellation and workspace integration tests. Browser checks cover family scopes, evidence review, persistence, report snapshots after corrections, CSV export, print layout, workflow run/replay/stop, search, assistant citations, mailbox sync, reset and mobile navigation.
+- Mailbox OAuth, historic multi-person backfill, scheduled Gmail/Graph synchronization and MCP connectors are **not implemented** in this build. EML import processes an exported message and supported attachments; it does not connect a mailbox. Existing sample mailbox counts are illustrative.
+- EUR valuation posting is supported. Other currencies need an explicit conversion/reconciliation workflow. Notices never execute payments, settle cash or automatically change commitments.
+- The ledger retains sources and accepted events; it is not a general-ledger, tax or custodian reconciliation system. A previously accepted amount cannot be restored by replaying an older fact; that needs a deliberate correction/version workflow.
+- Relevance training and local-model evaluation use a tiny synthetic corpus. Workflow is the default. Validate models on a representative, consented document corpus before relying on them.
+- Email delivery/password reset, existing-account linking, SSO/SCIM, data retention/deletion, key rotation, external audit anchoring and a complete accounting reconciliation model need additional integration and operational decisions. The current workspace supports up to 40 saved report snapshots; reaching the limit rejects new saves and preserves existing reports.
+- Container deployment, monitored backups/restore, alerting, production capacity tests and independent security review remain release gates. This is a tested application and a reviewable deployment foundation, not certification that a production installation is secure.

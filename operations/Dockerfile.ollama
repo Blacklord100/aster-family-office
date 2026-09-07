@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+# Official Ubuntu-based Ollama image; review/pin the operator-selected digest.
+ARG OLLAMA_IMAGE
+FROM ${OLLAMA_IMAGE}
+RUN groupadd -g 10001 aster && useradd -u 10001 -g 10001 -m -d /home/aster aster
+USER aster

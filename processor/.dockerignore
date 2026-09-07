@@ -1,0 +1,8 @@
+# Runtime image inputs only. Keep environments, caches, evaluations, and
+# operator documents/secrets out of the build context.
+**
+!requirements.lock.txt
+!service/
+!service/*.py
+!corpus/
+!corpus/train.json

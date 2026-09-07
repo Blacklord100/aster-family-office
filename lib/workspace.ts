@@ -4,8 +4,22 @@ import {
   timelineEvents,
   evidenceSources,
   AS_OF_DATE,
+  accounts,
+  entities,
+  tasks,
+  sources,
+  families,
 } from '@/data';
-import type { Holding, TimelineEvent } from '@/data';
+import type {
+  Holding,
+  TimelineEvent,
+  HoldingValuation,
+  EvidenceSource,
+  OfficeTask,
+  Family,
+  Entity,
+  Account,
+} from '@/data';
 import { createWorkspaceDemoScenario } from './demo-engine';
 import type { DemoEngineState } from './demo-engine';
 import { calculatePortfolioMetrics } from './finance';
@@ -15,6 +29,7 @@ export const scenario = createWorkspaceDemoScenario({
   timelineEvents,
 });
 export type SavedReport = {
+  synthetic?: boolean;
   id: string;
   name: string;
   family: string;
@@ -26,11 +41,25 @@ export type SavedReport = {
   history: {
     date: string;
     value: number;
-    flow: number;
+    flow: number | null;
     index: number | null;
   }[];
 };
+export type PortfolioRecords = {
+  holdings: Holding[];
+  history: HoldingValuation[];
+  events: TimelineEvent[];
+  evidence: EvidenceSource[];
+  tasks: OfficeTask[];
+  families: Family[];
+  entities: Entity[];
+  accounts: Account[];
+};
 export type WorkspaceState = {
+  sampleData?: boolean;
+  sampleDataAllowed?: boolean;
+  identity?: import('./processing-contract').WorkspaceIdentity;
+  portfolio?: PortfolioRecords;
   version: 1;
   taskStatus: Record<string, string>;
   reviews: Record<string, string>;
@@ -39,9 +68,10 @@ export type WorkspaceState = {
   syncs: Record<string, string>;
   officeName: string;
 };
-export function initialWorkspace(): WorkspaceState {
+export function initialWorkspace(sampleData = true): WorkspaceState {
   return {
     version: 1,
+    sampleData,
     taskStatus: {},
     reviews: {},
     engine: scenario.state,
@@ -51,6 +81,23 @@ export function initialWorkspace(): WorkspaceState {
   };
 }
 export function deriveWorkspace(state: WorkspaceState) {
+  if (state.portfolio || state.sampleData === false) {
+    const records = state.portfolio ?? {
+      holdings: [],
+      history: [],
+      events: [],
+      evidence: [],
+      tasks: [],
+      families: [],
+      entities: [],
+      accounts: [],
+    };
+    return {
+      ...records,
+      mailboxes: state.sampleData ? sources : [],
+      metrics: calculatePortfolioMetrics(records.holdings, records.history),
+    };
+  }
   const currentHoldings: Holding[] = holdings.map((h) => {
     const v = state.engine.valuationVersions
       .filter(
@@ -114,6 +161,11 @@ export function deriveWorkspace(state: WorkspaceState) {
     eventMap.set(e.businessEventId, event);
   }
   return {
+    families,
+    entities,
+    accounts,
+    tasks,
+    mailboxes: sources,
     holdings: currentHoldings,
     history,
     events: [...eventMap.values()].sort((a, b) =>

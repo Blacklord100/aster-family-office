@@ -17,13 +17,22 @@ import {
   money,
   percent,
   dateLabel,
+  usePerformanceAvailable,
 } from './primitives';
+import { rangeStartDate } from '@/lib/date-ranges';
+import { aggregateRecordedMarks } from '@/lib/recorded-marks';
 import type { Holding } from '@/data';
 import type { SavedReport } from '@/lib/workspace';
 import { ValueChart, makeHistory } from './charts';
 export function downloadHoldings(holdings: Holding[], family: string) {
-  const cells = (v: string | number) =>
-    '"' + String(v ?? '').replaceAll('"', '""') + '"';
+  const cells = (v: string | number) => {
+    const text = String(v ?? '');
+    return (
+      '"' +
+      (/^[=+@\t\r-]/.test(text) ? "'" + text : text).replaceAll('"', '""') +
+      '"'
+    );
+  };
   const rows = [
     [
       'Investment',
@@ -55,7 +64,12 @@ export function downloadHoldings(holdings: Holding[], family: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'aster-' + family + '-portfolio-2026-09-07.csv';
+  a.download =
+    'aster-' +
+    family +
+    '-portfolio-' +
+    new Date().toISOString().slice(0, 10) +
+    '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -106,7 +120,12 @@ export function ReportsView({
         <button className="report-cover" onClick={() => onPreview(null, range)}>
           <div className="report-cover-top">
             <span>✳ Aster</span>
-            <span>September 2026</span>
+            <span>
+              {new Date().toLocaleDateString('en-GB', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </span>
           </div>
           <div>
             <span className="report-cover-kicker">FAMILY OFFICE REPORT</span>
@@ -132,12 +151,9 @@ export function ReportsView({
         </button>
         <div className="report-builder-content">
           <h2>Portfolio report</h2>
-          <p>
-            Allocation, performance, holdings and source dates in one structured
-            view.
-          </p>
+          <p>Allocation, holdings and source dates in one structured view.</p>
           <div className="report-options">
-            <span>Performance window</span>
+            <span>History window</span>
             <Picker
               label="Report period"
               value={range}
@@ -152,7 +168,16 @@ export function ReportsView({
             <span>Included investments</span>
             <strong>{hs.length}</strong>
             <span>Portfolio snapshot</span>
-            <strong>7 September 2026</strong>
+            <strong>
+              {hs.length
+                ? dateLabel(
+                    hs
+                      .map((h) => h.valuationDate)
+                      .sort()
+                      .at(-1)!,
+                  )
+                : 'No recorded positions'}
+            </strong>
           </div>
           <div className="report-builder-actions">
             <Button variant="outline" onClick={() => onPreview(null, range)}>
@@ -227,7 +252,10 @@ export function PrintableReport({
   saved: SavedReport | null;
   range?: string;
 }) {
-  const { data } = useWorkspace();
+  const { state, data } = useWorkspace();
+  const currentPerformanceAvailable = usePerformanceAvailable();
+  const performanceAvailable = saved?.synthetic ?? currentPerformanceAvailable;
+  const containsSampleRecords = saved?.synthetic ?? state.sampleData;
   const scope = saved?.family ?? family;
   const hs =
     saved?.holdings ??
@@ -236,18 +264,47 @@ export function PrintableReport({
   const selectedRange = saved?.range ?? range;
   const history =
     saved?.history ??
-    makeHistory(
-      data.history,
-      new Set(hs.map((h) => h.id)),
-      selectedRange === '1Y' ? '2025-09-07' : '2025-12-31',
-    );
+    (performanceAvailable
+      ? makeHistory(
+          data.history,
+          new Set(hs.map((h) => h.id)),
+          rangeStartDate(
+            performanceAvailable
+              ? '2026-09-07'
+              : new Date().toISOString().slice(0, 10),
+            selectedRange,
+          ),
+        )
+      : aggregateRecordedMarks(
+          data.history,
+          hs.map((h) => h.id),
+          rangeStartDate(
+            performanceAvailable
+              ? '2026-09-07'
+              : new Date().toISOString().slice(0, 10),
+            selectedRange,
+          ),
+        ));
   const lastIndex = history.at(-1)?.index;
-  const twr = lastIndex == null ? null : lastIndex / 100 - 1;
+  const twr =
+    !performanceAvailable || lastIndex == null ? null : lastIndex / 100 - 1;
   return (
     <article className="print-report">
       <header>
         <span className="report-brand">✳ Aster</span>
-        <span>7 September 2026 · Synthetic demo</span>
+        <span>
+          {saved
+            ? dateLabel(saved.createdAt.slice(0, 10))
+            : hs.length
+              ? dateLabel(
+                  hs
+                    .map((h) => h.valuationDate)
+                    .sort()
+                    .at(-1)!,
+                )
+              : 'No positions'}{' '}
+          · {containsSampleRecords ? 'Sample records' : 'Workspace records'}
+        </span>
       </header>
       <h1>{saved?.name ?? 'Consolidated portfolio report'}</h1>
       <p>
@@ -288,11 +345,26 @@ export function PrintableReport({
           </strong>
         </div>
       </div>
-      <h2>Portfolio performance</h2>
+      <h2>
+        {performanceAvailable
+          ? 'Portfolio performance'
+          : 'Recorded portfolio value'}
+      </h2>
       <p className="report-chart-note">
-        Daily-linked time-weighted return · {selectedRange} · synthetic marks
+        {performanceAvailable
+          ? 'Daily-linked time-weighted return · ' +
+            selectedRange +
+            ' · sample marks'
+          : 'Latest known marks carried forward for current holdings. Changes may include cash movements; investment returns are unavailable.'}
       </p>
-      <ValueChart data={history} performance small />
+      {history.length > 1 ? (
+        <ValueChart
+          data={history}
+          performance={performanceAvailable}
+          recorded={!performanceAvailable}
+          small
+        />
+      ) : null}
       <h2>Asset allocation</h2>
       <div className="print-allocation">
         {[
@@ -337,10 +409,13 @@ export function PrintableReport({
         </tbody>
       </table>
       <p className="print-note">
-        All records are synthetic. Private investments retain their latest
-        reported valuation. Unfunded commitments are excluded from NAV. Daily
-        returns remove modeled end-of-day external flows before linking. This
-        document is a product demonstration, not actual financial reporting.
+        {containsSampleRecords ? 'This report includes sample records. ' : ''}
+        Private investments use their latest recorded valuation. Unfunded
+        commitments are excluded from NAV.{' '}
+        {performanceAvailable
+          ? 'Sample daily returns remove modeled end-of-day external flows before linking.'
+          : 'Recorded marks do not establish complete cash-flow history; investment returns are unavailable.'}{' '}
+        Review source coverage and interpretation before relying on this report.
       </p>
     </article>
   );

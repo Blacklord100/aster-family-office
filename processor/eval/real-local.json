@@ -1,0 +1,191 @@
+{
+  "syntheticOnly": true,
+  "seed": 42,
+  "trainingDocuments": 48,
+  "heldoutDocuments": 8,
+  "modelResponses": "actual local Ollama",
+  "classificationConfusion": {
+    "tp": 8
+  },
+  "classificationAccuracy": 1.0,
+  "rulesDocumentCoverage": 0.5,
+  "workflowDocumentCoverage": 1.0,
+  "agenticDocumentCoverage": 1.0,
+  "limitations": [
+    "Tiny English synthetic set; no production generalization claim.",
+    "Confidence is uncalibrated relevance probability.",
+    "Coverage requires expected kind and amount only; this is not complete financial accuracy.",
+    "Contract-server scores validate plumbing and evidence checks, not model reasoning.",
+    "No scanned PDF/OCR accuracy benchmark or multilingual layouts."
+  ],
+  "results": [
+    {
+      "id": "holdout-00",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8203,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.0,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 5.378,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-01",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8358,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.0,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.662,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-02",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.8627,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.002,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.443,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-03",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7711,
+      "rulesCandidateCount": 1,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 0.002,
+        "model": null,
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.069,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-04",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.679,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.019,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 5.792,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-05",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7021,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 3.582,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 5.095,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-06",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.7358,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 3.35,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.972,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    },
+    {
+      "id": "holdout-07",
+      "expectedRelevant": true,
+      "predictedRelevant": true,
+      "relevanceProbability": 0.6955,
+      "rulesCandidateCount": 0,
+      "workflow": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 3.068,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      },
+      "agentic": {
+        "candidateCount": 1,
+        "expectedFactRecovered": true,
+        "seconds": 4.562,
+        "model": "qwen3:1.7b",
+        "warnings": []
+      }
+    }
+  ]
+}

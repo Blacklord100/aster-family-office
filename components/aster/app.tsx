@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Shell, navigation, type View } from './shell';
@@ -6,9 +7,11 @@ import { Overview } from './overview';
 import { InvestmentsView, InvestmentDetail } from './investments';
 import { TimelineView } from './timeline';
 import { InboxView } from './inbox';
-import { AgentsView, ConnectionsView } from './agents';
+import { ConnectionsView } from './agents';
+import { ProcessingView } from './processing-view';
+import { TeamSettings } from './team-settings';
 import { ReportsView, PrintableReport, downloadHoldings } from './reports';
-import { EvidencePanel, REVIEW_IDS } from './evidence';
+import { EvidencePanel } from './evidence';
 import { AssistantPanel } from './assistant';
 import { WorkspaceContext } from './workspace-context';
 import {
@@ -54,7 +57,7 @@ type Route = { view: View; family: string; holding: string | null };
 const DEFAULT_ROUTE: Route = { view: 'overview', family: 'all', holding: null };
 export function AsterApp() {
   const [route, setRoute] = useState<Route>(DEFAULT_ROUTE),
-    [state, setState] = useState<WorkspaceState>(initialWorkspace),
+    [state, setState] = useState<WorkspaceState>(() => initialWorkspace(false)),
     [loading, setLoading] = useState(true),
     [error, setError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false),
@@ -66,14 +69,28 @@ export function AsterApp() {
   const [reportOpen, setReportOpen] = useState(false),
     [savedReport, setSavedReport] = useState<SavedReport | null>(null),
     [reportRange, setReportRange] = useState('YTD');
+  const canAdmin = ['owner', 'admin'].includes(state.identity?.role ?? '');
   const data = useMemo(() => deriveWorkspace(state), [state]);
   const load = useCallback(async () => {
     try {
       const response = await fetch('/api/workspace', { cache: 'no-store' });
+      if (response.status === 401) {
+        window.location.assign('/login');
+        return;
+      }
+      if (response.status === 403) {
+        const body = await response.json();
+        if (body.error === 'MFA_REQUIRED') {
+          window.location.assign('/account');
+          return;
+        }
+        throw new Error(body.message);
+      }
       if (!response.ok)
         throw new Error('Workspace storage is temporarily unavailable.');
       const next = (await response.json()) as WorkspaceState & {
         error?: string;
+        message?: string;
       };
       setState(next);
       setError(null);
@@ -92,8 +109,9 @@ export function AsterApp() {
       });
       const next = (await response.json()) as WorkspaceState & {
         error?: string;
+        message?: string;
       };
-      if (!response.ok) throw new Error(next.error || 'Could not save');
+      if (!response.ok) throw new Error(next.message || 'Could not save');
       setState(next);
       setError(null);
       if (!['advance', 'run'].includes(String(input.type)))
@@ -104,7 +122,7 @@ export function AsterApp() {
               : input.type === 'sync'
                 ? 'Demo sync complete'
                 : input.type === 'reset'
-                  ? 'Demo restored'
+                  ? 'Sample data cleared'
                   : 'Changes saved',
           type: 'success',
         });
@@ -129,11 +147,7 @@ export function AsterApp() {
       const v = p.get('view') ?? 'overview';
       setRoute({
         view: navigation.some((n) => n.id === v) ? (v as View) : 'overview',
-        family: ['all', 'laurent', 'bergstrom', 'chen'].includes(
-          p.get('family') ?? 'all',
-        )
-          ? (p.get('family') ?? 'all')
-          : 'all',
+        family: p.get('family') ?? 'all',
         holding: p.get('holding'),
       });
     }
@@ -151,25 +165,20 @@ export function AsterApp() {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, []);
-  const activeRun = state.engine.runs.find((r) => r.status === 'running');
-  useEffect(() => {
-    if (!activeRun) return;
-    const timeout = setTimeout(
-      () => void mutate({ type: 'advance', id: activeRun.id }),
-      1050,
-    );
-    return () => clearTimeout(timeout);
-  }, [activeRun, mutate]);
-  const changeRoute = useCallback((changes: Partial<Route>) => {
-    setRoute((prev) => {
-      const next = { ...prev, ...changes };
-      const p = new URLSearchParams({ view: next.view, family: next.family });
-      if (next.holding) p.set('holding', next.holding);
-      window.history.pushState(null, '', '?' + p.toString());
-      return next;
-    });
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
+  const changeRoute = useCallback(
+    (changes: Partial<Route>) => {
+      const next = { ...route, ...changes };
+      const params = new URLSearchParams({
+        view: next.view,
+        family: next.family,
+      });
+      if (next.holding) params.set('holding', next.holding);
+      window.history.pushState(null, '', '?' + params.toString());
+      setRoute(next);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    },
+    [route],
+  );
   const navigate = (view: View) => changeRoute({ view, holding: null });
   const family = (family: string) => changeRoute({ family, holding: null });
   const openHolding = (id: string) => {
@@ -197,12 +206,9 @@ export function AsterApp() {
     error,
     reload: () => void load(),
   };
-  const pendingReviews = new Set([
-    ...REVIEW_IDS.filter((id) => state.reviews[id] !== 'Accepted'),
-    ...Object.keys(state.reviews).filter(
-      (id) => state.reviews[id] === 'Needs review',
-    ),
-  ]).size;
+  const pendingReviews = data.evidence.filter(
+    (e) => (state.reviews[e.id] ?? e.status) === 'Needs review',
+  ).length;
   return (
     <TooltipProvider>
       <Toaster>
@@ -275,12 +281,7 @@ export function AsterApp() {
                 onHolding={openHolding}
               />
             ) : null}
-            {route.view === 'agents' ? (
-              <AgentsView
-                onSource={openSource}
-                onTimeline={() => navigate('timeline')}
-              />
-            ) : null}
+            {route.view === 'agents' ? <ProcessingView /> : null}
             {route.view === 'connections' ? <ConnectionsView /> : null}
             {route.view === 'reports' ? (
               <ReportsView
@@ -346,7 +347,7 @@ export function AsterApp() {
               <SheetHeader className="sr-only">
                 <SheetTitle>Investment source evidence</SheetTitle>
                 <SheetDescription>
-                  Original synthetic source passage and linked work.
+                  Original source passage and linked work.
                 </SheetDescription>
               </SheetHeader>
               {source ? (
@@ -369,11 +370,11 @@ export function AsterApp() {
             </SheetContent>
           </Sheet>
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <DialogContent className="settings-dialog">
+            <DialogContent className="settings-dialog max-h-[90dvh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Workspace settings</DialogTitle>
                 <DialogDescription>
-                  Your Aster demonstration workspace.
+                  Organization settings, access and audit history.
                 </DialogDescription>
               </DialogHeader>
               <form
@@ -390,6 +391,7 @@ export function AsterApp() {
                     </FieldLabel>
                     <Input
                       id="workspace-name"
+                      disabled={!canAdmin}
                       value={workspaceName}
                       onChange={(e) => setWorkspaceName(e.target.value)}
                       minLength={2}
@@ -397,32 +399,54 @@ export function AsterApp() {
                       required
                     />
                     <FieldDescription>
-                      Saved across sessions in this private demo.
+                      Saved to your organization’s encrypted workspace.
                     </FieldDescription>
                   </Field>
-                  <Button type="submit">Save changes</Button>
+                  <Button type="submit" disabled={!canAdmin}>
+                    Save changes
+                  </Button>
                 </FieldGroup>
               </form>
               <div className="settings-demo-note">
-                <strong>Demo mode</strong>
+                <strong>Local processing</strong>
                 <p>
-                  All people, mailboxes, holdings and messages are synthetic.
-                  Agent runs and assistant answers are simulated.
+                  Documents are processed by your configured private worker.
+                  Workflow and agentic modes use the same source review process.
                 </p>
               </div>
-              <Button variant="outline" onClick={() => setResetConfirm(true)}>
-                <RefreshCw data-icon="inline-start" />
-                Reset demo workspace
-              </Button>
+              <Link
+                href="/account"
+                className="text-sm underline underline-offset-4"
+              >
+                Account security & sessions
+              </Link>
+              <TeamSettings />
+              {canAdmin && state.sampleDataAllowed && !data.holdings.length ? (
+                <Button
+                  variant="outline"
+                  onClick={() => void mutate({ type: 'seed' })}
+                >
+                  Explore with sample data
+                </Button>
+              ) : null}
+              {canAdmin &&
+              state.sampleData &&
+              !data.evidence.some((e) => !e.synthetic) ? (
+                <Button variant="outline" onClick={() => setResetConfirm(true)}>
+                  <RefreshCw data-icon="inline-start" />
+                  Clear sample workspace
+                </Button>
+              ) : null}
             </DialogContent>
           </Dialog>
           <Dialog open={resetConfirm} onOpenChange={setResetConfirm}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Restore the sample workspace?</DialogTitle>
+                <DialogTitle>Clear the sample workspace?</DialogTitle>
                 <DialogDescription>
-                  This clears demo reviews, task changes, agent runs and saved
-                  reports, and restores the original €128M portfolio.
+                  This removes sample records and saved sample reports. Uploaded
+                  documents and processing jobs are retained. Live investment
+                  records cannot be reset.
                 </DialogDescription>
               </DialogHeader>
               <Button
@@ -434,7 +458,7 @@ export function AsterApp() {
                   }
                 }}
               >
-                Restore sample data
+                Clear sample data
               </Button>
               <Button variant="outline" onClick={() => setResetConfirm(false)}>
                 Keep my changes
@@ -446,8 +470,7 @@ export function AsterApp() {
               <DialogHeader className="sr-only">
                 <DialogTitle>Portfolio report preview</DialogTitle>
                 <DialogDescription>
-                  Printable synthetic portfolio report with allocation and
-                  source dates.
+                  Printable portfolio report with allocation and source dates.
                 </DialogDescription>
               </DialogHeader>
               <div className="report-actions">

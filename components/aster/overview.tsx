@@ -8,7 +8,8 @@ import {
   Clock3,
   CheckCircle2,
 } from 'lucide-react';
-import { tasks, AS_OF_DATE } from '@/data';
+import { rangeStartDate } from '@/lib/date-ranges';
+import { aggregateRecordedMarks } from '@/lib/recorded-marks';
 import type { Holding } from '@/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +31,8 @@ import {
   money,
   percent,
   TextAction,
+  usePerformanceAvailable,
+  dateLabel,
 } from './primitives';
 import {
   ValueChart,
@@ -51,13 +54,16 @@ export function HoldingsTable({
   compact?: boolean;
   portfolioTotal?: number;
 }) {
+  const { data } = useWorkspace();
   const total = portfolioTotal ?? holdings.reduce((s, h) => s + h.valueEUR, 0);
   return (
     <Table className="holdings-table">
       <TableHeader>
         <TableRow>
           <TableHead>Investment</TableHead>
-          <TableHead>Asset class</TableHead>
+          <TableHead className={compact ? 'compact-asset-class' : undefined}>
+            Asset class
+          </TableHead>
           {!compact ? <TableHead>Family</TableHead> : null}
           <TableHead className="number">Value</TableHead>
           <TableHead className="number">Weight</TableHead>
@@ -96,7 +102,7 @@ export function HoldingsTable({
                 </span>
               </button>
             </TableCell>
-            <TableCell>
+            <TableCell className={compact ? 'compact-asset-class' : undefined}>
               <span className="class-label">
                 {!compact ? (
                   <i style={{ background: classColors[h.assetClass] }} />
@@ -106,9 +112,8 @@ export function HoldingsTable({
             </TableCell>
             {!compact ? (
               <TableCell className="muted">
-                {h.familyId === 'bergstrom'
-                  ? 'Bergström'
-                  : h.familyId[0].toUpperCase() + h.familyId.slice(1)}
+                {data.families.find((f) => f.id === h.familyId)?.name ??
+                  'Unassigned'}
               </TableCell>
             ) : null}
             <TableCell className="number strong">{money(h.valueEUR)}</TableCell>
@@ -138,7 +143,8 @@ export function Overview({
   onExport: () => void;
   taskStatus?: Record<string, string>;
 }) {
-  const { data } = useWorkspace();
+  const { state, data } = useWorkspace();
+  const performanceAvailable = usePerformanceAvailable();
   const [tab, setTab] = useState('portfolio'),
     [range, setRange] = useState('ytd'),
     [dimension, setDimension] = useState('assetClass');
@@ -153,21 +159,25 @@ export function Overview({
     liquid = holdings
       .filter((h) => ['Daily', 'Within 30 days'].includes(h.liquidityBucket))
       .reduce((s, h) => s + h.valueEUR, 0);
-  const start =
-    range === '1m'
-      ? '2026-08-07'
-      : range === '3m'
-        ? '2026-06-07'
-        : range === '1y'
-          ? '2025-09-07'
-          : '2025-12-31';
+  const start = rangeStartDate(
+    performanceAvailable ? '2026-09-07' : new Date().toISOString().slice(0, 10),
+    range,
+  );
   const history = useMemo(
-    () => makeHistory(data.history, new Set(holdings.map((h) => h.id)), start),
-    [holdings, start, data.history],
+    () =>
+      performanceAvailable
+        ? makeHistory(data.history, new Set(holdings.map((h) => h.id)), start)
+        : aggregateRecordedMarks(
+            data.history,
+            holdings.map((h) => h.id),
+            start,
+          ),
+    [holdings, start, data.history, performanceAvailable],
   );
   const lastIndex = history.at(-1)?.index;
-  const twr = lastIndex == null ? null : lastIndex / 100 - 1;
-  const relevantTasks = tasks
+  const twr =
+    !performanceAvailable || lastIndex == null ? null : lastIndex / 100 - 1;
+  const relevantTasks = data.tasks
     .filter(
       (t) =>
         (family === 'all' || t.familyId === family) &&
@@ -187,7 +197,20 @@ export function Overview({
   );
   return (
     <>
-      <PageHeading title="Overview" subtitle="Monday, 7 September 2026">
+      <PageHeading
+        title="Overview"
+        subtitle={
+          holdings.length
+            ? 'Latest recorded valuations · ' +
+              dateLabel(
+                holdings
+                  .map((h) => h.valuationDate)
+                  .sort()
+                  .at(-1)!,
+              )
+            : 'Your workspace starts with your records'
+        }
+      >
         <FamilyPicker value={family} onChange={onFamily} />
         <Button variant="outline" onClick={onExport}>
           <Download data-icon="inline-start" />
@@ -199,6 +222,12 @@ export function Overview({
         onChange={setTab}
         items={['Portfolio', 'Performance', 'Liquidity']}
       />
+      {!state.sampleData && holdings.length ? (
+        <p className="method-note">
+          Recorded position values only. Coverage, ownership and source
+          interpretation require review; portfolio returns are unavailable.
+        </p>
+      ) : null}
       <div className="metrics-row">
         <Metric
           label="Total portfolio"
@@ -248,7 +277,7 @@ export function Overview({
           </Panel>
           <Panel
             title="Commitments & cash"
-            subtitle={'Planning capacity, as of ' + AS_OF_DATE}
+            subtitle="Recorded cash and commitments"
           >
             <div className="liquidity-summary">
               <span>Cash on hand</span>
@@ -285,8 +314,10 @@ export function Overview({
             }
             subtitle={
               tab === 'performance'
-                ? 'Time-weighted return · EUR · synthetic'
-                : 'Net asset value over time'
+                ? performanceAvailable
+                  ? 'Time-weighted return · EUR · sample history'
+                  : 'Return unavailable · complete cash-flow history required'
+                : 'Recorded portfolio value over time'
             }
             action={
               <ViewTabs
@@ -297,7 +328,45 @@ export function Overview({
               />
             }
           >
-            <ValueChart data={history} performance={tab === 'performance'} />
+            {history.length > 1 &&
+            (performanceAvailable || tab !== 'performance') ? (
+              <>
+                <ValueChart
+                  data={history}
+                  performance={tab === 'performance'}
+                  recorded={!performanceAvailable}
+                />
+                {!performanceAvailable ? (
+                  <p className="method-note">
+                    Latest known marks carried forward for current holdings.
+                    Changes can include cash movements; this is not an
+                    investment return.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <div className="empty-inline">
+                <Clock3 />
+                <h3>
+                  {tab === 'performance'
+                    ? 'Performance is unavailable'
+                    : 'Build your portfolio history'}
+                </h3>
+                <p>
+                  {holdings.length
+                    ? 'Recorded marks do not establish a complete valuation and external cash-flow history.'
+                    : 'Add an opening holding in Investments, then import a report in Processing.'}
+                </p>
+                {!holdings.length ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => onNavigate('investments')}
+                  >
+                    Add your first holding
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </Panel>
           <Panel
             title="Asset allocation"
@@ -336,7 +405,8 @@ export function Overview({
                     start,
                   ),
                   idx = series.at(-1)?.index,
-                  ret = idx == null ? null : idx / 100 - 1;
+                  ret =
+                    !performanceAvailable || idx == null ? null : idx / 100 - 1;
                 return (
                   <div key={name}>
                     <i style={{ background: color }} />
@@ -365,10 +435,15 @@ export function Overview({
             <div className="methodology">
               <CheckCircle2 />
               <div>
-                <h3>Cash-flow adjusted</h3>
+                <h3>
+                  {performanceAvailable
+                    ? 'Sample cash-flow adjustment'
+                    : 'Complete cash flows needed'}
+                </h3>
                 <p>
-                  Daily returns are linked after removing explicitly modeled
-                  end-of-day external flows.
+                  {performanceAvailable
+                    ? 'Sample daily returns remove explicitly modeled end-of-day external flows before linking.'
+                    : 'A valuation update alone is insufficient to measure return. Complete external flows and comparable dated marks are required.'}
                 </p>
               </div>
               <Clock3 />
@@ -376,7 +451,7 @@ export function Overview({
                 <h3>Reported valuations</h3>
                 <p>
                   Private assets carry forward their last reported mark between
-                  synthetic statements.
+                  source statements.
                 </p>
               </div>
               <FileText />
@@ -447,7 +522,7 @@ export function Overview({
                     <div>
                       <strong>{e.title}</strong>
                       <small>
-                        {e.type} · {e.date === AS_OF_DATE ? 'Today' : e.date}
+                        {e.type} · {dateLabel(e.date)}
                       </small>
                     </div>
                     <ArrowUpRight />
