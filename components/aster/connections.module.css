@@ -1,0 +1,286 @@
+.intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  padding: 30px 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(120deg, #f8f7fc, #fcfcfd);
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #777080;
+  font-weight: 600;
+}
+.intro h2 {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  margin: 10px 0;
+}
+.intro p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #797681;
+  max-width: 510px;
+}
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  color: #aaa5b2;
+}
+.flow > svg {
+  width: 15px;
+}
+.flow span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-direction: column;
+  font-size: 11px;
+  color: #70687e;
+}
+.flow span svg {
+  width: 43px;
+  height: 43px;
+  padding: 11px;
+  border: 1px solid #e8e3ee;
+  border-radius: 12px;
+  background: #fff;
+  color: #83719d;
+}
+.history {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 0;
+}
+.history > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.history svg {
+  width: 19px;
+  color: #8a8494;
+}
+.history h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.history p {
+  font-size: 12px;
+  color: #827c88;
+  margin-top: 5px;
+}
+.providers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.provider {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 24px;
+  background: var(--card);
+}
+.providerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.providerMark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 23px;
+  font-weight: 600;
+}
+.google {
+  background: #fff;
+  color: #4276d6;
+}
+.microsoft {
+  background: #f0f7ff;
+  color: #2584c6;
+}
+.provider h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 20px 0 7px;
+}
+.provider > p {
+  font-size: 12px;
+  color: #827c88;
+}
+.providerBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 25px;
+  padding-top: 19px;
+  border-top: 1px solid var(--border);
+}
+.providerBottom > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #85808b;
+  font-size: 11px;
+}
+.providerBottom > span svg {
+  width: 14px;
+}
+.disclosure {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #918a97;
+  max-width: 860px;
+  margin: 0 2px;
+}
+.mailboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.mailbox {
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 0;
+}
+.mailboxHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mailboxHeading > div {
+  min-width: 0;
+  flex: 1;
+}
+.mailboxHeading h3 {
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.mailboxHeading p {
+  font-size: 11px;
+  color: #837c8b;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.mailboxMark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  background: #f4f1f8;
+  color: #81708e;
+  border-radius: 9px;
+  font-weight: 500;
+}
+.mailboxDetails {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin: 22px 0;
+}
+.mailboxDetails span {
+  display: block;
+  font-size: 10px;
+  color: #908997;
+  margin-bottom: 6px;
+}
+.mailboxDetails strong {
+  font-size: 12px;
+  font-weight: 450;
+}
+.mailboxActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.mailboxError {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #9b7339;
+  margin-bottom: 15px;
+}
+.mailboxError span {
+  font-size: 10px;
+  display: block;
+  color: #918a97;
+}
+@media (max-width: 1100px) {
+  .intro {
+    align-items: flex-start;
+  }
+  .flow {
+    gap: 10px;
+  }
+  .flow span svg {
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+  }
+  .intro p {
+    max-width: 420px;
+  }
+  .providerBottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 700px) {
+  .intro {
+    padding: 23px;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .intro h2 {
+    font-size: 23px;
+  }
+  .flow {
+    gap: 22px;
+  }
+  .providers {
+    grid-template-columns: 1fr;
+  }
+  .provider {
+    padding: 21px;
+  }
+  .providerBottom {
+    flex-direction: row;
+    align-items: center;
+  }
+  .history {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
+  }
+  .history p {
+    line-height: 1.6;
+  }
+  .mailboxDetails {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mailboxHeading {
+    flex-wrap: wrap;
+  }
+  .mailbox {
+    padding: 16px;
+  }
+}

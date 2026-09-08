@@ -42,6 +42,7 @@ next-env.d.ts
 /playwright-report/
 
 /dist-worker/
+/dist-mailbox-worker/
 /dist-ops/
 /.local-data/
 !.env.example

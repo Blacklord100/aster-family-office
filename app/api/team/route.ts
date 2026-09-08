@@ -107,6 +107,22 @@ export async function PATCH(request: Request) {
       await c.query('DELETE FROM auth_session WHERE "userId"=$1', [
         input.userId,
       ]);
+      if (input.action !== 'restore') {
+        await c.query(
+          'UPDATE app_integration_tokens SET revoked_at=now() WHERE organization_id=$1 AND created_by=$2 AND revoked_at IS NULL',
+          [ctx.organizationId, input.userId],
+        );
+      }
+      if (input.action === 'remove' || input.role === 'viewer') {
+        await c.query(
+          "UPDATE app_mailboxes SET status='paused',generation=generation+1,updated_at=now() WHERE organization_id=$1 AND connected_by=$2 AND status<>'disconnected'",
+          [ctx.organizationId, input.userId],
+        );
+        await c.query(
+          'DELETE FROM app_mailbox_queue WHERE organization_id=$1 AND id IN (SELECT id FROM app_mailboxes WHERE organization_id=$1 AND connected_by=$2)',
+          [ctx.organizationId, input.userId],
+        );
+      }
       await audit(
         c,
         ctx.organizationId,

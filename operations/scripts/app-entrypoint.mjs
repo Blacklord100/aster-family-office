@@ -12,6 +12,20 @@ function secret(name) {
   return value;
 }
 try {
+  if (process.env.MAILBOX_PROVIDERS_FILE) {
+    const raw = readFileSync(process.env.MAILBOX_PROVIDERS_FILE, 'utf8');
+    if (raw.length > 65536) throw new Error('Mailbox provider configuration is too large');
+    let config;
+    try { config = JSON.parse(raw); } catch { throw new Error('Invalid mailbox provider JSON'); }
+    const allowed = ['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','MICROSOFT_CLIENT_ID','MICROSOFT_CLIENT_SECRET','MICROSOFT_TENANT_ID'];
+    if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Invalid mailbox provider configuration');
+    for (const [key,value] of Object.entries(config)) {
+      if (!allowed.includes(key) || typeof value !== 'string' || value.length > 20000) throw new Error('Invalid mailbox provider setting');
+      if (process.env[key]) throw new Error('Configure provider credentials in one place only');
+      process.env[key] = value;
+    }
+    delete process.env.MAILBOX_PROVIDERS_FILE;
+  }
   if (process.env.DB_PASSWORD_FILE) {
     const password = secret('DB_PASSWORD');
     const url = new URL('postgresql://postgres:5432/aster');
@@ -27,11 +41,13 @@ try {
     process.env.MIGRATION_DATABASE_URL = process.env.DATABASE_URL;
     process.env.BOOTSTRAP_DATABASE_URL = process.env.DATABASE_URL;
   }
-  const auth = secret('BETTER_AUTH_SECRET');
-  if (auth.length < 32) throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');
+  if (process.env.ASTER_SERVICE !== 'mailbox') {
+    const auth = secret('BETTER_AUTH_SECRET');
+    if (auth.length < 32) throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');
+    secret('PROCESSOR_TOKEN');
+  }
   const encryption = secret('ENCRYPTION_KEY');
   if (Buffer.from(encryption, 'base64').length !== 32) throw new Error('ENCRYPTION_KEY must encode 32 bytes');
-  secret('PROCESSOR_TOKEN');
   const args = process.argv.slice(2);
   if (!args.length) throw new Error('Missing service command');
   const child = spawn(args[0], args.slice(1), { stdio: 'inherit', env: process.env });

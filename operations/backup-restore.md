@@ -33,3 +33,9 @@ Before cutover, use a separate application instance with the target database and
 An administrator must explicitly approve and execute cutover after the checks. Retain the pre-cutover snapshot, prevent the old application from writing, update connections, then verify health/login/MFA/document access. Record the backup age, RPO, RTO, release identifier and approver. Clean up drill databases only after independently identifying them; these scripts contain no automatic deletion.
 
 These backup/restore commands have been syntax-checked only in this workspace. No Docker backup, restore, scheduler, off-site store or disaster-recovery drill has been executed.
+
+## Bounded native development drill
+
+`ASTER_NATIVE_RECOVERY_DRILL=1 node --env-file=.env.local operations/scripts/native-recovery-drill.mjs` runs from the app root against only the isolated local database on 127.0.0.1:55439. It takes a consistent SQL snapshot, encrypts it with AES-256-GCM, reads the encrypted file back, rebuilds a separate temporary database from reviewed migrations, restores all 22 application/auth tables, compares every record, and verifies decryption of workspace/document/job/mailbox records. It removes the temporary database, encrypted snapshot and temporary recovery key afterward. It refuses unknown schemas or databases above 100 MiB.
+
+This drill passed locally, including while a synthetic imported email and encrypted provider credentials/cursor were present. It is an application recovery check, not a streaming production backup utility or a test of the Docker/pg_dump/age procedures above. Run those procedures separately on the chosen target host and measure its recovery objectives.

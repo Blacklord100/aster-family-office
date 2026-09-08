@@ -13,6 +13,7 @@ for name in postgres_password migration_password runtime_password better_auth_se
   openssl rand -hex 32 > "$aster_secret_dir/$name"
 done
 openssl rand -base64 32 > "$aster_secret_dir/encryption_key"
+printf '{}\n' > "$aster_secret_dir/mailbox_providers"
 # Compose file secrets preserve host UID. Host parent remains owner-only 0700;
 # file readability lets the explicitly granted container UIDs read their mounts.
 # Use a managed secret store with explicit UID grants for stronger deployments.

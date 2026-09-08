@@ -12,7 +12,8 @@ This file describes the operations package and the native worker lifecycle check
 - Exercised temporary secret generation: 32-byte encryption key, private directory permissions, and refusal to overwrite existing key files. Temporary fixtures were removed.
 - Exercised fresh and stale worker-heartbeat checks.
 - Ran four opt-in native lifecycle tests against local PostgreSQL with the restricted runtime role, compiled worker processes and an authenticated fake processor bound to 127.0.0.1:8012. Passed shutdown requeue without attempt charge, cancellation with HTTP disconnect, stale-result fencing between two workers after lease expiry, and terminal failure after three attempts followed by explicit retry. Durable backoff was checked before advancing only fixture clocks. Disposable records were removed and the normal worker restarted. This does not replace container load and processor sandbox tests.
-- Prepared encrypted streaming backup and non-overwriting restore-drill scripts.
+- Prepared encrypted streaming backup and non-overwriting restore-drill scripts. A separate bounded native encrypted SQL recovery drill passed on the isolated development cluster: all 22 tables restored and compared, with application payloads decrypted, including a synthetic email and mailbox credentials/cursor. Production Docker/pg_dump/age recovery remains untested.
+- Added a separate mailbox worker with provider-only internet access in the Compose topology, optional private provider configuration, and no processor network membership. Verified topology and configuration statically; target-host egress remains untested.
 - Did not install Docker, deploy externally, or request public TLS certificates. Official qwen3:0.6b and qwen3:1.7b models were explicitly provisioned separately for local evaluation. The deployment stack never automatically downloads or pulls models.
 
 ## Required on the target host

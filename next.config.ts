@@ -3,6 +3,8 @@ const config: NextConfig = {
   output: 'standalone',
   devIndicators: false,
   poweredByHeader: false,
+  // OAuth callbacks contain one-time codes; do not log request URLs in development.
+  logging: false,
   reactStrictMode: true,
   serverExternalPackages: ['pg'],
   experimental: { proxyClientMaxBodySize: '12mb' },

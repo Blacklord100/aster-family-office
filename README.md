@@ -7,6 +7,8 @@ A portable family-office workspace with a Linear/Notion-inspired interface, Post
 - Organization membership and owner/admin/analyst/viewer permissions, enforced at APIs; PostgreSQL row-level security for workspace, documents, jobs, facts and audit records.
 - Better Auth email/password sign-in, TOTP enrollment and per-session verification, single-use recovery codes, eight-hour sessions, session revocation and hashed one-time invitations. Public signup is closed.
 - AES-256-GCM encryption for original files, extraction results and workspace payloads, bound to the organization and record. Restricted runtime database credentials are separate from migration credentials.
+- Multiple independently authorized Google/Microsoft accounts, encrypted OAuth credentials, PKCE, durable history/delta cursors, pause/disconnect and a separate collection worker.
+- Scoped, expiring read-only MCP tokens for portfolios, original documents and connection status.
 - PDF/TXT/EML import, retained original downloads, content deduplication, durable PostgreSQL job leases, bounded retries, cancellation and processor deadlines.
 - **Classical workflow:** fitted TF-IDF/logistic relevance classification, deterministic extraction and optional local Ollama extraction for unresolved relevant fields.
 - **Agentic:** bounded local-model planning and document-reading actions. No arbitrary commands or unrestricted tool execution.
@@ -40,7 +42,7 @@ npm run dev
 npm run worker:dev
 ```
 
-Run the web server and worker in separate terminals. The app uses http://localhost:3000. Production requires HTTPS and does not permit the development origin.
+Run the web server and worker in separate terminals. Optional mailbox collection runs in another terminal with `npm run mailbox:dev` after provider configuration. The app uses http://localhost:3000. Production requires HTTPS and does not permit the development origin.
 
 Create the processor environment once:
 
@@ -76,7 +78,7 @@ See [VALIDATION.md](VALIDATION.md) for the actual build, browser, database and l
 
 ## Boundaries before a live office rollout
 
-- Mailbox OAuth, historic multi-person backfill, scheduled Gmail/Graph synchronization and MCP connectors are **not implemented** in this build. EML import processes an exported message and supported attachments; it does not connect a mailbox. Existing sample mailbox counts are illustrative.
+- Read-only Gmail and Microsoft OAuth, per-account historical backfill, scheduled synchronization and scoped MCP access are implemented. Real provider credentials and live consent/backfill tests are still required; no mailbox is connected by default. See [mailbox setup](operations/mailbox-oauth.md) and [assistant access](operations/agent-access.md).
 - EUR valuation posting is supported. Other currencies need an explicit conversion/reconciliation workflow. Notices never execute payments, settle cash or automatically change commitments.
 - The ledger retains sources and accepted events; it is not a general-ledger, tax or custodian reconciliation system. A previously accepted amount cannot be restored by replaying an older fact; that needs a deliberate correction/version workflow.
 - Relevance training and local-model evaluation use a tiny synthetic corpus. Workflow is the default. Validate models on a representative, consented document corpus before relying on them.

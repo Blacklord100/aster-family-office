@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:06331ef0-d954-46eb-b4ee-4bb92954c260",
+  "serialNumber": "urn:uuid:5d53d09a-5e7f-4d65-aa82-1e4daa9109e7",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-09-07T22:05:13.151Z",
+    "timestamp": "2026-09-08T07:38:44.121Z",
     "lifecycles": [
       {
         "phase": "build"
@@ -19,12 +19,12 @@
       }
     ],
     "component": {
-      "bom-ref": "aster-family-office@0.2.0",
+      "bom-ref": "aster-family-office@0.3.0",
       "type": "library",
       "name": "app",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "scope": "required",
-      "purl": "pkg:npm/aster-family-office@0.2.0",
+      "purl": "pkg:npm/aster-family-office@0.3.0",
       "properties": [
         {
           "name": "cdx:npm:package:private",
@@ -15624,9 +15624,10 @@
   ],
   "dependencies": [
     {
-      "ref": "aster-family-office@0.2.0",
+      "ref": "aster-family-office@0.3.0",
       "dependsOn": [
         "@base-ui/react@1.7.0",
+        "@modelcontextprotocol/sdk@1.30.0",
         "@shadcn/react@0.3.0",
         "better-auth@1.7.3",
         "class-variance-authority@0.7.1",

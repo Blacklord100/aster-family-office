@@ -68,8 +68,16 @@ services:
       dockerfile: operations/Dockerfile.app
       args: {NODE_IMAGE: "${NODE_IMAGE:-node:24-bookworm-slim}"}
     user: "1000:1000"
-    environment: *app-environment
-    secrets: *app-secrets
+    environment:
+      <<: *app-environment
+      MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - better_auth_secret
+      - encryption_key
+      - processor_token
+      - mailbox_providers
     command: ["node", ".next/standalone/server.js"]
     # Only loopback published. Use Caddy or your own TLS ingress for remote access.
     ports: ["127.0.0.1:${ASTER_LOCAL_PORT:-3000}:3000"]
@@ -110,6 +118,41 @@ services:
     stop_grace_period: 150s
     mem_limit: ${WORKER_MEMORY:-1g}
     pids_limit: 128
+  mailbox-worker:
+    <<: *hardening
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: mailbox
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
+      MAILBOX_HEARTBEAT_FILE: /tmp/aster-mailbox-heartbeat
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - mailbox_providers
+    command: ["npm", "run", "mailbox:worker"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
+    # Provider requests need internet; this service cannot reach the processor network.
+    networks: [database, mail-egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('fs');try{process.exit(Date.now()-Number(fs.readFileSync('/tmp/aster-mailbox-heartbeat','utf8'))<120000?0:1)}catch{process.exit(1)}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 40s
+    mem_limit: 512m
+    pids_limit: 64
   migrate:
     <<: *hardening
     profiles: [maintenance]
@@ -230,6 +273,7 @@ services:
     pids_limit: 64
 networks:
   edge: {}
+  mail-egress: {}
   database: {internal: true}
   local-confidential: {internal: true}
 volumes:
@@ -243,3 +287,4 @@ secrets:
   better_auth_secret: {file: "${ASTER_SECRETS_DIR:-./secrets}/better_auth_secret"}
   encryption_key: {file: "${ASTER_SECRETS_DIR:-./secrets}/encryption_key"}
   processor_token: {file: "${ASTER_SECRETS_DIR:-./secrets}/processor_token"}
+  mailbox_providers: {file: "${ASTER_SECRETS_DIR:-./secrets}/mailbox_providers"}

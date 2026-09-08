@@ -6,12 +6,14 @@ Recorded for the portable Next.js/PostgreSQL upgrade on 2026-09-08. All test acc
 
 | Suite | Passed | What was exercised |
 | --- | ---: | --- |
-| Node unit tests | 100 | Financial calculations, recorded marks, fact review, request validation, authentication policy, tenant access, encryption and processor-result handling |
+| Node unit tests | 110 | Financial calculations, recorded marks, fact review, request validation, authentication policy, tenant access, encryption and processor-result handling |
 | Better Auth with real PostgreSQL | 4 | Password sign-in, closed public signup, CSRF, secure cookies, per-session TOTP/recovery verification, expiry/revocation, password changes, invitation races and persisted rate limits |
 | Application API/database integration | 9 | Restricted-role RLS, upload deduplication, original downloads, real durable processing and acceptance, replay rejection, team role/removal/restoration boundaries, opening history and immutable report snapshots |
 | Native worker lifecycle integration | 4 | Shutdown requeue, cancellation/disconnect, stale-result fencing across two workers, terminal retry limits and explicit retry |
 | Python processor tests | 42 | Both processing modes, schema/evidence validation, model transport boundaries, token/body limits, PDF/EML handling, deadlines and cleanup |
-| **Total** | **159** | **117 Node checks and 42 Python checks, across separate runs** |
+| Mailbox integration with real PostgreSQL | 6 | Both provider OAuth contracts with synthetic responses, session-bound state, encrypted credentials, deduplication, cursor persistence, stale leases, retries, refresh, disconnect and isolated encrypted recovery |
+| MCP integration with official SDK and real PostgreSQL | 3 | Client negotiation, scope-filtered tools, original bytes, RLS, expiry, role/MFA checks and revocation |
+| **Total** | **178** | **136 Node checks and 42 Python checks, across separate runs** |
 
 The application suite mocks authenticated identity while exercising the actual membership gate, API handlers, database and worker. The separate authentication suite uses Better Auth itself. Worker lifecycle tests use compiled processes and a controlled local processor fixture; they are not model-quality tests. Temporary database records are scoped to generated fixture IDs and removed after each suite.
 
@@ -39,7 +41,15 @@ There are **zero OCR runtime/accuracy tests** in this environment. Native-text P
 - Docker was unavailable. Build and boot the full target-host container stack; verify Linux permissions, secret mounting, nonroot execution, sandbox/resource limits, PostgreSQL initialization, effective network egress blocking and the actual TLS/proxy configuration.
 - Run monitored backup/restore and decryption drills, establish recovery objectives, test capacity on representative documents and complete an independent security review. Key rotation, retention/deletion, external audit anchoring and operational alerting require further work.
 - Validate extraction and matching on a representative, consented corpus before operational reliance. Review remains mandatory; neither processing mode executes payments or settles cash from notices. Posting currently supports EUR; other currencies require an explicit conversion/reconciliation workflow.
-- Mailbox OAuth/MCP connectivity, historical multi-person backfill and scheduled Gmail/Graph synchronization are **not implemented**. EML import is file processing, not mailbox access.
+- Read-only Gmail/Microsoft OAuth, multi-account backfill, Gmail history, Graph folder delta polling and scoped MCP access are implemented. Real provider app credentials, consent/backfill trials and target-host deployment are still unverified. No real mailbox is connected.
 - SMTP/password reset, existing-account linking and SSO/SCIM are not configured. This is not a general ledger, tax system or complete custodian reconciliation product.
 
 See [operations/readiness.md](operations/readiness.md) for the target-host checklist and [operations/backup-restore.md](operations/backup-restore.md) for the unexecuted recovery procedures. Normal `npm test` skips the opt-in database and worker suites; their private runtime/maintenance configuration and lifecycle prerequisites are documented in the README and readiness record.
+
+## Connector upgrade evidence
+
+The final optimized build also passed a fresh standalone HTTPS check through a self-signed local proxy: password plus MFA, Secure/HttpOnly/SameSite cookies, nonce CSP, mailbox API/origin rejection, and browser-created MCP access all passed. This does not validate a public TLS deployment.
+
+The Connections screen uses real provider readiness and database metadata. Desktop/mobile browser checks exercised provider setup guidance, a real MFA-authenticated access-token create/use/revoke flow against the MCP endpoint, and mailbox resume/schedule/pause/disconnect against the real API with an explicitly synthetic mailbox. No browser/page errors or mobile horizontal overflow were observed in the final checks. An earlier layout-only fixture pass was followed by the actual API check. Screenshots in `outputs/connectors/` are local ignored QA artifacts.
+
+The mailbox integration suite exercises real SQL/crypto/scheduler logic with synthetic Google/Microsoft responses; it does not contact provider accounts. A bounded native encrypted recovery drill rebuilt a separate temporary database, restored all 22 tables, compared every record and decrypted source/workspace/mailbox payloads, then removed its database and files. This is separate from the unexecuted production Docker/pg_dump/age backup procedure. Provider request bounds, no-redirect behavior, cursor host/path checks and scope rejection have focused tests. The Compose provider worker topology and secret adapter were checked statically, including malformed-secret redaction and startup without provider credentials.

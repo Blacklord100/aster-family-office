@@ -4,7 +4,7 @@ This is a portable single-host Docker Compose template. It has not been booted w
 
 ## Files and application contract
 
-Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs `npm run worker`. Health routes are web `/api/health` and processor `/healthz`; the worker writes `/tmp/aster-worker-heartbeat` at least once per 180 seconds.
+Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-mailbox-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs `npm run worker` or `npm run mailbox:worker`. Health routes are web `/api/health` and processor `/healthz`; the worker writes `/tmp/aster-worker-heartbeat` at least once per 180 seconds.
 
 The entrypoint reads Docker secret files and constructs `DATABASE_URL` without placing a password in Compose configuration. Only the maintenance service also receives `MIGRATION_DATABASE_URL` and `BOOTSTRAP_DATABASE_URL`. Canonical auth variables are `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`. The processor receives `PROCESSOR_TOKEN` and authenticates `X-Processor-Key`.
 
@@ -53,7 +53,7 @@ For the optional Caddy profile, configure DNS and inbound 80/443 on the intended
 
 ```sh
 docker compose --profile tls build caddy
-docker compose --profile tls up -d web worker caddy
+docker compose --profile tls up -d web worker mailbox-worker caddy
 ```
 
 Caddy listens as a nonroot user on container 8080/8443 mapped to host 80/443. Its admin API is container-loopback only. A public hostname can trigger certificate issuance; this step is an operator action and has not been run here. For private localhost TLS, use `ASTER_DOMAIN=localhost`, matching auth origin, and explicitly trust the private CA on the client; no production cookie weakening is provided. [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https)
@@ -63,3 +63,7 @@ A local loopback HTTP health check does not establish usable production login: p
 ## Upgrades and portability
 
 Back up first; test the image and migrations against a restored database. Run migrations as a one-off task, then replace web/worker. Roll back code only when the migrated schema is backward-compatible. Carry Compose configuration, reviewed images, database backup and separately protected keys to a new Docker host. Keep the model artifact separately with its checksum/license. Scaling beyond one host requires managed PostgreSQL, coordinated job leases, trusted TLS between hosts, shared cache/session behavior, and a new infrastructure review.
+
+## Mailboxes and assistant access
+
+See [mailbox-oauth.md](mailbox-oauth.md) to register read-only Google/Microsoft connections and run the separate collection worker. See [agent-access.md](agent-access.md) for scoped, expiring MCP access. Both are disabled for outside tools/accounts until explicitly configured.
