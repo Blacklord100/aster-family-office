@@ -1,0 +1,2 @@
+# Keep PDF fixtures byte-identical across checkouts and source packages.
+*.pdf binary

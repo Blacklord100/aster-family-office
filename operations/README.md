@@ -39,11 +39,13 @@ The wrapper never puts the password in argv, environment or logs. Remove the ope
 Review the model provenance, checksum, license, inference format, minimum memory and extraction quality. Place an already obtained, approved GGUF at `model-import/approved.gguf`. Create a text `model-import/Modelfile` with `FROM /model-import/approved.gguf`. The operator then explicitly imports the configured label:
 
 ```sh
-docker compose exec ollama ollama create aster-approved:local -f /model-import/Modelfile
+docker compose exec ollama ollama create aster-approved:gguf -f /model-import/Modelfile
 docker compose exec ollama ollama list
 ```
 
 Match `OLLAMA_MODEL` to that label. There is no automatic `pull`, cloud fallback or arbitrary model download. Verify `Ollama cloud disabled: true` in Ollama startup logs and execute the egress checks in readiness.md. With a missing model, classical classification/rules can return available facts and an explicit fallback warning; agentic work must report model unavailability. Neither mode may fall back to a cloud provider.
+
+Use an ordinary explicit model tag such as `:gguf`: the locally exercised Ollama 0.33.3 interpreted `:local` as a routing modifier and looked up `:latest`, despite creation of a literal `:local` manifest. Always verify the exact configured name through `/api/show` before processing. For a host that needs CPU inference, an operator can add `PARAMETER num_gpu 0` to the reviewed local Modelfile and import it under a separate label. This changes execution hardware, not the approved weights; validate capacity and latency again on that host.
 
 ## Start through TLS
 

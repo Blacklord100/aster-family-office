@@ -9,6 +9,7 @@ import sys
 import tempfile
 
 from .config import Settings
+from .html_text import html_to_text, HTMLTextError
 
 
 class DocumentError(ValueError):
@@ -68,8 +69,8 @@ def parse_document(data: bytes, filename: str, mime: str, settings: Settings) ->
             path = Path(temp) / 'input.pdf'
             path.write_bytes(blob)
             args = [sys.executable, '-m', 'service.pdf_worker', str(path),
-                    str(settings.max_pages - len(pages)), str(settings.max_text_chars),
-                    str(ocr_remaining)]
+                    str(settings.max_pages - len(pages)), str(settings.max_text_chars - sum(len(p.text) for p in pages)),
+                    str(ocr_remaining), str(settings.ocr_enabled).lower()]
             try:
                 result = subprocess.run(args, capture_output=True, timeout=75, check=False)
             except subprocess.TimeoutExpired as exc:
@@ -82,10 +83,12 @@ def parse_document(data: bytes, filename: str, mime: str, settings: Settings) ->
                 raise DocumentError('Invalid PDF parser result') from exc
             if content.get('error'):
                 raise DocumentError(content['error'])
-            warnings.extend(content['warnings'])
+            warnings.extend(f"{source}: {warning}" for warning in content['warnings'])
             ocr_remaining -= content.get('ocr_pages', 0)
-            for page in content['pages']:
-                add(page, source)
+            ocr_pages = set(content.get('ocr_page_numbers', []))
+            for index, page in enumerate(content['pages'], 1):
+                provenance = f'{source}; PDF page {index}' + ('; local OCR' if index in ocr_pages else '')
+                add(page, provenance)
 
     if suffix == '.pdf':
         pdf(data, 'document')
@@ -104,8 +107,8 @@ def parse_document(data: bytes, filename: str, mime: str, settings: Settings) ->
                 raise DocumentError('EML MIME part limit exceeded')
         attachments = 0
         decoded_total = 0
-        body = []
         queued = []
+        decoded_body = {}
         for part in parts:
             if part.get_content_type() == 'message/rfc822':
                 raise DocumentError('Nested message attachments are not supported')
@@ -127,14 +130,52 @@ def parse_document(data: bytes, filename: str, mime: str, settings: Settings) ->
                     queued.append(('txt', blob, f'attachment {attachments}'))
                 else:
                     warnings.append(f'Attachment {attachments} skipped: unsupported type; nothing executed.')
-            elif part.get_content_type() == 'text/plain':
+            elif part.get_content_type() in ('text/plain', 'text/html'):
                 charset = (part.get_content_charset() or 'utf-8').lower()
-                if charset not in ('utf-8', 'us-ascii', 'ascii'):
-                    warnings.append('Non-UTF-8 email body skipped.')
-                else:
-                    body.append(decode_text(blob))
-            elif part.get_content_type() == 'text/html':
-                warnings.append('HTML email body skipped; plain text or a supported attachment is required.')
+                if charset not in ('utf-8', 'us-ascii', 'ascii', 'iso-8859-1', 'latin-1', 'windows-1252', 'cp1252'):
+                    warnings.append('Email body part skipped: unsupported character encoding.')
+                    continue
+                try:
+                    # Validate decoded control characters using the same text checks.
+                    decoded_body[id(part)] = decode_text(blob.decode(charset).encode('utf-8'))
+                except (UnicodeError, DocumentError):
+                    warnings.append('Email body part skipped: invalid text encoding.')
+
+        def body_parts(part):
+            if part.get_filename() or part.get_content_disposition() == 'attachment':
+                return []
+            if not part.is_multipart():
+                return [part] if decoded_body.get(id(part), '').strip() else []
+            children = list(part.iter_parts())
+            if part.get_content_subtype() == 'related':
+                # Only the declared root is the body. Related images are never fetched.
+                start = part.get_param('start')
+                root = next((child for child in children if start and child.get('Content-ID') == start),
+                            children[0] if children else None)
+                return body_parts(root) if root is not None else []
+            choices = [body_parts(child) for child in children]
+            if part.get_content_subtype() == 'alternative':
+                for preferred in ('text/plain', 'text/html'):
+                    for choice in choices:
+                        if any(child.get_content_type() == preferred for child in choice):
+                            return choice
+                return []
+            return [child for choice in choices for child in choice]
+
+        body = []
+        body_size = 0
+        for part in body_parts(message):
+            text = decoded_body[id(part)]
+            if part.get_content_type() == 'text/html':
+                try:
+                    text = html_to_text(text, settings.max_text_chars - body_size)
+                except HTMLTextError as exc:
+                    raise DocumentError(str(exc)) from exc
+                warnings.append('HTML email body converted locally to visible text; scripts, styles and remote resources were not loaded.')
+            body_size += len(text) + (1 if body else 0)
+            if body_size > settings.max_text_chars:
+                raise DocumentError('Extracted text limit exceeded')
+            body.append(text)
         add('\n'.join(body), 'email body')
         for kind, blob, source in queued:
             if kind == 'pdf':

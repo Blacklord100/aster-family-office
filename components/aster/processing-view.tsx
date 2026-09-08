@@ -742,6 +742,14 @@ function JobDetail({
   const [confirmed, setConfirmed] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const result = job.result;
+  const unreadableSource = result?.trace.some(
+    (entry) => entry.stage === 'input_coverage' && entry.status === 'warning',
+  );
+  const partiallyUnreadableSource = result?.warnings.some((warning) =>
+    /has no native text|local OCR (?:failed|found no readable text)|Attachment \d+ skipped|Email body part skipped/i.test(
+      warning,
+    ),
+  );
   const reviewing = job.status === 'awaiting_review';
   const selections = Object.entries(choices)
     .filter(([, choice]) => choice.selected)
@@ -909,7 +917,21 @@ function JobDetail({
             </div>
           </div>
 
-          {!result.relevant ? (
+          {unreadableSource || partiallyUnreadableSource ? (
+            <Alert>
+              <AlertCircle />
+              <AlertTitle>
+                {unreadableSource
+                  ? 'Source could not be read'
+                  : 'Source could only be read in part'}
+              </AlertTitle>
+              <AlertDescription>
+                Open the original document and check its contents, including
+                attachments. Supply readable copies of any skipped content before
+                relying on the extraction result.
+              </AlertDescription>
+            </Alert>
+          ) : !result.relevant ? (
             <Alert>
               <FileSearch />
               <AlertTitle>Classified as not investment-related</AlertTitle>

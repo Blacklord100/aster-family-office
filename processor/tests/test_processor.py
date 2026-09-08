@@ -63,11 +63,11 @@ def test_money_schema_rejects_unsafe_values(amount):
         Fact(**candidate(amount=amount))
 
 
-def test_locale_ambiguous_money_does_not_partially_match():
+def test_unambiguous_european_money_is_normalized_without_partial_match():
     notice = NOTICE.replace('EUR 420,000.00', 'EUR 420.000,00')
     pages = [Page(1, notice, 'document')]
     facts = deterministic_facts(pages)
-    assert facts[0].amount is None and facts[0].currency is None
+    assert facts[0].amount == '420000.00' and facts[0].currency == 'EUR'
     fact = Fact(**candidate(amount='420.000', evidence={'page': 1, 'quote': notice}))
     assert verify_fact(fact, pages)[0] is None
 
@@ -104,7 +104,9 @@ def test_model_response_fails_closed(classifier, response):
                {'action': 'finish', 'page': None}]
     with fake_ollama(replies) as (url, _):
         result = process(DOC, 'invalid', 'agentic', Settings(TOKEN, ollama_base_url=url), classifier)
-    assert not result.facts
+    # The agent's source-parser tool independently proves the real notice.
+    # A malformed model response can neither erase it nor introduce fake money.
+    assert result.facts and all(f.amount == '420000.00' for f in result.facts)
     assert any('rejected' in warning or 'failed closed' in warning for warning in result.warnings)
 
 
@@ -127,7 +129,7 @@ def test_remote_models_and_redirects_fail_closed(classifier, remote, redirect):
     with fake_ollama([], remote=remote, redirect=redirect) as (url, requests):
         result = process(DOC, 'remote', 'agentic', Settings(TOKEN, ollama_base_url=url), classifier)
     assert not result.facts and len(requests) == 1
-    assert result.trace[-1].status == 'error'
+    assert any(step.stage == 'local_model' and step.status == 'error' for step in result.trace)
 
 
 def test_http_auth_contract_and_invalid_upload():

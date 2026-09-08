@@ -9,14 +9,14 @@ A portable family-office workspace with a Linear/Notion-inspired interface, Post
 - AES-256-GCM encryption for original files, extraction results and workspace payloads, bound to the organization and record. Restricted runtime database credentials are separate from migration credentials.
 - Multiple independently authorized Google/Microsoft accounts, encrypted OAuth credentials, PKCE, durable history/delta cursors, pause/disconnect and a separate collection worker.
 - Scoped, expiring read-only MCP tokens for portfolios, original documents and connection status.
-- PDF/TXT/EML import, retained original downloads, content deduplication, durable PostgreSQL job leases, bounded retries, cancellation and processor deadlines.
+- PDF/TXT/EML import with visible HTML email decoding, supported attachments and bounded local OCR; retained originals, content deduplication, durable PostgreSQL job leases, bounded retries, cancellation and processor deadlines.
 - **Classical workflow:** fitted TF-IDF/logistic relevance classification, deterministic extraction and optional local Ollama extraction for unresolved relevant fields.
 - **Agentic:** bounded local-model planning and document-reading actions. No arbitrary commands or unrestricted tool execution.
-- A common versioned output schema, quoted source evidence, reviewer-to-holding matching, accepted-event timeline, valuation updates and capital-call tasks. Switching modes changes new jobs; accepted records are retained.
+- Shared source validation for dates, amounts, investment/event roles, corrections and repeated facts; a versioned output schema, quoted evidence, reviewer-to-holding matching, accepted-event timeline, valuation updates and capital-call tasks. Switching modes changes new jobs; accepted records are retained.
 - Holdings, allocation views, recorded marks, liquidity, commitments, immutable report snapshots, CSV and print/PDF reports. Sample returns remain available only for a wholly synthetic dataset; incomplete live cash-flow histories do not generate invented performance metrics.
 - Organization settings, team invitations, role changes, access removal/restoration, audit activity, private account security and responsive desktop/mobile navigation.
 
-Both modes run locally in this build. Processing mode and data location are separate concerns. There is no external-provider fallback. A common schema does **not** guarantee identical extracted facts or accuracy; see [the measured local evaluation](processor/eval/README.md).
+Both modes run locally in this build. Processing mode and data location are separate concerns. There is no external-provider fallback. A common schema does **not** guarantee identical extracted facts or accuracy; see [the validation record](VALIDATION.md) for the measured results and their limits.
 
 ## Run on your own infrastructure
 
@@ -52,7 +52,7 @@ processor/.venv/bin/pip install -r processor/requirements.lock.txt
 npm run processor:dev
 ```
 
-Set `OLLAMA_MODEL` to an installed, reviewed local model. The development helper selects `qwen3:1.7b`, tested here; the application does not download it automatically. The original 27B model exceeded this machine's memory budget. See [processor/README.md](processor/README.md) for limits, OCR and model configuration.
+Set `OLLAMA_MODEL` to an installed, reviewed local model. The development helper defaults to `qwen3:1.7b`; the application does not download it automatically. Earlier evaluations used those weights on the GPU. The final extraction regression run uses the already installed Qwen3 0.6B weights through `qwen3-aster-cpu:0.6b`, a local alias with `PARAMETER num_gpu 0`, after this host developed severe GPU contention. This is a measured local fallback, not a general model recommendation or a controlled speed comparison. The original 27B model exceeded this machine's memory budget. See [processor/README.md](processor/README.md) for limits, OCR and model configuration, and [VALIDATION.md](VALIDATION.md) for the preserved evaluation attempts.
 
 Provision the first owner explicitly with a private mode-0600 password file (15–128 characters). There are no built-in production credentials:
 

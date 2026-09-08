@@ -1,6 +1,6 @@
 FROM python:3.12.13-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils \
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 processor && useradd --uid 10001 --gid 10001 --no-create-home processor
 WORKDIR /srv/processor

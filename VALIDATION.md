@@ -34,7 +34,7 @@ Local browser evidence and detailed print results are recorded in [the QA summar
 
 The final actual `qwen3:1.7b` run recovered the expected **kind and amount on 8/8 synthetic positive documents in each mode**. Workflow local calls took approximately 3.07–4.02 seconds; agentic calls took 4.07–5.79 seconds. The eight positives do not establish complete financial correctness, relevance generalization, calibration or production accuracy. Scripted-model contract results are reported separately. Earlier failed/smaller-model runs remain visible in [the evaluation record](processor/eval/README.md).
 
-There are **zero OCR runtime/accuracy tests** in this environment. Native-text PDF and bounded EML cases were checked; scanned, multilingual and representative real-office document coverage remains unverified.
+The earlier upgrade did not exercise OCR. The extraction correction below adds synthetic native OCR checks; multilingual and representative real-office document coverage remains unverified.
 
 ## Deployment gates and unfinished capabilities
 
@@ -53,3 +53,56 @@ The final optimized build also passed a fresh standalone HTTPS check through a s
 The Connections screen uses real provider readiness and database metadata. Desktop/mobile browser checks exercised provider setup guidance, a real MFA-authenticated access-token create/use/revoke flow against the MCP endpoint, and mailbox resume/schedule/pause/disconnect against the real API with an explicitly synthetic mailbox. No browser/page errors or mobile horizontal overflow were observed in the final checks. An earlier layout-only fixture pass was followed by the actual API check. Screenshots in `outputs/connectors/` are local ignored QA artifacts.
 
 The mailbox integration suite exercises real SQL/crypto/scheduler logic with synthetic Google/Microsoft responses; it does not contact provider accounts. A bounded native encrypted recovery drill rebuilt a separate temporary database, restored all 22 tables, compared every record and decrypted source/workspace/mailbox payloads, then removed its database and files. This is separate from the unexecuted production Docker/pg_dump/age backup procedure. Provider request bounds, no-redirect behavior, cursor host/path checks and scope rejection have focused tests. The Compose provider worker topology and secret adapter were checked statically, including malformed-secret redaction and startup without provider credentials.
+
+## Extraction correction — 2026-09-08
+
+The earlier upgrade checks above remain historical evidence. This correction adds source-anchored date and amount normalization, financial role and entity checks, correction/withdrawal handling, safe partial-candidate deduplication, visible HTML email decoding, and bounded local OCR. Wrapped fund names can resolve only to exact whitespace-flexible occurrences of independently labeled full source names. Adjacent call amounts require matching entity and event context. Illustrative financial headings and explicit withdrawals remain exclusions even when omitted from a short model quote. Financial topics inside explicit negations are removed from classifier features; the existing training corpus and original source text remain unchanged.
+
+Workflow and agentic execution share validation; the agent still chooses its actual local tools. Source rules inspect every readable workflow page, agent completion requires an extraction attempt on every readable page, and model-window/budget limits are reported. Validation uses the complete decoded page so a later withdrawal cannot be hidden by a short model window. Wholly and partially unreadable sources receive distinct UI alerts instead of negative investment classifications.
+
+The changed application passed 110 Node unit tests, TypeScript, lint, the optimized Next.js build and service bundling. The final processor passed 208 tests, including actual local Apple Vision OCR with checked-in synthetic PDF fixtures; the dependency consistency check passed. Mocked model responses test contracts, not model quality. Ten independent adversarial probes passed after the identified currency, illustration, withdrawal and instruction false positives were fixed. Additional regressions cover Swiss grouping, unsupported numeric suffixes, negative signs and ambiguous accounting parentheses.
+
+Focused authenticated browser checks used the real synthetic processing queue on desktop 1440×1000 and mobile 390×844, with no observed page/console errors or horizontal overflow. Explicitly intercepted whole-source and mixed cover-email/unreadable-attachment fixtures separately checked that the new alerts replace the irrelevant-document label. Screenshots and logs are in the ignored `outputs/extraction-upgrade/` folder. Native OCR checks do not establish Linux Tesseract or multilingual accuracy; Docker remains unavailable and untested.
+
+### Preserved attempts and generalization
+
+The original 22-document benchmark, four format controls, gold labels, and original raw outcomes remain unchanged in the sibling `workflow-lab/`. The first correction run was interrupted for additional numeric and PDF-layout fixes: its nine timed records and a separate final snapshot of ten jobs are retained, with no facts accepted.
+
+Candidate 2 completed 76 actual HTTP jobs. Both modes recovered 24/24 exact baseline facts and 4/4 control facts. Its independent twelve-document holdout was materially weaker: 5/13 exact facts, one extra, eight missing, and 4/12 complete documents in each mode. All 30 ingestion and 699 review checks passed; 76 original downloads matched. This result is retained in its own report rather than replaced by later improvement. Candidate 2 and the interrupted candidate 1 generated identities were retired while preserving their results and synthetic portfolios.
+
+Those twelve documents then became regression cases for candidate 3. Generic name/context/negation fixes passed exact actual-byte checks on all 38 used documents before another freeze. A separate six-document, seven-fact holdout was authored independently and withheld from implementation work. Source digests are captured for every processor module and checked at the end of each cohort. The original scorer and six-field exact-match rules remain unchanged. Review gates exclude incomplete and non-EUR valuation posting, and notices never settle cash.
+
+Candidate 3 completed 88 actual HTTP jobs with identical processor fingerprints across all four cohorts. Both modes recovered 24/24 original facts, 4/4 format controls and 13/13 previously held-out regression facts. The new six-document holdout scored 4/7 exact facts with three extra/wrong candidates and three misses in each mode: a funding-arrival deadline was missed, and a two-fund distribution table lost date/entity context. The test review rejected those incorrect jobs. All 40 ingestion and 916 review checks passed; all 88 original downloads matched. There were no model/transport failures. The completed report, raw results and earlier attempts remain preserved; generated candidate-3 access was retired after report verification.
+
+The six additional examples then became used regressions for candidate 4, alongside the other 38 documents. Candidate 4 has no new held-out corpus: its final scores measure correction and regression coverage, not independent generalization. Both failed held-out evaluations remain visible rather than being replaced by later successful regression scores.
+
+The final table parser binds explicit headers and row fields, prevents unsupported or malformed tables from falling back into unrelated prose amounts, and surfaces coverage warnings in both modes. Payment-receipt deadlines exclude negation and other funds. Every non-null candidate field must match one event within its literal quote, as well as the full decoded page; dates cannot be borrowed from another quoted row. A scan-count regression verifies repeated incomplete headers are consumed linearly.
+
+Before the final actual run, all 44 used documents passed exact deterministic checks on their real decoded bytes. The independent boundary audit recovered eight of nine cases exactly; the ninth, an ambiguously flattened wrapped fund name, safely abstained with an explicit warning and left two expected facts unrecovered. That coverage limit remains in the evidence. All nine malformed-table/deadline safety replays passed. Unsupported or ambiguous layouts, table row limits and the contiguous 3,000-character evidence limit still require manual source review.
+
+### Runtime interruption and final comparison conditions
+
+Candidate 4 actual ingestion was interrupted after local inference timed out. Its one measured workflow record (122.026 seconds) and separate snapshot of two terminal jobs remain preserved. Source rules retained the supported fact in both jobs, with explicit model-failure warnings; neither job was accepted. The generated access was retired. This is an interrupted attempt, not a completed quality or latency evaluation.
+
+Read-only measurements on this Apple M3 host showed heavy WindowServer GPU use, while the local model's weights and GPU offload settings matched earlier successful runs. The source of that contention remains unconfirmed. Unloading and restarting Ollama did not restore GPU throughput, and a full-document preflight with the same 1.7B weights on the CPU also timed out. Those failed diagnostics remain in the lab.
+
+Candidate 5 retains exactly the same processor source as candidate 4 and uses the already installed Qwen3 0.6B weights through the local CPU alias `qwen3-aster-cpu:0.6b`, with an 8,192-token context. Both modes use that runtime. No model was downloaded and no cloud fallback was attempted. All 44 documents are used regressions; no new held-out evaluation is claimed. Historical comparisons change software, model size and execution hardware, so they cannot isolate an accuracy or speed improvement from any one change.
+
+### Completed candidate-5 results
+
+The final comparison completed 88 actual HTTP jobs, with identical processor fingerprints across all four cohorts and no runtime/model failures. Both modes recovered 48/48 expected facts and completed 44/44 documents. Exact matching requires event kind, investment name, effective date, amount, currency and due date to match the unchanged gold labels.
+
+| Used regression cohort | Exact facts, each mode | Extra / missing, each mode | Complete documents, each mode | Workflow median | Agentic median |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Original benchmark | 24/24 | 0 / 0 | 22/22 | 10.233s | 18.910s |
+| Format controls | 4/4 | 0 / 0 | 4/4 | 12.282s | 17.383s |
+| First formerly held-out set | 13/13 | 0 / 0 | 12/12 | 12.265s | 22.989s |
+| Second formerly held-out set | 7/7 | 0 / 0 | 6/6 | 11.777s | 20.959s |
+
+All 40 ingestion checks and 956 review checks passed. All 88 original downloads matched their source hashes. Review accepted 70 jobs and excluded or rejected 18; 84 facts were applied and 12 explicitly excluded, with zero duplicate applications. Eight duplicate-upload checks reused the existing jobs. The review harness uses gold labels to decide which synthetic jobs are safe to accept; these checks verify application posting behavior, not autonomous detection of every incorrect extraction. Notices did not settle cash or change costs/commitments. Non-EUR valuation posting and incomplete candidates remained excluded.
+
+Both modes checked all 48 readable source pages. Full-model page coverage was 44/48 for workflow and 48/48 for agentic. Recorded structured model calls were 44 for workflow and 188 for agentic; three workflow documents lacked a usage counter and remain unknown rather than being counted as zero. Agentic execution did not improve exact output on these used inputs and had a higher median upload-to-result time in every cohort.
+
+The local model still emitted 14 schema-invalid candidates in each mode, plus candidates rejected for unsupported source evidence. Validation discarded those candidates while the full pipeline retained the exact source-derived facts. The result measures the complete pipeline, not standalone LLM accuracy. The ambiguous wrapped-table boundary case described above remains a manual-review coverage limitation.
+
+The sibling `workflow-lab/fixed-run/runs/candidate-5/` retains raw results, scores, review checks, aggregate, diagnostic provenance and the final interactive report. Its `source-build.json` maps the recorded working-tree processor hashes and historical base commit to the delivered source commit without rewriting the raw metadata. Earlier failed attempts, sources and gold labels remain preserved. Application verification logs and desktop/mobile evidence are copied into the public lab with hashes; one log copy redacts only the local workspace prefix.
