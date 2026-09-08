@@ -5,6 +5,11 @@ import { pool, withTenant } from './db';
 import { decrypt, encrypt, sha256 } from './crypto';
 import { audit } from './audit';
 import {
+  activeEngine,
+  assertEngineEnabled,
+  sealJobEngine,
+} from './engine-store';
+import {
   CredentialsSchema,
   exchangeTokens,
   MailboxError,
@@ -110,12 +115,20 @@ export async function importMailboxMessage(
             processing_mode: string;
             policy_revision: number;
           }>(
-            'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1',
+            'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1 FOR SHARE',
             [claim.organization_id],
           );
           const jobId = randomUUID();
+          const engine = await activeEngine(client, claim.organization_id);
+          assertEngineEnabled(engine.config);
+          const pinned = sealJobEngine(
+            engine.config,
+            engine.snapshot,
+            claim.organization_id,
+            jobId,
+          );
           await client.query(
-            'INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision) VALUES($1,$2,$3,$4,$5,$6)',
+            'INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision,engine_snapshot,engine_config) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
             [
               jobId,
               claim.organization_id,
@@ -123,6 +136,8 @@ export async function importMailboxMessage(
               mailbox.connected_by,
               policy.rows[0].processing_mode,
               policy.rows[0].policy_revision,
+              JSON.stringify(pinned.snapshot),
+              pinned.payload,
             ],
           );
           await client.query(

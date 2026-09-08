@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Shell, navigation, type View } from './shell';
@@ -55,6 +56,8 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 type Route = { view: View; family: string; holding: string | null };
 const DEFAULT_ROUTE: Route = { view: 'overview', family: 'all', holding: null };
+const RiskView = dynamic(() => import('./risk-view').then((module) => module.RiskView));
+const EnginesView = dynamic(() => import('./engines-view').then((module) => module.EnginesView));
 export function AsterApp() {
   const [route, setRoute] = useState<Route>(DEFAULT_ROUTE),
     [state, setState] = useState<WorkspaceState>(() => initialWorkspace(false)),
@@ -282,6 +285,8 @@ export function AsterApp() {
               />
             ) : null}
             {route.view === 'agents' ? <ProcessingView /> : null}
+            {route.view === 'risk' ? <RiskView family={route.family} onFamily={family} /> : null}
+            {route.view === 'engines' ? <EnginesView /> : null}
             {route.view === 'connections' ? <ConnectionsView /> : null}
             {route.view === 'reports' ? (
               <ReportsView

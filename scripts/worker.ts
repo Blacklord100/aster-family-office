@@ -4,6 +4,13 @@ import { pool, withTenant, assertDatabaseRole } from '../lib/server/db';
 import { encrypt, decrypt } from '../lib/server/crypto';
 import { audit } from '../lib/server/audit';
 import { readProcessingResult } from '../lib/server/processing-result';
+import {
+  deploymentEngine,
+  openJobEngine,
+  sealJobEngine,
+  processorEndpoint,
+} from '../lib/server/engine-store';
+import { retryDecision } from '../lib/server/worker-retry';
 const owner = randomUUID();
 const endpoint = new URL(process.env.PROCESSOR_URL ?? 'http://processor:8000');
 if (
@@ -40,8 +47,9 @@ while (!stopping) {
     id: string;
     organization_id: string;
     attempts: number;
+    capacity_deferrals: number;
   }>(
-    `UPDATE app_job_queue SET lease_owner=$1,lease_until=now()+interval '90 seconds',attempts=attempts+1 WHERE id=(SELECT id FROM app_job_queue WHERE available_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY available_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id,organization_id,attempts`,
+    `UPDATE app_job_queue SET lease_owner=$1,lease_until=now()+interval '90 seconds',attempts=attempts+1 WHERE id=(SELECT id FROM app_job_queue WHERE available_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY available_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id,organization_id,attempts,capacity_deferrals`,
     [owner],
   );
   const queue = claimed.rows[0];
@@ -72,7 +80,7 @@ while (!stopping) {
   try {
     const document = await withTenant(queue.organization_id, async (c) => {
       const r = await c.query(
-        "SELECT j.mode,j.document_id,d.filename,d.mime_type,d.payload FROM app_jobs j JOIN app_documents d ON d.id=j.document_id WHERE j.id=$1 AND j.organization_id=$2 AND j.status IN ('queued','processing') FOR UPDATE OF j",
+        "SELECT j.mode,j.document_id,j.engine_snapshot,j.engine_config,j.engine_legacy,d.filename,d.mime_type,d.payload FROM app_jobs j JOIN app_documents d ON d.id=j.document_id WHERE j.id=$1 AND j.organization_id=$2 AND j.status IN ('queued','processing') FOR UPDATE OF j",
         [queue.id, queue.organization_id],
       );
       if (!r.rows[0]) return null;
@@ -82,6 +90,24 @@ while (!stopping) {
         [queue.id, owner],
       );
       if (!lease.rowCount) return null;
+      // Only pre-migration jobs lack a pin. Capture the deployment default once.
+      if (!r.rows[0].engine_config) {
+        if (r.rows[0].engine_legacy !== true)
+          throw new Error('ENGINE_PIN_MISSING');
+        const legacy = deploymentEngine();
+        const pin = sealJobEngine(
+          legacy.config,
+          legacy.snapshot,
+          queue.organization_id,
+          queue.id,
+        );
+        await c.query(
+          'UPDATE app_jobs SET engine_snapshot=$2,engine_config=$3 WHERE id=$1',
+          [queue.id, JSON.stringify(pin.snapshot), pin.payload],
+        );
+        r.rows[0].engine_snapshot = pin.snapshot;
+        r.rows[0].engine_config = pin.payload;
+      }
       await c.query(
         "UPDATE app_jobs SET status='processing',error_code=NULL,updated_at=now() WHERE id=$1",
         [queue.id],
@@ -96,6 +122,12 @@ while (!stopping) {
       continue;
     }
     requestController.signal.throwIfAborted();
+    const engine = openJobEngine(
+      document.engine_config,
+      document.engine_snapshot,
+      queue.organization_id,
+      queue.id,
+    );
     const bytes = decrypt(
       document.payload,
       'document:' + queue.organization_id + ':' + document.document_id,
@@ -108,19 +140,25 @@ while (!stopping) {
     );
     form.append('mode', document.mode);
     form.append('document_id', document.document_id);
-    const response = await fetch(new URL('/v1/extract', endpoint), {
-      method: 'POST',
-      headers: { 'X-Processor-Key': token },
-      body: form,
-      signal: AbortSignal.any([
-        requestController.signal,
-        AbortSignal.timeout(650000),
-      ]),
-      redirect: 'error',
-    });
+    form.append('engine', JSON.stringify(engine.config));
+    const response = await fetch(
+      new URL('/v1/extract', processorEndpoint(engine.snapshot.execution)),
+      {
+        method: 'POST',
+        headers: { 'X-Processor-Key': token },
+        body: form,
+        signal: AbortSignal.any([
+          requestController.signal,
+          AbortSignal.timeout(650000),
+        ]),
+        redirect: 'error',
+      },
+    );
     const result = await readProcessingResult(response, {
       documentId: document.document_id,
       mode: document.mode,
+      execution: engine.snapshot.execution,
+      model: engine.snapshot.model,
     });
     await withTenant(queue.organization_id, async (c) => {
       await c.query('SELECT id FROM app_jobs WHERE id=$1 FOR UPDATE', [
@@ -174,7 +212,13 @@ while (!stopping) {
         [queue.id, owner],
       );
       if (!lease.rowCount) return;
-      if (stopping) {
+      const decision = retryDecision(
+        stopping,
+        code,
+        queue.attempts,
+        queue.capacity_deferrals,
+      );
+      if (decision === 'shutdown') {
         // A service shutdown requeues owned work without consuming a failure attempt.
         await c.query(
           "UPDATE app_jobs SET status='queued',error_code=NULL,updated_at=now() WHERE id=$1 AND status='processing'",
@@ -184,7 +228,16 @@ while (!stopping) {
           'UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now(),attempts=GREATEST(attempts-1,0) WHERE id=$1 AND lease_owner=$2',
           [queue.id, owner],
         );
-      } else if (queue.attempts < 3) {
+      } else if (decision === 'capacity') {
+        await c.query(
+          "UPDATE app_jobs SET status='queued',error_code='PROCESSOR_BUSY',updated_at=now() WHERE id=$1 AND status='processing'",
+          [queue.id],
+        );
+        await c.query(
+          "UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now()+interval '30 seconds',attempts=GREATEST(attempts-1,0),capacity_deferrals=capacity_deferrals+1 WHERE id=$1 AND lease_owner=$2",
+          [queue.id, owner],
+        );
+      } else if (decision === 'retry') {
         await c.query(
           "UPDATE app_jobs SET status='queued',error_code=$2,updated_at=now() WHERE id=$1 AND status='processing'",
           [queue.id, code],

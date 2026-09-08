@@ -16,7 +16,9 @@ import {
 } from '@/lib/server/access';
 import { parseJson, json } from '@/lib/server/http';
 import type { Holding } from '@/data';
+import { riskActions, changeRiskWorkspace, RiskWorkspaceError } from '@/lib/risk-workspace';
 const Action = z.discriminatedUnion('type', [
+  ...riskActions,
   z.object({
     type: z.literal('task'),
     id: z.string(),
@@ -115,6 +117,16 @@ export async function POST(request: Request) {
       (s) => {
         const data = deriveWorkspace(s);
         switch (input.type) {
+          case 'riskData':
+          case 'riskScenario':
+          case 'riskScenarioDelete':
+            try {
+              return changeRiskWorkspace(s, input);
+            } catch (e) {
+              if (e instanceof RiskWorkspaceError)
+                throw new AccessError(e.code === 'SCENARIO_NOT_FOUND' ? 404 : 400, e.code, e.message);
+              throw e;
+            }
           case 'task':
             if (!data.tasks.some((t) => t.id === input.id))
               throw new AccessError(404, 'TASK_NOT_FOUND', 'Task not found.');

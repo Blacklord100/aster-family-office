@@ -8,6 +8,7 @@ import {
   Bot,
   Check,
   CheckCheck,
+  Cloud,
   FileSearch,
   FileText,
   GitBranch,
@@ -398,7 +399,9 @@ export function ProcessingView() {
         } else {
           setNotice(
             action === 'retry'
-              ? 'Job queued again using its original processing mode.'
+              ? job.engine
+                ? 'Job queued again using its recorded processing mode and engine.'
+                : 'Legacy job queued in its original mode. The deployment-local engine will be recorded when the worker claims it.'
               : action === 'cancel'
                 ? 'Job cancelled. Its document remains available.'
                 : 'Document review rejected. No extracted facts were applied.',
@@ -414,8 +417,9 @@ export function ProcessingView() {
         title="Document processing"
         subtitle="Turn statements and correspondence into source-linked updates."
       >
-        <Status tone="success">
-          <ShieldCheck className="size-3" /> Local only
+        <Status tone={snapshot?.policy.execution === 'cloud' ? 'warning' : 'success'}>
+          {snapshot?.policy.execution === 'cloud' ? <Cloud /> : <ShieldCheck />}
+          {snapshot ? (snapshot.policy.execution === 'cloud' ? 'Cloud selected' : 'Local selected') : 'Loading policy'}
         </Status>
         {snapshot?.role === 'viewer' ? <Status>View only</Status> : null}
         <Button
@@ -458,7 +462,7 @@ export function ProcessingView() {
       <div className="grid min-w-0 gap-5 xl:grid-cols-2">
         <Panel
           title="Processing mode"
-          subtitle="One local pipeline. Two ways to read your documents."
+          subtitle="One evidence standard. Two ways to read your documents."
         >
           <div className="flex flex-col gap-4 py-3">
             {loading ? (
@@ -488,12 +492,12 @@ export function ProcessingView() {
             )}
             <p className="text-sm leading-relaxed text-muted-foreground">
               {snapshot?.policy.mode === 'agentic'
-                ? 'Your configured local model examines the document through bounded extraction steps.'
-                : 'Fixed stages classify and parse the document, with optional local-model extraction for unresolved fields.'}
+                ? 'Your selected model examines the document through bounded extraction steps.'
+                : 'Fixed stages classify and parse the document, with model extraction for unresolved fields.'}
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <LockKeyhole className="size-3.5" /> No cloud fallback
+                <LockKeyhole className="size-3.5" /> No automatic provider fallback
               </span>
               {snapshot ? (
                 <span>Policy revision {snapshot.policy.revision}</span>
@@ -502,11 +506,17 @@ export function ProcessingView() {
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
               Changes apply to new uploads. Existing jobs keep their recorded
-              mode.
+              mode and engine. Choose a model in AI engines.
               {snapshot && !canManage
                 ? ' A workspace owner or admin can change the default.'
                 : ''}
             </p>
+            {snapshot?.policy.engine ? <p className="text-xs leading-relaxed text-muted-foreground">
+              New documents use {snapshot.policy.engine.model}.
+              {snapshot.policy.execution === 'cloud'
+                ? ' Document content will be sent to the selected cloud provider.'
+                : ' Inference runs on the configured local runtime.'}
+            </p> : null}
           </div>
         </Panel>
         <Panel
@@ -790,15 +800,22 @@ function JobDetail({
           </Status>
           <Status>{modeName(job.mode)}</Status>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <LockKeyhole className="size-3" /> Local execution
+            {job.engine?.execution === 'cloud' || result?.execution === 'cloud' ? <Cloud className="size-3" /> : <LockKeyhole className="size-3" />}
+            {job.engine?.execution === 'cloud' || result?.execution === 'cloud' ? 'Cloud execution' : 'Local execution'}
           </span>
         </div>
         <h3 className="break-words text-lg font-medium tracking-tight">
           {job.filename}
         </h3>
+        {job.engineLegacy ? <p className="text-xs leading-relaxed text-muted-foreground">
+          {job.engine
+            ? 'Legacy job: this engine was recorded when processing resumed. Earlier attempts did not record an engine profile.'
+            : 'Legacy job: no engine profile was recorded. A retry will capture the deployment-local default at worker pickup.'}
+        </p> : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Received {timestamp(job.createdAt)} · Policy {job.policyRevision}
+            {job.engine ? ` · ${job.engine.model} · Engine revision ${job.engine.revision}` : ''}
           </p>
           <a
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
@@ -820,12 +837,12 @@ function JobDetail({
           <AlertTitle>
             {job.status === 'processing'
               ? 'Reading the document'
-              : 'Waiting for the local worker'}
+              : 'Waiting for a document worker'}
           </AlertTitle>
           <AlertDescription>
             {job.status === 'processing'
               ? 'Results will appear here when extraction finishes. You can leave this screen while the job runs.'
-              : 'This document is queued. Its selected mode and source are retained until a worker is available.'}
+              : 'This document is queued. Its selected mode, engine and source are retained until a worker is available.'}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -834,7 +851,7 @@ function JobDetail({
           <AlertCircle />
           <AlertTitle>Processing did not finish</AlertTitle>
           <AlertDescription>
-            Try again after checking that your local processor and configured
+            Try again after checking that your selected processor and configured
             model are available.
             {job.errorCode ? (
               <p className="mt-2 break-words text-xs">
@@ -1217,7 +1234,7 @@ function JobDetail({
             <div className="mt-4 flex flex-col gap-4">
               {result.model ? (
                 <p className="break-words text-xs text-muted-foreground">
-                  Local model: {result.model}
+                  Model: {result.model}
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">

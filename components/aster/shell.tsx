@@ -16,6 +16,8 @@ import {
   Settings2,
   PanelLeft,
   ArrowUpRight,
+  Activity,
+  Cpu,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -40,15 +42,19 @@ export type View =
   | 'timeline'
   | 'inbox'
   | 'reports'
+  | 'risk'
+  | 'engines'
   | 'agents'
   | 'connections';
 export const navigation = [
   { id: 'overview', label: 'Overview', icon: House },
   { id: 'investments', label: 'Investments', icon: BriefcaseBusiness },
+  { id: 'risk', label: 'Exposure & stress', icon: Activity },
   { id: 'timeline', label: 'Timeline', icon: Clock3 },
   { id: 'inbox', label: 'Inbox', icon: Mail },
   { id: 'reports', label: 'Reports', icon: ChartNoAxesCombined },
   { id: 'agents', label: 'Processing', icon: Bot },
+  { id: 'engines', label: 'AI engines', icon: Cpu },
   { id: 'connections', label: 'Connections', icon: Link2 },
 ] as const;
 type Props = {

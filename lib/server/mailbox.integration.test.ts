@@ -19,6 +19,7 @@ import {
   releaseMailboxClaim,
 } from './mailbox-sync';
 import { decrypt, encrypt } from './crypto';
+import { saveEngine } from './engine-store';
 import { pool, withTenant } from './db';
 import { MailboxError } from './mailbox-provider';
 import type { WorkspaceContext } from './access';
@@ -65,8 +66,20 @@ describe.skipIf(!enabled)(
       'From: synthetic-manager@example.invalid\r\nSubject: Meridian quarterly NAV report\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nMeridian Fund net asset value (NAV) EUR 2,800,000 as of 2026-09-08.\r\n',
     );
     beforeAll(async () => {
-      if (!process.env.MIGRATION_DATABASE_URL || !process.env.DATABASE_URL)
-        throw new Error('Explicit disposable database credentials required');
+      for (const name of ['MIGRATION_DATABASE_URL', 'DATABASE_URL']) {
+        const value = process.env[name];
+        if (!value)
+          throw new Error('Explicit disposable database credentials required');
+        const url = new URL(value);
+        if (
+          !['127.0.0.1', 'localhost'].includes(url.hostname) ||
+          url.port !== '55439' ||
+          url.pathname !== '/aster'
+        )
+          throw new Error(
+            'Mailbox integration requires the isolated local Aster database on 55439',
+          );
+      }
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
       });
@@ -107,6 +120,9 @@ describe.skipIf(!enabled)(
           'app_accepted_facts',
           'app_audit',
           'app_jobs',
+          'app_engine_policy',
+          'app_engine_revisions',
+          'app_engine_profiles',
           'app_documents',
           'app_workspace',
           'app_memberships',
@@ -293,7 +309,17 @@ describe.skipIf(!enabled)(
       expect(Number(after.delay)).toBeGreaterThan(118);
       expect(after.lease_owner).toBeNull();
     });
-    it('restores encrypted documents, mailbox credentials and cursor in an isolated native recovery drill', () => {
+    it('restores encrypted documents, mailbox state, engine credentials and job pins in an isolated native recovery drill', async () => {
+      // Persist an inactive synthetic credential so recovery always exercises this
+      // encrypted field, even when the operator has no configured engine profiles.
+      await withTenant(org, (client) =>
+        saveEngine(client, context, {
+          name: 'Synthetic recovery engine',
+          provider: 'openai',
+          model: 'synthetic-recovery-model',
+          apiKey: 'synthetic-recovery-credential-never-real',
+        }),
+      );
       const output = execFileSync(
         process.execPath,
         [
@@ -308,8 +334,14 @@ describe.skipIf(!enabled)(
       );
       const report = JSON.parse(output.trim());
       expect(report.result).toBe('passed');
-      expect(report.tables).toBe(22);
+      expect(report.tables).toBe(25);
       expect(report.decryptedRecords).toBeGreaterThanOrEqual(5);
+      expect(
+        report.decryptedFields['app_engine_revisions.payload'],
+      ).toBeGreaterThanOrEqual(1);
+      expect(
+        report.decryptedFields['app_jobs.engine_config'],
+      ).toBeGreaterThanOrEqual(1);
     });
     it('refreshes expired credentials, and pause/disconnect fence old workers without deleting originals', async () => {
       await admin.query('UPDATE app_mailboxes SET credentials=$2 WHERE id=$1', [

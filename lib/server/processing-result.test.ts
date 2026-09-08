@@ -18,6 +18,23 @@ const extraction = {
   model: null,
 };
 describe('bounded processor responses', () => {
+  it('requires the pinned execution and model for cloud results', async () => {
+    const pinned = {
+      ...expected,
+      execution: 'cloud' as const,
+      model: 'gpt-5.3-codex',
+    };
+    const cloud = { ...extraction, execution: 'cloud', model: pinned.model };
+    await expect(
+      readProcessingResult(Response.json(cloud), pinned),
+    ).resolves.toEqual(cloud);
+    await expect(
+      readProcessingResult(Response.json({ ...cloud, model: 'other' }), pinned),
+    ).rejects.toThrow('RESULT_IDENTITY_MISMATCH');
+    await expect(
+      readProcessingResult(Response.json(extraction), pinned),
+    ).rejects.toThrow('RESULT_IDENTITY_MISMATCH');
+  });
   it('accepts validated results and verifies document identity and mode', async () => {
     await expect(
       readProcessingResult(Response.json(extraction), expected),

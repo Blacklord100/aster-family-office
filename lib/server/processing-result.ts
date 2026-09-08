@@ -3,7 +3,12 @@ import { ExtractionSchema, type ProcessingMode } from '../processing-contract';
 /** Bound bytes before decoding/parsing, including chunked responses with no length. */
 export async function readProcessingResult(
   response: Response,
-  expected: { documentId: string; mode: ProcessingMode },
+  expected: {
+    documentId: string;
+    mode: ProcessingMode;
+    execution?: 'local' | 'cloud';
+    model?: string;
+  },
   maxBytes = 2_000_000,
 ) {
   if (!response.ok) {
@@ -44,7 +49,11 @@ export async function readProcessingResult(
   );
   if (
     result.documentId !== expected.documentId ||
-    result.mode !== expected.mode
+    result.mode !== expected.mode ||
+    result.execution !== (expected.execution ?? 'local') ||
+    (expected.model !== undefined &&
+      result.model !== null &&
+      result.model !== expected.model)
   ) {
     throw new Error('RESULT_IDENTITY_MISMATCH');
   }

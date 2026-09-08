@@ -1,6 +1,6 @@
 # Aster
 
-A portable family-office workspace with a Linear/Notion-inspired interface, PostgreSQL, invitation-only authentication, mandatory production MFA, and two local document-processing modes. This application no longer depends on ChatGPT Sites, Cloudflare D1 or Vinext.
+A portable family-office workspace with a Linear/Notion-inspired interface, PostgreSQL, invitation-only authentication, mandatory production MFA, and two document-processing modes with independently selected engines. Local execution is the deployment default. This application no longer depends on ChatGPT Sites, Cloudflare D1 or Vinext.
 
 ## What is implemented
 
@@ -10,13 +10,17 @@ A portable family-office workspace with a Linear/Notion-inspired interface, Post
 - Multiple independently authorized Google/Microsoft accounts, encrypted OAuth credentials, PKCE, durable history/delta cursors, pause/disconnect and a separate collection worker.
 - Scoped, expiring read-only MCP tokens for portfolios, original documents and connection status.
 - PDF/TXT/EML import with visible HTML email decoding, supported attachments and bounded local OCR; retained originals, content deduplication, durable PostgreSQL job leases, bounded retries, cancellation and processor deadlines.
-- **Classical workflow:** fitted TF-IDF/logistic relevance classification, deterministic extraction and optional local Ollama extraction for unresolved relevant fields.
-- **Agentic:** bounded local-model planning and document-reading actions. No arbitrary commands or unrestricted tool execution.
+- **Classical workflow:** fitted TF-IDF/logistic relevance classification, deterministic extraction and optional selected-model extraction for unresolved relevant fields.
+- **Agentic:** bounded selected-model planning and document-reading actions. No arbitrary commands or unrestricted tool execution.
+- Tenant-isolated encrypted engine profiles for installed local Ollama models or explicitly enabled OpenAI Responses/Anthropic Messages providers. Profile revisions and queued job configurations are pinned independently from workflow mode; provider secrets never appear in profile DTOs.
 - Shared source validation for dates, amounts, investment/event roles, corrections and repeated facts; a versioned output schema, quoted evidence, reviewer-to-holding matching, accepted-event timeline, valuation updates and capital-call tasks. Switching modes changes new jobs; accepted records are retained.
 - Holdings, allocation views, recorded marks, liquidity, commitments, immutable report snapshots, CSV and print/PDF reports. Sample returns remain available only for a wholly synthetic dataset; incomplete live cash-flow histories do not generate invented performance metrics.
+- Nested look-through exposure with explicit issuer identities, cross-manager overlap, undisclosed NAV and dated evidence. Deterministic stress scenarios combine valuation, sector/issuer and effective-currency assumptions, with separate capital-call cash demand and saved scenario templates. See [simulation methodology and limits](operations/risk-simulation.md).
 - Organization settings, team invitations, role changes, access removal/restoration, audit activity, private account security and responsive desktop/mobile navigation.
 
-Both modes run locally in this build. Processing mode and data location are separate concerns. There is no external-provider fallback. A common schema does **not** guarantee identical extracted facts or accuracy; see [the validation record](VALIDATION.md) for the measured results and their limits.
+Both modes use the deployment-local engine by default. Cloud execution requires deployment opt-in, a separately configured cloud-capable processor and explicit administrator egress acknowledgement. There is no provider fallback. See [engine configuration](operations/engines.md) for profile revisions, key handling, retries and provider limits. A common schema does **not** guarantee identical extracted facts or accuracy; see [the validation record](VALIDATION.md) for the measured results and their limits.
+
+The new risk and engine panels, including actual Gemma runs in both modes, are covered in the [risk/engine validation record](VALIDATION-RISK-ENGINES.md).
 
 ## Run on your own infrastructure
 

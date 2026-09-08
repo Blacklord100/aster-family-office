@@ -1,6 +1,6 @@
-# Aster local document processor
+# Aster document processor
 
-Python service for reviewable candidate extraction from TXT, EML and PDF. Workflow and agentic execution return the same versioned schema. The processor never posts holdings, sends mail, browses, runs document-supplied commands, downloads models or calls a cloud inference API. Checked-in corpora and evaluation records are synthetic.
+Python service for reviewable candidate extraction from TXT, EML and PDF. Workflow and agentic execution return the same versioned schema and independently select a local or explicitly enabled cloud engine. The processor never posts holdings, sends mail, browses arbitrary URLs, runs document-supplied commands or downloads models. Cloud inference is disabled by default and never serves as an implicit fallback. Checked-in corpora and evaluation records are synthetic. See [engine configuration](../operations/engines.md) for encrypted profiles, provider request formats and the separate cloud-processor deployment boundary.
 
 ## Run locally
 
@@ -36,7 +36,9 @@ The shell variable keeps the secret out of the literal command. The application 
 
 ## Contract
 
-Multipart fields are `file`, `mode` (`workflow` or `agentic`) and `document_id` (1-128 ASCII letters, digits, underscore or hyphen).
+Multipart fields are `file`, `mode` (`workflow` or `agentic`), `document_id` (1-128 ASCII letters, digits, underscore or hyphen) and optional `engine` JSON. The authenticated backend sends its pinned `{name,provider,model,apiKey?}` configuration; the browser does not send secrets directly to this service. Missing `engine` retains the deployment-local default for legacy callers. Cloud selection requires this processor's `ALLOW_CLOUD_ENGINES=true`; invalid/disabled selections return a generic error without echoing credentials. The response's `execution` is `local` or `cloud` and is checked against the job pin by the worker.
+
+Authenticated `GET /v1/models` discovers installed local GGUF metadata only. `POST /v1/engine-test` accepts an engine configuration and runs one bounded synthetic schema request through the same model adapter. It returns `{ok,errorCode}` with no raw provider response. All `/v1/` endpoints authenticate and bound input before body parsing; test bodies are limited to 64 KiB. A successful check establishes connectivity and that schema response only, not extraction accuracy or tool certification.
 
 ```json
 {
@@ -47,21 +49,31 @@ Multipart fields are `file`, `mode` (`workflow` or `agentic`) and `document_id` 
   "documentType": "capital_call",
   "relevant": true,
   "confidence": 0.75,
-  "facts": [{
-    "kind": "capital_call",
-    "investmentName": "Cedar Partners IV",
-    "effectiveDate": "2026-08-20",
-    "amount": "420000.00",
-    "currency": "EUR",
-    "dueDate": "2026-09-03",
-    "summary": "Synthetic capital call Investment: Cedar Partners IV Notice date: 2026-08-20 Capital call amount: EUR 420,000.00 Due date: 2026-09-03",
-    "evidence": {
-      "page": 1,
-      "quote": "Synthetic capital call\nInvestment: Cedar Partners IV\nNotice date: 2026-08-20\nCapital call amount: EUR 420,000.00\nDue date: 2026-09-03"
+  "facts": [
+    {
+      "kind": "capital_call",
+      "investmentName": "Cedar Partners IV",
+      "effectiveDate": "2026-08-20",
+      "amount": "420000.00",
+      "currency": "EUR",
+      "dueDate": "2026-09-03",
+      "summary": "Synthetic capital call Investment: Cedar Partners IV Notice date: 2026-08-20 Capital call amount: EUR 420,000.00 Due date: 2026-09-03",
+      "evidence": {
+        "page": 1,
+        "quote": "Synthetic capital call\nInvestment: Cedar Partners IV\nNotice date: 2026-08-20\nCapital call amount: EUR 420,000.00\nDue date: 2026-09-03"
+      }
     }
-  }],
-  "warnings": ["Candidate facts only: review against the original before any financial posting."],
-  "trace": [{"stage": "rules", "status": "ok", "detail": "Page 1: 1 source-derived candidates."}],
+  ],
+  "warnings": [
+    "Candidate facts only: review against the original before any financial posting."
+  ],
+  "trace": [
+    {
+      "stage": "rules",
+      "status": "ok",
+      "detail": "Page 1: 1 source-derived candidates."
+    }
+  ],
   "model": null
 }
 ```
@@ -76,9 +88,9 @@ Both modes use the same source-anchored event parser and strict evidence validat
 
 Explicit row-major financial tables use their investment, event date, currency and event-amount headers to bind each row independently. Table amounts cannot fall back into surrounding prose and borrow another fund's identity. Unsupported or ambiguous table rows produce a page-specific coverage warning; neither execution mode silently treats them as a complete read. Literal evidence must still contain the source headers and values within the quote limit. Payment-receipt deadlines are scoped to the current capital call, with administrative and negated deadlines excluded. Illustrations and withdrawals remain exclusions for table rows as well as prose.
 
-**Workflow:** a seeded TF-IDF/logistic model trained on the separate synthetic training corpus estimates coarse relevance. Shared training/inference preprocessing removes explicitly negated financial-topic terms while preserving later positive clauses; the source used for evidence stays unchanged. Source parsing inspects every readable page, so a hit on an early page cannot suppress later pages. A complete labelled notice may bypass model review; unresolved financial/narrative material is sent to local Ollama in bounded windows. Workflow currently has a shared budget of 16 structured model calls across the document. Strong source facts can override a negative coarse classifier label. No pickle or untrusted model artifact is loaded; holdout wording never enters training.
+**Workflow:** a seeded TF-IDF/logistic model trained on the separate synthetic training corpus estimates coarse relevance. Shared training/inference preprocessing removes explicitly negated financial-topic terms while preserving later positive clauses; the source used for evidence stays unchanged. Source parsing inspects every readable page, so a hit on an early page cannot suppress later pages. A complete labelled notice may bypass model review; unresolved financial/narrative material is sent to the selected engine in bounded windows. Workflow currently has a shared budget of 16 structured model calls across the document. Strong source facts can override a negative coarse classifier label. No pickle or untrusted model artifact is loaded; holdout wording never enters training.
 
-**Agentic:** the local model chooses among `read_page`, `extract` and `finish`. The permitted action schema contains only currently valid pages/actions. Extraction runs the shared source parser and the local model, so a separately failed model response does not discard already validated source facts. Successful `finish` requires every readable page to have received an extraction attempt. Unavailable, unread or repeated page requests stop with warnings. A budget stop is reported as incomplete; it is not a successful finish.
+**Agentic:** the selected model chooses among `read_page`, `extract` and `finish`. The permitted action schema contains only currently valid pages/actions. Extraction runs the shared source parser and selected model, so a separately failed model response does not discard already validated source facts. Successful `finish` requires every readable page to have received an extraction attempt. Unavailable, unread or repeated page requests stop with warnings. A budget stop is reported as incomplete; it is not a successful finish. Structured JSON planning does not require native tool-call support; returned native tool calls are never executed.
 
 `MAX_AGENT_STEPS` defaults to 16 and accepts 1-24. It counts **all structured chat calls** in agentic execution, including action decisions and extraction calls, rather than only planning steps. It does not raise the separate workflow budget. The model has no general tool interface and cannot access arbitrary files, network destinations, code, financial posting or mailbox actions.
 
@@ -99,7 +111,8 @@ Malformed JSON, unknown response-envelope keys, oversized candidate lists and in
 - OCR applies only to pages lacking native text, with a shared default budget of four pages across the document and its attachments. PDFium rendering is bounded to a 2,000-pixel edge and 4 million pixels. Each OCR child has a 15-second parent timeout, 12 CPU seconds, a 16 MiB file limit and, on Linux, 512 MiB address space. Tesseract has a 10-second timeout and one OpenMP thread. The PDF OCR pass has a 60-second wall-time budget. OCR failure, missing tools or exhausted coverage produce explicit warnings; no text is inferred from an unreadable page.
 - Evidence keeps global page numbers. For EML, page 1 is the body and subsequent pages belong to supported attachments. `page_source` traces retain attachment ordinal and local PDF page; OCR sources additionally say `local OCR`. Quotes from OCR require visual review against the original image.
 - Local model requests use `num_ctx=8192`, `num_predict=3200`, `think=false`, temperature 0 and seed 42. The configured HTTP inactivity timeout defaults to 120 seconds and is capped at 180. Independently, each disposable document subprocess has a hard **590-second total wall-clock deadline**, including decoding, OCR and all inference. The API kills its process group on deadline, HTTP disconnect or cancellation and cleans the temporary directory before releasing the slot.
-- HTTPX ignores inherited proxy settings (`trust_env=False`), disables redirects, caps response bytes and uses only fixed `/api/show` and `/api/chat` paths at the approved local origin. Approved hosts are loopback, `ollama` and `host.docker.internal`. The daemon, host DNS and host administrator remain trusted boundaries; deployment networking must enforce egress denial.
+- HTTPX ignores inherited proxy settings (`trust_env=False`), disables redirects and caps response bytes. Local inference uses fixed `/api/show` and `/api/chat` paths at the approved local origin; discovery uses `/api/tags`. Approved local hosts are loopback, `ollama` and `host.docker.internal`. Optional cloud adapters use only the fixed official OpenAI Responses and Anthropic Messages HTTPS endpoints; no caller-supplied URL is accepted. The daemon, host DNS and host administrator remain trusted boundaries; local deployment networking must enforce egress denial.
+- Document subprocesses receive a minimal environment, excluding processor authentication, database credentials, unrelated provider credentials and inherited proxy settings. The selected job configuration travels through private stdin. Synthetic engine checks share the processing concurrency slot and have a 140-second hard process deadline; document processing retains its 590-second deadline.
 - Outputs are capped at 100 facts, 100 warnings and 100 trace steps, with explicit truncation notices. The processor has no document/result database, telemetry, request-body logging, persistent document cache or cloud SDK. Private temporary PDF/OCR files are removed after processing. Host/core dumps, encrypted swap/storage and independent security assessment remain deployment responsibilities.
 
 ## Tests and evaluation evidence
@@ -111,6 +124,8 @@ Malformed JSON, unknown response-envelope keys, oversized candidate lists and in
 ```
 
 The suite covers both modes against a loopback fake-Ollama server, strict candidate salvage, fabricated/contradictory fields, evidence checks, context and agent coverage, authentication, proxy/cloud/redirect rejection, MIME/size limits, HTML alternatives/entities/tables, PDF active-content rejection, OCR limits and shared attachment budgets. Fake-model replies test orchestration; they are not evidence of LLM extraction accuracy.
+
+New adapter tests mock OpenAI/Anthropic transports and verify fixed endpoints, authorization headers outside prompts, structured-output request formats, refusal/redirect/error handling, strict candidate salvage, disabled-cloud rejection and child-environment secret exclusion. No real cloud account or credential was used. A separate local Gemma synthetic probe validated one allowed planner action in 8.791 seconds; it does not establish document accuracy. End-to-end profile/job checks and target-host readiness are recorded separately in the release validation record.
 
 Native macOS decoding was also checked against the fixed synthetic workflow-lab corpus outside the app repository. The HTML-only funding email produced its visible investment/date/amount text. The image-only Alderholt statement produced 420 OCR characters through Apple Vision, including the correct investment name, date and EUR 4,870,000.00 amount, with OCR provenance and a visual-review warning. The scan's original bytes and benchmark ground truth were unchanged. Portable synthetic scan and native-text fixtures are checked in under `tests/fixtures/`. The real OCR regression uses the checked-in scan by default; `ASTER_OCR_TEST_PDF` can select another trusted synthetic scan. It skips if the fixture or local engine is unavailable.
 

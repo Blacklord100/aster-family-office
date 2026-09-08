@@ -14,6 +14,15 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 from starlette.responses import JSONResponse
 from .config import Settings
 from .schema import Extraction, Mode
+from .engines import selection
+
+
+def child_environment(tmpdir):
+    # Decode/model settings travel through private stdin. Service credentials,
+    # provider credentials, proxy variables and unrelated application secrets do not.
+    allowed = {'PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SYSTEMROOT', 'WINDIR',
+               'PYTHONUTF8', 'PYTHONIOENCODING', 'PYTHONDONTWRITEBYTECODE', 'PYTHONUNBUFFERED'}
+    return {**{key: value for key, value in os.environ.items() if key in allowed}, 'TMPDIR': tmpdir}
 
 
 class BoundedAuthenticatedUpload:
@@ -22,7 +31,7 @@ class BoundedAuthenticatedUpload:
         self.app, self.token, self.maximum = app, token, maximum
 
     async def __call__(self, scope, receive, send):
-        if scope['type'] != 'http' or scope['path'] != '/v1/extract':
+        if scope['type'] != 'http' or not scope['path'].startswith('/v1/'):
             return await self.app(scope, receive, send)
         headers = dict(scope['headers'])
         supplied = headers.get(b'x-processor-key', b'')
@@ -34,7 +43,7 @@ class BoundedAuthenticatedUpload:
             if message['type'] == 'http.disconnect':
                 return
             body.extend(message.get('body', b''))
-            if len(body) > self.maximum:
+            if len(body) > (self.maximum if scope['path'] == '/v1/extract' else 65536):
                 return await JSONResponse({'detail': 'Request too large'}, status_code=413)(scope, receive, send)
             if not message.get('more_body', False):
                 break
@@ -59,14 +68,7 @@ def create_app(settings: Settings | None = None):
     def health():
         return {'status': 'ok'}
 
-    @app.post('/v1/extract', response_model=Extraction)
-    async def extract(request: Request, file: UploadFile = File(...), mode: Mode = Form(...), document_id: str = Form(...)):
-        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', document_id):
-            raise HTTPException(422, 'document_id must be a safe opaque identifier')
-        data = await file.read(settings.max_file_bytes + 1)
-        await file.close()
-        if len(data) > settings.max_file_bytes:
-            raise HTTPException(413, 'File exceeds 10 MiB')
+    async def sandbox(request: Request, payload: dict, is_test=False):
         try:
             await asyncio.wait_for(processing.acquire(), timeout=0.1)
         except TimeoutError as exc:
@@ -84,18 +86,16 @@ def create_app(settings: Settings | None = None):
             def run():
                 child_settings = asdict(settings)
                 child_settings['token'] = 'internal-worker-has-no-http-auth'
-                request = {'data': base64.b64encode(data).decode('ascii'), 'filename': file.filename or '',
-                           'mime': file.content_type or '', 'settings': child_settings,
-                           'document_id': document_id, 'mode': mode}
+                child_request = {**payload, 'settings': child_settings}
                 with tempfile.TemporaryDirectory(prefix='aster-request-') as request_tmp:
                     child = subprocess.Popen([sys.executable, '-m', 'service.request_worker'], stdin=subprocess.PIPE,
                                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True,
-                                             env={**os.environ, 'TMPDIR': request_tmp})
+                                             env=child_environment(request_tmp))
                     children.append(child)
                     if stopped.is_set():
                         stop_child()
                     try:
-                        output, _ = child.communicate(json.dumps(request).encode(), timeout=590)
+                        output, _ = child.communicate(json.dumps(child_request).encode(), timeout=140 if is_test else 590)
                     except subprocess.TimeoutExpired as exc:
                         stop_child()
                         child.communicate()
@@ -106,6 +106,10 @@ def create_app(settings: Settings | None = None):
                     parsed = json.loads(output)
                     if 'inputError' in parsed:
                         raise HTTPException(422, parsed['inputError'])
+                    if is_test:
+                        if not isinstance(parsed, dict) or set(parsed) != {'ok', 'errorCode'} or type(parsed['ok']) is not bool or parsed['errorCode'] not in (None, 'MODEL_UNAVAILABLE', 'SCHEMA_CHECK_FAILED'):
+                            raise ValueError('Invalid engine test result')
+                        return parsed
                     return Extraction.model_validate(parsed)
                 except ValueError as exc:
                     raise HTTPException(500, 'Local worker returned an invalid result') from exc
@@ -124,5 +128,37 @@ def create_app(settings: Settings | None = None):
                 raise
         finally:
             processing.release()
+
+    @app.post('/v1/extract', response_model=Extraction)
+    async def extract(request: Request, file: UploadFile = File(...), mode: Mode = Form(...), document_id: str = Form(...), engine: str | None = Form(None)):
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', document_id):
+            raise HTTPException(422, 'document_id must be a safe opaque identifier')
+        try:
+            selected = selection(json.loads(engine) if engine is not None else None, settings)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Invalid or disabled engine selection') from None
+        data = await file.read(settings.max_file_bytes + 1)
+        await file.close()
+        if len(data) > settings.max_file_bytes:
+            raise HTTPException(413, 'File exceeds 10 MiB')
+        return await sandbox(request, {'data': base64.b64encode(data).decode('ascii'), 'filename': file.filename or '',
+                           'mime': file.content_type or '', 'document_id': document_id, 'mode': mode,
+                           'engine': selected.model_dump(exclude_none=True) if engine is not None else None})
+
+    @app.post('/v1/engine-test')
+    async def engine_test(request: Request):
+        try:
+            selected = selection(await request.json(), settings)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Invalid or disabled engine selection') from None
+        return await sandbox(request, {'operation': 'engine_test', 'engine': selected.model_dump(exclude_none=True)}, is_test=True)
+
+    @app.get('/v1/models')
+    async def models():
+        from .engines import discover_models
+        try:
+            return await asyncio.to_thread(discover_models, settings)
+        except Exception:
+            raise HTTPException(502, 'Local model discovery unavailable') from None
 
     return app

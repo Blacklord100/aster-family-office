@@ -43,6 +43,18 @@ vi.mock('./access', () => {
 });
 vi.mock('./crypto', () => ({ decrypt: fixtures.decrypt }));
 vi.mock('./audit', () => ({ audit: vi.fn() }));
+vi.mock('./engine-store', () => ({
+  activeEngine: async () => ({
+    snapshot: {
+      profileId: null,
+      revision: 0,
+      name: 'Deployment default',
+      provider: 'ollama',
+      model: 'fixture-local',
+      execution: 'local',
+    },
+  }),
+}));
 import { GET } from '../../app/api/processing/route';
 
 function extraction(id: string) {

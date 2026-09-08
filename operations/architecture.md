@@ -2,21 +2,26 @@
 
 Aster can run on a host or container platform that supports Node.js, PostgreSQL, Python and an operator-provisioned Ollama model. This directory contains a single-host deployment template, not a deployed service or a production certification. No Sites service is used.
 
-| Process | Role | Network and credential boundary |
-| --- | --- | --- |
-| Caddy, optional | HTTPS ingress | Publishes 80/443; reaches web only |
-| Next.js web | Authenticated UI/API | Loopback 3000; runtime DB credentials; authenticated processor calls |
-| Node worker | Durable document jobs | Internal networks only; same least-privilege DB role initially |
-| PostgreSQL 17 | Accounts, sessions, tenant data, encrypted originals/results | Internal database network; no published port |
-| Processor | Classical extraction or bounded local agentic extraction | Internal confidential network only; shared processor token |
-| Ollama | Local model inference | Same internal network; no published 11434 port; cloud disabled |
-| Migrator/bootstrap | Schema changes and initial owner provisioning | Explicit one-off maintenance command; owner credential never mounted into web/worker |
+| Process                  | Role                                                         | Network and credential boundary                                                                             |
+| ------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Caddy, optional          | HTTPS ingress                                                | Publishes 80/443; reaches web only                                                                          |
+| Next.js web              | Authenticated UI/API                                         | Loopback 3000; runtime DB credentials; authenticated processor calls                                        |
+| Node worker              | Durable document jobs                                        | Internal networks only; same least-privilege DB role initially                                              |
+| PostgreSQL 17            | Accounts, sessions, tenant data, encrypted originals/results | Internal database network; no published port                                                                |
+| Processor                | Classical extraction or bounded local agentic extraction     | Internal confidential network only; shared processor token                                                  |
+| Optional cloud processor | Same bounded extraction with explicitly selected provider    | Separately provisioned caller network plus restricted provider egress; never attached to local-confidential |
+| Ollama                   | Local model inference                                        | Same internal network; no published 11434 port; cloud disabled                                              |
+| Migrator/bootstrap       | Schema changes and initial owner provisioning                | Explicit one-off maintenance command; owner credential never mounted into web/worker                        |
 
 Next standalone output makes the web server portable as a Node process. Public deployment should use a reverse proxy; Next.js recommends one for handling hostile or malformed requests. This template forwards only to port 3000 and does not use a platform-specific runtime. [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
 
-Both workflow modes use the same authenticated job path and local processor. Classical mode follows fixed local classification and parsing stages, with optional local-model extraction for unresolved fields. Agentic mode may call only the configured local Ollama endpoint through bounded, validated tools. Model output and uploaded document instructions are untrusted input; extraction produces reviewable evidence, not authority to change users, send messages, move funds or run arbitrary commands.
+Both workflow modes use the same authenticated job path and independently pinned engine. Classical mode follows fixed local classification and parsing stages, with optional selected-model extraction for unresolved fields. Agentic mode permits only bounded page reading, extraction and finish actions. The default processor uses installed local Ollama models. Optional OpenAI Responses/Anthropic Messages adapters require deployment opt-in, a separate processor origin and administrator acknowledgement before cloud activation. Model output and uploaded document instructions are untrusted input; extraction produces reviewable evidence, not authority to change users, send messages, move funds or run arbitrary commands.
 
 The processor and Ollama attach only to an `internal: true` network, with no published ports. Worker networks are also internal. Web has an external-facing network and remains a trusted boundary: Docker explicitly notes that a process on internal and ordinary networks can still reach the internet. Internal networking is not protection against a compromised Docker host, host-accessible services, a privileged peer, DNS leakage, or a web endpoint that acts as an outbound proxy. Verify host firewall and DNS egress policy before describing the installation as air-gapped. [Docker Compose networking](https://docs.docker.com/compose/how-tos/networking/), [Docker internal-network limits](https://docs.docker.com/reference/cli/docker/network/create/)
+
+This describes the supplied local-only Compose default. Cloud execution must use a separately provisioned processor reachable at fixed `PROCESSOR_CLOUD_URL`, with `ALLOW_CLOUD_ENGINES=true` on that processor, web and document worker. Keep the original processor/Ollama network unchanged and give only the cloud instance restricted provider egress. A different origin is a configuration guard, not evidence of network or host isolation; verify the actual topology. Remote processor origins require HTTPS; cleartext HTTP is accepted only for explicit local/service hosts. The model API endpoints are fixed official HTTPS destinations, and HTTPX ignores inherited proxies and redirects. [Engine setup and limitations](engines.md).
+
+Tenant engine profiles and each job's credential/configuration copy are encrypted. Profile revisions and job pins prevent a later profile edit from silently changing a queued job or retry. They pin model identifiers, not immutable provider/model weights: tags and API aliases may move. Cloud-disabled deployments fail pinned cloud jobs explicitly rather than rerouting them to another engine. Provider tests send a bounded synthetic prompt only and cannot certify extraction accuracy or retention policy.
 
 `OLLAMA_NO_CLOUD=1` disables Ollama cloud models and web search. Operators must verify the startup log confirms cloud is disabled. No startup command downloads or pulls models. A reviewed local GGUF can be imported manually using a Modelfile; the configured model must be present or agentic processing must fail explicitly. [Ollama FAQ](https://docs.ollama.com/faq), [Ollama model import](https://docs.ollama.com/import)
 

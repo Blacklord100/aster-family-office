@@ -90,7 +90,7 @@ export async function PATCH(
           );
         status = 'queued';
         await c.query(
-          'INSERT INTO app_job_queue(id,organization_id) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET lease_owner=NULL,lease_until=NULL,attempts=0,available_at=now()',
+          'INSERT INTO app_job_queue(id,organization_id) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET lease_owner=NULL,lease_until=NULL,attempts=0,capacity_deferrals=0,available_at=now()',
           [id, ctx.organizationId],
         );
       }

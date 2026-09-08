@@ -16,6 +16,7 @@ class Settings:
     max_text_chars: int = 120_000
     ocr_enabled: bool = True
     max_ocr_pages: int = 4
+    allow_cloud_engines: bool = False
 
     def __post_init__(self):
         if len(self.token) < 24:
@@ -43,4 +44,5 @@ class Settings:
                    ollama_model=os.environ.get('OLLAMA_MODEL', 'qwen3:1.7b'),
                    ollama_timeout=float(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '120')),
                    max_agent_steps=int(os.environ.get('MAX_AGENT_STEPS', '16')),
-                   ocr_enabled=os.environ.get('OCR_ENABLED', 'true').lower() == 'true')
+                   ocr_enabled=os.environ.get('OCR_ENABLED', 'true').lower() == 'true',
+                   allow_cloud_engines=os.environ.get('ALLOW_CLOUD_ENGINES', 'false') == 'true')

@@ -9,6 +9,11 @@ import {
 import { readBody, json } from '@/lib/server/http';
 import { encrypt, sha256 } from '@/lib/server/crypto';
 import { audit, rateLimit } from '@/lib/server/audit';
+import {
+  activeEngine,
+  assertEngineEnabled,
+  sealJobEngine,
+} from '@/lib/server/engine-store';
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
@@ -105,17 +110,19 @@ export async function POST(request: Request) {
         );
       }
       const { rows: org } = await client.query(
-        'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1',
+        'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1 FOR SHARE',
         [ctx.organizationId],
       );
+      const engine = await activeEngine(client, ctx.organizationId);
+      assertEngineEnabled(engine.config);
       const requested = body.get('mode'),
         mode =
           requested === 'workflow' || requested === 'agentic'
             ? requested
             : org[0].processing_mode;
       const active = await client.query(
-        "SELECT id FROM app_jobs WHERE organization_id=$1 AND document_id=$2 AND mode=$3 AND status IN ('queued','processing','awaiting_review')",
-        [ctx.organizationId, documentId, mode],
+        "SELECT id FROM app_jobs WHERE organization_id=$1 AND document_id=$2 AND mode=$3 AND engine_snapshot=$4::jsonb AND status IN ('queued','processing','awaiting_review')",
+        [ctx.organizationId, documentId, mode, JSON.stringify(engine.snapshot)],
       );
       if (active.rows[0])
         return json(
@@ -123,8 +130,14 @@ export async function POST(request: Request) {
           200,
         );
       const jobId = randomUUID();
+      const pinned = sealJobEngine(
+        engine.config,
+        engine.snapshot,
+        ctx.organizationId,
+        jobId,
+      );
       await client.query(
-        'INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision) VALUES($1,$2,$3,$4,$5,$6)',
+        'INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision,engine_snapshot,engine_config) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [
           jobId,
           ctx.organizationId,
@@ -132,6 +145,8 @@ export async function POST(request: Request) {
           ctx.user.id,
           mode,
           org[0].policy_revision,
+          JSON.stringify(pinned.snapshot),
+          pinned.payload,
         ],
       );
       await client.query(

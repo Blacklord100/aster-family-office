@@ -179,8 +179,11 @@
       "type": "string"
     },
     "execution": {
-      "const": "local",
       "default": "local",
+      "enum": [
+        "local",
+        "cloud"
+      ],
       "title": "Execution",
       "type": "string"
     },

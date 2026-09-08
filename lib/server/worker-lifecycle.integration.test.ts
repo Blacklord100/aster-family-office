@@ -56,7 +56,7 @@ const workers = new Set<{
   stderrBytes: number;
 }>();
 const requests = new Map<string, PendingRequest[]>();
-const behavior = new Map<string, 'hold' | 'fail' | 'success'>();
+const behavior = new Map<string, 'hold' | 'fail' | 'busy' | 'success'>();
 let admin: Pool, server: Server, temp: string;
 let db: typeof import('./db');
 let review: typeof import('../../app/api/processing/[id]/route');
@@ -72,6 +72,7 @@ type JobState = {
   attempts: number | null;
   lease_owner: string | null;
   available_at: Date | null;
+  capacity_deferrals: number | null;
 };
 
 async function eventually<T>(
@@ -90,13 +91,13 @@ async function eventually<T>(
 }
 async function state(id: string): Promise<JobState> {
   const result = await admin.query<JobState>(
-    `SELECT j.status,j.result,j.error_code,q.attempts,q.lease_owner,q.available_at
+    `SELECT j.status,j.result,j.error_code,q.attempts,q.lease_owner,q.available_at,q.capacity_deferrals
     FROM app_jobs j LEFT JOIN app_job_queue q ON q.id=j.id WHERE j.id=$1 AND j.organization_id=$2`,
     [id, org],
   );
   return result.rows[0];
 }
-async function fixture(kind: 'hold' | 'fail' | 'success' = 'hold') {
+async function fixture(kind: 'hold' | 'fail' | 'busy' | 'success' = 'hold') {
   // A shared local DB must never contain someone else's runnable work during this suite.
   const other = await admin.query(
     'SELECT count(*)::int AS count FROM app_job_queue WHERE organization_id<>$1',
@@ -122,7 +123,7 @@ async function fixture(kind: 'hold' | 'fail' | 'success' = 'hold') {
     ],
   );
   await admin.query(
-    `INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision) VALUES($1,$2,$3,$4,'workflow',1)`,
+    `INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,policy_revision,engine_legacy) VALUES($1,$2,$3,$4,'workflow',1,true)`,
     [id, org, documentId, user],
   );
   await admin.query(
@@ -322,7 +323,8 @@ suite('real durable worker lifecycle', () => {
           if (!response.writableEnded) item.disconnected = true;
         });
         requests.set(documentId, [...(requests.get(documentId) ?? []), item]);
-        if (behavior.get(documentId) === 'fail') response.writeHead(503).end();
+        if (behavior.get(documentId) === 'fail') response.writeHead(500).end();
+        if (behavior.get(documentId) === 'busy') response.writeHead(503).end();
         if (behavior.get(documentId) === 'success')
           item.release('fresh worker result');
       })().catch(() => {
@@ -499,7 +501,7 @@ suite('real durable worker lifecycle', () => {
           s.lease_owner === null,
         'retry backoff ' + attempt,
       );
-      expect(queued.error_code).toBe('PROCESSOR_HTTP_503');
+      expect(queued.error_code).toBe('PROCESSOR_HTTP_500');
       expect(queued.available_at!.getTime() - Date.now()).toBeGreaterThan(
         20000,
       );
@@ -517,7 +519,7 @@ suite('real durable worker lifecycle', () => {
     expect(failed).toMatchObject({
       attempts: null,
       result: null,
-      error_code: 'PROCESSOR_HTTP_503',
+      error_code: 'PROCESSOR_HTTP_500',
     });
     expect(requests.get(job.documentId)).toHaveLength(3);
     behavior.set(job.documentId, 'hold');
@@ -550,4 +552,49 @@ suite('real durable worker lifecycle', () => {
     ]);
     expect(worker.stderrBytes).toBe(0);
   }, 30000);
+
+  it('defers busy capacity without charging failures and terminates at the explicit deferral bound', async () => {
+    const job = await fixture('busy'),
+      worker = startWorker();
+    const queued = await eventually(
+      () => state(job.id),
+      (s) => s.status === 'queued' && s.capacity_deferrals === 1,
+      'capacity deferral',
+    );
+    expect(queued).toMatchObject({
+      attempts: 0,
+      lease_owner: null,
+      error_code: 'PROCESSOR_BUSY',
+    });
+    expect(queued.available_at!.getTime() - Date.now()).toBeGreaterThan(20000);
+    // Advance only this fixture's recorded count/clock to exercise both sides of the bound.
+    await admin.query(
+      'UPDATE app_job_queue SET capacity_deferrals=29,available_at=now() WHERE id=$1 AND organization_id=$2',
+      [job.id, org],
+    );
+    await eventually(
+      () => state(job.id),
+      (s) => s.status === 'queued' && s.capacity_deferrals === 30,
+      'last allowed capacity deferral',
+    );
+    expect((await state(job.id)).attempts).toBe(0);
+    await admin.query(
+      'UPDATE app_job_queue SET available_at=now() WHERE id=$1 AND organization_id=$2',
+      [job.id, org],
+    );
+    const failed = await eventually(
+      () => state(job.id),
+      (s) => s.status === 'failed',
+      'bounded capacity failure',
+    );
+    expect(failed).toMatchObject({
+      attempts: null,
+      capacity_deferrals: null,
+      result: null,
+      error_code: 'PROCESSOR_HTTP_503',
+    });
+    expect(requests.get(job.documentId)).toHaveLength(3);
+    await stopWorker(worker);
+    expect(worker.stderrBytes).toBe(0);
+  }, 20000);
 });

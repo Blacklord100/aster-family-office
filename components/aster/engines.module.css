@@ -1,0 +1,370 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.page :global(.page-heading) {
+  margin-bottom: 0;
+}
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.snapshotNote {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+}
+.revisionNote {
+  margin: 14px 0;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.active {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--card), var(--muted));
+}
+.activeIntro {
+  min-width: 0;
+}
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  color: var(--muted-foreground);
+}
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--foreground);
+}
+.active h2 {
+  font-size: 28px;
+  letter-spacing: -0.045em;
+  font-weight: 550;
+  margin: 17px 0 6px;
+  overflow-wrap: anywhere;
+}
+.active p {
+  font-size: 13px;
+  font-family: var(--font-geist-mono), monospace;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.badges svg {
+  width: 12px;
+  height: 12px;
+}
+.activeFacts {
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+.activeFacts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 12px;
+}
+.activeFacts dt {
+  color: var(--muted-foreground);
+}
+.activeFacts dd {
+  font-weight: 500;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.panelBody {
+  padding: 22px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.panelBody h3 {
+  font-size: 14px;
+  font-weight: 550;
+  margin-top: 2px;
+}
+.panelBody p,
+.editor p {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--muted-foreground);
+}
+.modeToggle {
+  width: 100%;
+}
+.modeToggle > button {
+  flex: 1;
+}
+.rule {
+  display: flex;
+  gap: 9px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.rule > svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.boundary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 2px 0 10px;
+}
+.boundary > div {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  column-gap: 8px;
+  row-gap: 5px;
+}
+.boundary svg {
+  width: 16px;
+  height: 16px;
+}
+.boundary strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.boundary span {
+  grid-column: 2;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
+  max-width: 760px;
+  scroll-margin-top: 24px;
+}
+.editor > fieldset {
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.editor > .actions {
+  justify-content: flex-end;
+}
+.library {
+  display: flex;
+  flex-direction: column;
+}
+.defaultRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 24px;
+}
+.defaultRow strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.defaultRow p {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.profile {
+  padding: 24px;
+  border-top: 1px solid var(--border);
+}
+.profileHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.profileHead > :last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.profileHead > div:nth-child(2) {
+  min-width: 0;
+}
+.profileHead h3 {
+  font-size: 14px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.profileHead p {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-family: var(--font-geist-mono), monospace;
+  overflow-wrap: anywhere;
+}
+.profileIcon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--muted);
+}
+.profileIcon svg {
+  width: 18px;
+  height: 18px;
+}
+.profileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 18px 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.failure {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--destructive);
+}
+.confirm {
+  margin-top: 20px;
+}
+.confirm :global([data-slot='alert-description']) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.models {
+  padding: 8px 24px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 28px;
+}
+.models > p {
+  grid-column: 1/-1;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  padding: 12px 0;
+}
+.model {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.model > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.model > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.model strong {
+  font-size: 11px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.model span {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.model > button {
+  margin-left: auto;
+}
+.footnote {
+  max-width: 850px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  line-height: 1.8;
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .active {
+    gap: 24px;
+    padding: 24px;
+  }
+}
+@media (max-width: 700px) {
+  .page {
+    gap: 18px;
+  }
+  .active {
+    flex-direction: column;
+    gap: 26px;
+    padding: 22px;
+  }
+  .active h2 {
+    font-size: 25px;
+  }
+  .activeFacts {
+    min-width: 0;
+  }
+  .models {
+    grid-template-columns: 1fr;
+  }
+  .profile,
+  .editor,
+  .panelBody {
+    padding: 18px;
+  }
+  .defaultRow {
+    padding: 18px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .modeToggle {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .profileHead {
+    flex-wrap: wrap;
+  }
+  .profileHead > :last-child {
+    margin-left: 0;
+  }
+}

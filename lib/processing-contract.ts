@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { EngineSnapshot } from './engine-contract';
 const date = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -34,7 +35,7 @@ export const ExtractionSchema = z
     schemaVersion: z.literal(1),
     documentId: z.uuid(),
     mode: z.enum(['workflow', 'agentic']),
-    execution: z.literal('local'),
+    execution: z.enum(['local', 'cloud']),
     documentType: z.string().max(100),
     relevant: z.boolean(),
     confidence: z.number().min(0).max(1),
@@ -66,11 +67,14 @@ export type ProcessingJob = {
   policyRevision: number;
   errorCode: string | null;
   result: Extraction | null;
+  engine?: EngineSnapshot | null;
+  engineLegacy?: boolean;
 };
 export type ProcessingPolicy = {
   mode: ProcessingMode;
   revision: number;
-  execution: 'local';
+  execution: 'local' | 'cloud';
+  engine?: EngineSnapshot;
   externalFallback: false;
 };
 export type WorkspaceIdentity = {

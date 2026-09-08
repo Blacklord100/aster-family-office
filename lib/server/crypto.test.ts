@@ -47,7 +47,7 @@ describe('encrypted records and canonical facts', () => {
     );
     expect(factFingerprint(fact, 'h')).not.toBe(factFingerprint(fact, 'other'));
   });
-  it('rejects invalid dates without crashing and forbids remote output', () => {
+  it('rejects invalid dates and accepts only explicit execution labels', () => {
     const base = {
       schemaVersion: 1,
       documentId: crypto.randomUUID(),
@@ -75,6 +75,10 @@ describe('encrypted records and canonical facts', () => {
     expect(ExtractionSchema.safeParse(base).success).toBe(false);
     expect(
       ExtractionSchema.safeParse({ ...base, facts: [], execution: 'cloud' })
+        .success,
+    ).toBe(true);
+    expect(
+      ExtractionSchema.safeParse({ ...base, facts: [], execution: 'hybrid' })
         .success,
     ).toBe(false);
   });

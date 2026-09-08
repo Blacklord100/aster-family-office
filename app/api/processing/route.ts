@@ -10,6 +10,8 @@ import { json, parseJson } from '@/lib/server/http';
 import { audit } from '@/lib/server/audit';
 import { decrypt } from '@/lib/server/crypto';
 import { ExtractionSchema } from '@/lib/processing-contract';
+import { activeEngine } from '@/lib/server/engine-store';
+import { EngineSnapshotSchema } from '@/lib/engine-contract';
 export async function GET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
           [ctx.organizationId],
         ),
         client.query(
-          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id WHERE j.organization_id=$1 ORDER BY j.created_at DESC,j.id DESC LIMIT 100',
+          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id WHERE j.organization_id=$1 ORDER BY j.created_at DESC,j.id DESC LIMIT 100',
           [ctx.organizationId],
         ),
       ]);
@@ -60,12 +62,18 @@ export async function GET(request: Request) {
         policyRevision: j.policy_revision,
         errorCode: j.error_code,
         result: j.id === selected?.id ? result : null,
+        engine: j.engine_snapshot
+          ? EngineSnapshotSchema.parse(j.engine_snapshot)
+          : null,
+        engineLegacy: j.engine_legacy,
       }));
+      const engine = (await activeEngine(client, ctx.organizationId)).snapshot;
       return json({
         policy: {
           mode: org[0].processing_mode,
           revision: org[0].policy_revision,
-          execution: 'local',
+          execution: engine.execution,
+          engine,
           externalFallback: false,
         },
         jobs: list,
@@ -103,10 +111,12 @@ export async function PATCH(request: Request) {
         ctx.organizationId,
         { mode: input.mode, revision: rows[0].policy_revision },
       );
+      const engine = (await activeEngine(client, ctx.organizationId)).snapshot;
       return json({
         mode: input.mode,
         revision: rows[0].policy_revision,
-        execution: 'local',
+        execution: engine.execution,
+        engine,
         externalFallback: false,
       });
     });

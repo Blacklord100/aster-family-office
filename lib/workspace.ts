@@ -23,6 +23,7 @@ import type {
 import { createWorkspaceDemoScenario } from './demo-engine';
 import type { DemoEngineState } from './demo-engine';
 import { calculatePortfolioMetrics } from './finance';
+import type { RiskData, RiskScenario } from './risk-contract';
 export const scenario = createWorkspaceDemoScenario({
   asOfDate: AS_OF_DATE,
   holdings,
@@ -65,8 +66,16 @@ export type WorkspaceState = {
   reviews: Record<string, string>;
   engine: DemoEngineState;
   reports: SavedReport[];
+  riskData?: RiskData;
+  riskScenarios?: SavedRiskScenario[];
   syncs: Record<string, string>;
   officeName: string;
+};
+export type SavedRiskScenario = {
+  id: string;
+  name: string;
+  scenario: RiskScenario;
+  createdAt: string;
 };
 export function initialWorkspace(sampleData = true): WorkspaceState {
   return {

@@ -8,6 +8,7 @@ from .grounding import deduplicate, deterministic_facts, normalize, verify_fact,
 from .ollama import LocalModelError, LocalOllama
 from .schema import AgentAction, Extraction, ModelFacts, Trace
 from .source_events import source_table_warnings
+from .engines import selection, model_client
 
 
 def complete(fact):
@@ -43,8 +44,10 @@ def expand_evidence(fact, pages):
 
 
 def process(document: Document, document_id: str, mode: str, settings: Settings,
-            classifier: RelevanceClassifier) -> Extraction:
-    trace = [Trace(stage='decode', status='ok', detail=f'{len(document.pages)} local text pages decoded.')]
+            classifier: RelevanceClassifier, engine=None) -> Extraction:
+    selected = selection(engine, settings)
+    execution = selected.execution
+    trace = [Trace(stage='decode', status='ok', detail=f'{len(document.pages)} text pages decoded.')]
     trace.extend(Trace(stage='page_source', status='ok', detail=f'Page {p.number}: {p.source}.') for p in document.pages)
     warnings = list(document.warnings) + [
         'Candidate facts only: review against the original before any financial posting.',
@@ -60,8 +63,8 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
         trace.append(Trace(stage=stage, status=status, detail=detail))
 
     def note_error(exc):
-        warnings.append(f'Local inference failed closed: {exc}. No cloud fallback was attempted.')
-        log('local_model', str(exc), 'error')
+        warnings.append(f'Local inference failed closed: {exc}. No cloud fallback was attempted.' if execution == 'local' else f'Cloud inference failed closed: {exc}. No provider fallback was attempted.')
+        log('local_model' if execution == 'local' else 'cloud_model', str(exc), 'error')
 
     def accept(candidates, pages, origin):
         rejected, expanded, accepted = 0, 0, 0
@@ -94,14 +97,15 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
     def model_ready():
         nonlocal local, used_model
         if local is None:
-            pending = LocalOllama(settings)
+            # Keep the default local factory patchable for existing offline tests.
+            pending = LocalOllama(settings) if engine is None else model_client(settings, selected)
             try:
                 pending.verify_local()
             except LocalModelError:
                 pending.close()
                 raise
             local = pending
-            used_model = settings.ollama_model
+            used_model = selected.model
         return local
 
     def extract(page, budget):
@@ -136,7 +140,7 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
             covered += 1
         if covered == len(windows):
             model_pages.add(page.number)
-        log('local_extract', f'Page {page.number}: {covered}/{len(windows)} bounded model windows reviewed.',
+        log('local_extract' if execution == 'local' else 'cloud_extract', f'Page {page.number}: {covered}/{len(windows)} bounded model windows reviewed.',
             'ok' if covered == len(windows) else 'warning')
 
     if not readable:
@@ -153,7 +157,7 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
                     except LocalModelError as exc:
                         note_error(exc)
                 else:
-                    log('local_extract', f'Page {page.number}: complete labelled notice or no financial signal.', 'skipped')
+                    log('local_extract' if execution == 'local' else 'cloud_extract', f'Page {page.number}: complete labelled notice or no financial signal.', 'skipped')
             relevant = relevant or bool(facts)
         elif mode == 'agentic' and readable:
             model = model_ready()
@@ -211,7 +215,7 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
                     except LocalModelError as exc:
                         note_error(exc)
                     extracted.add(page.number)
-                    log('agent_extract', f'Page {page.number}: shared source parsing and local model extraction attempted.')
+                    log('agent_extract', f'Page {page.number}: shared source parsing and selected model extraction attempted.')
             if not finished:
                 warnings.append('Agent stopped before an explicit finish; step limit or invalid action prevented complete coverage.')
             if len(extracted) < len(readable):
@@ -231,13 +235,13 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
     log('coverage', f'Source rules inspected {len(source_pages)}/{len(readable)} readable pages; full model context inspected {len(model_pages)}/{len(readable)}. This is processing coverage, not a guarantee that all facts were found.',
         'ok' if len(source_pages) == len(readable) else 'warning')
     if local:
-        log('model_usage', f'{local.calls} local structured model calls; {local.rejected_candidates} invalid individual candidates rejected.')
+        log('model_usage', f'{local.calls} {execution} structured model calls; {local.rejected_candidates} invalid individual candidates rejected.')
     if len(trace) > 100:
         trace = trace[:99] + [Trace(stage='trace_limit', status='warning', detail='Trace truncated to 100 steps; processing bounds remained enforced.')]
     warnings = list(dict.fromkeys(warnings))
     if len(warnings) > 100:
         warnings = warnings[:99] + ['Additional processing warnings omitted at the 100-warning output limit.']
     kinds = {fact.kind for fact in facts}
-    return Extraction(documentId=document_id, mode=mode, documentType=next(iter(kinds)) if len(kinds) == 1 else 'mixed' if kinds else 'unknown',
+    return Extraction(documentId=document_id, mode=mode, execution=execution, documentType=next(iter(kinds)) if len(kinds) == 1 else 'mixed' if kinds else 'unknown',
                       relevant=bool(relevant or facts), confidence=round(probability, 6), facts=facts,
                       warnings=warnings, trace=trace, model=used_model)

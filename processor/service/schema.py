@@ -63,7 +63,7 @@ class Extraction(StrictModel):
     schemaVersion: Literal[1] = 1
     documentId: str
     mode: Mode
-    execution: Literal['local'] = 'local'
+    execution: Literal['local', 'cloud'] = 'local'
     documentType: str
     relevant: bool
     confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
