@@ -1,2 +1,4 @@
 # Keep PDF fixtures byte-identical across checkouts and source packages.
 *.pdf binary
+# Preserve frozen RFC email bytes and treat CRLF as intentional line endings.
+benchmark/**/fixtures/*.eml -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

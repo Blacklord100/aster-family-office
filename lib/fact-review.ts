@@ -1,4 +1,6 @@
 import type { ExtractedFact } from './processing-contract';
+import { ledgerFxSchema, type LedgerFx } from './ledger-contract';
+import type { Holding } from '@/data/types';
 
 /** Exact decimal normalization for deduplication; never round source amounts. */
 export function canonicalAmount(amount: string): string {
@@ -24,11 +26,16 @@ export function supportedMoney(amount: string | null): amount is string {
   );
 }
 
-export function factAcceptanceIssue(fact: ExtractedFact): string | null {
+export function factAcceptanceIssue(
+  fact: ExtractedFact,
+  fx?: LedgerFx,
+): string | null {
   if (fact.kind === 'valuation') {
     if (!fact.effectiveDate)
       return 'This valuation needs a reported effective date before it can be accepted.';
-    if (fact.currency !== 'EUR')
+    if (!fact.currency || !['EUR', 'USD', 'GBP', 'CHF'].includes(fact.currency))
+      return 'Choose the reported currency. Supported valuation currencies are EUR, USD, GBP and CHF.';
+    if (fact.currency !== 'EUR' && !ledgerFxSchema.safeParse(fx).success)
       return 'This valuation needs an explicit EUR conversion before it can be accepted.';
     if (!supportedMoney(fact.amount))
       return 'Valuations require a nonnegative amount of at most EUR 1 trillion, with no more than two decimal places.';
@@ -41,6 +48,43 @@ export function factAcceptanceIssue(fact: ExtractedFact): string | null {
     return 'Capital-call and distribution amounts must be nonnegative, no greater than 1 trillion, and have no more than two decimal places. Check the original source.';
   }
   return null;
+}
+
+/** Name similarity suggests candidates only; no automatic association or financial write. */
+export function suggestHoldings(
+  fact: Pick<ExtractedFact, 'investmentName'>,
+  holdings: Holding[],
+) {
+  const normalize = (value: string) =>
+    value
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  const needle = normalize(fact.investmentName);
+  const tokens = new Set(needle.split(' ').filter((word) => word.length > 2));
+  return holdings
+    .map((holding) => {
+      const name = normalize(holding.name);
+      const words = new Set(name.split(' ').filter((word) => word.length > 2));
+      const shared = [...tokens].filter((word) => words.has(word)).length;
+      const score =
+        name === needle && needle.length > 0
+          ? 1
+          : shared / Math.max(tokens.size, words.size, 1);
+      return {
+        holding,
+        score,
+        reason: score === 1 ? 'Name matches' : 'Similar name',
+      };
+    })
+    .filter((candidate) => candidate.score >= 0.5)
+    .sort(
+      (a, b) =>
+        b.score - a.score || a.holding.name.localeCompare(b.holding.name),
+    )
+    .slice(0, 3);
 }
 
 /** Ordinary replays must not undo a subsequently accepted mark for the same date. */

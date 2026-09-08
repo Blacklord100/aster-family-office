@@ -1,0 +1,114 @@
+name: Verify release
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      DATABASE_URL: postgresql://aster_runtime:synthetic-ci-runtime-only@127.0.0.1:55439/aster
+      MIGRATION_DATABASE_URL: postgresql://postgres:synthetic-ci-database-only@127.0.0.1:55439/aster
+      BETTER_AUTH_URL: http://localhost:3000
+      AUTH_REQUIRE_MFA: 'true'
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_PASSWORD: synthetic-ci-database-only
+          POSTGRES_DB: aster
+        ports: ['55439:5432']
+        options: >-
+          --health-cmd 'pg_isready -U postgres -d aster'
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with: {node-version: '24', cache: npm}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with: {python-version: '3.12'}
+      - name: Backup permission and failure controls with mocked transports
+        run: python operations/scripts/test_backup_controls.py
+      - run: npm ci
+      - run: node scripts/ci-db.mjs
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run db:migrate
+      - name: Database lifecycle and isolation
+        env:
+          ASTER_OPERATIONS_INTEGRATION: '1'
+          ASTER_RECOVERY_INTEGRATION: '1'
+          ASTER_ENGINE_INTEGRATION: '1'
+          ASTER_WORKER_INTEGRATION: '1'
+          ASTER_MAILBOX_INTEGRATION: '1'
+        run: >-
+          node node_modules/vitest/vitest.mjs run --no-file-parallelism
+          lib/server/operations.integration.test.ts lib/server/recovery.integration.test.ts
+          lib/server/engine.integration.test.ts lib/server/worker-lifecycle.integration.test.ts
+          lib/server/mailbox.integration.test.ts
+      - name: Processor checks with offline model transports
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr poppler-utils
+          python -m pip install -r processor/requirements.lock.txt
+          cd processor
+          python -m pytest -q
+      - run: npm audit --audit-level=high
+      - run: npm sbom --sbom-format=cyclonedx > release-sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-sbom
+          path: release-sbom.cdx.json
+          retention-days: 14
+  containers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - name: Validate deployment composition with synthetic secret files
+        working-directory: operations
+        env:
+          BETTER_AUTH_URL: https://synthetic.example.invalid
+          OLLAMA_MODEL: synthetic-not-pulled
+          OLLAMA_IMAGE: ollama/ollama:synthetic-not-pulled
+        run: |
+          sh scripts/generate-secrets.sh ./secrets
+          docker compose --profile delivery --profile maintenance --profile tls config --quiet
+      - name: Build without application secrets
+        run: |
+          docker build -f operations/Dockerfile.app -t aster-web:verify .
+          docker build -f processor/Dockerfile -t aster-processor:verify processor
+      - name: Verify image runtime identities and filesystem controls
+        run: |
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint node aster-web:verify -e "if(process.getuid()===0)process.exit(1);try{require('fs').writeFileSync('/app/forbidden','x');process.exit(1)}catch(e){if(e.code!=='EROFS'&&e.code!=='EACCES')throw e}"
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint python aster-processor:verify -c "import os; assert os.getuid()!=0"
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: aster-web:verify
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: aster-processor:verify
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          exit-code: '1'

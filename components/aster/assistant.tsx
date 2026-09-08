@@ -1,26 +1,45 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   ArrowUp,
   ArrowUpRight,
   PieChart,
   Wallet,
-  Clock3,
   FileText,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldLabel } from '@/components/ui/field';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import type { KnowledgeAnswer } from '@/lib/intelligence-contract';
+import type { EnginesResponse } from '@/lib/engine-contract';
 import { useWorkspace } from './workspace-context';
-import { Status, money, percent } from './primitives';
+import { Status, Picker, money } from './primitives';
+import styles from './intelligence.module.css';
 const prompts = [
-  { text: 'How is our portfolio allocated?', icon: PieChart },
-  { text: 'How much cash do we have?', icon: Wallet },
+  { text: 'What is our recorded portfolio value?', icon: PieChart },
+  { text: 'How much cash is recorded?', icon: Wallet },
   { text: 'What are our unfunded commitments?', icon: FileText },
-  { text: 'What changed recently?', icon: Clock3 },
 ];
 export function AssistantPanel({
+  family,
+  onSource,
+}: {
+  family: string;
+  onSource: (id: string) => void;
+}) {
+  const { state } = useWorkspace();
+  return (
+    <AssistantConversation
+      key={(state.identity?.organizationId ?? '') + ':' + family}
+      family={family}
+      onSource={onSource}
+    />
+  );
+}
+function AssistantConversation({
   family,
   onSource,
 }: {
@@ -30,108 +49,67 @@ export function AssistantPanel({
   const { state, data } = useWorkspace();
   const [input, setInput] = useState(''),
     [messages, setMessages] = useState<
-      {
-        question: string;
-        answer: { answer: string; evidenceCitationIds: string[] };
-      }[]
-    >([]);
-  function ask(question: string) {
+      { question: string; answer: KnowledgeAnswer }[]
+    >([]),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState<string | null>(null),
+    [mode, setMode] = useState<'workflow' | 'agentic'>('workflow'),
+    [engine, setEngine] = useState<EnginesResponse['active'] | null>(null);
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/engines', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        if (r.ok) setEngine(((await r.json()) as EnginesResponse).active);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [state.identity?.organizationId]);
+  useEffect(() => {
+    return () => pending.current?.abort();
+  }, []);
+  async function ask(question: string) {
     const text = question.trim();
-    if (!text) return;
-    const query = text.toLocaleLowerCase();
-    const named = data.families.filter((f) =>
-      query.includes(f.name.toLocaleLowerCase()),
-    );
-    const selected = named.length === 1 ? named[0].id : family;
-    const holdings = data.holdings.filter(
-      (h) => selected === 'all' || h.familyId === selected,
-    );
-    const events = data.events.filter(
-      (e) => selected === 'all' || e.familyId === selected,
-    );
-    const scope =
-      selected === 'all'
-        ? 'All families'
-        : (data.families.find((f) => f.id === selected)?.name ??
-          'Selected family');
-    let response = '',
-      citations: string[] = [];
-    if (!holdings.length)
-      response =
-        'No holdings are recorded in this scope. Add an opening holding in Investments, then import and review its source documents in Processing.';
-    else if (/return|performance|volatility|benchmark/.test(query))
-      response =
-        'This assistant does not calculate investment returns or risk measures. Complete dated valuations and external cash flows are needed; recorded marks alone are insufficient.';
-    else if (/cash|liquidity/.test(query)) {
-      const cash = holdings.filter((h) => h.assetClass === 'Cash');
-      response =
-        scope +
-        ' · Recorded cash positions total ' +
-        money(
-          cash.reduce((sum, h) => sum + h.valueEUR, 0),
-          2,
-        ) +
-        '. This reflects recorded accounts only; source coverage and availability require review.';
-      citations = cash.map((h) => h.sourceId);
-    } else if (/commitment|unfunded/.test(query)) {
-      const committed = holdings.filter((h) => h.unfundedCommitmentEUR > 0);
-      response =
-        scope +
-        ' · Recorded unfunded commitments total ' +
-        money(
-          committed.reduce((sum, h) => sum + h.unfundedCommitmentEUR, 0),
-          2,
-        ) +
-        ' across ' +
-        committed.length +
-        ' holdings. Notices do not establish payment or settlement.';
-      citations = committed.map((h) => h.sourceId);
-    } else if (/change|recent|update|latest/.test(query)) {
-      const recent = [...events]
-        .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
-        .slice(0, 3);
-      response = recent.length
-        ? scope +
-          ' · ' +
-          recent
-            .map((e) => e.title + ' (' + e.date + '): ' + e.summary)
-            .join(' ')
-        : 'No source-linked developments are recorded in this scope yet.';
-      citations = recent.map((e) => e.sourceId);
-    } else if (/allocat|portfolio|holding|value/.test(query)) {
-      const total = holdings.reduce((sum, h) => sum + h.valueEUR, 0);
-      const groups = new Map<string, number>();
-      for (const h of holdings)
-        groups.set(h.assetClass, (groups.get(h.assetClass) ?? 0) + h.valueEUR);
-      response =
-        scope +
-        ' · ' +
-        holdings.length +
-        ' recorded holdings total ' +
-        money(total, 2) +
-        '. ' +
-        [...groups]
-          .map(
-            ([name, value]) =>
-              name +
-              ': ' +
-              money(value, 2) +
-              (total ? ' (' + percent(value / total) + ')' : ''),
-          )
-          .join('; ') +
-        '. Values use each position’s latest recorded mark.';
-      citations = holdings.map((h) => h.sourceId);
-    } else
-      response =
-        'This assistant supports recorded allocation, cash, commitments and recent updates using fixed workspace queries. Open Processing for local AI document extraction.';
-    const answer = {
-      answer: response,
-      evidenceCitationIds: [...new Set(citations)].filter((id) =>
-        data.evidence.some((s) => s.id === id),
-      ),
-    };
-    setMessages((m) => [...m, { question: text, answer }]);
-    setInput('');
+    if (text.length < 2 || busy) return;
+    const controller = new AbortController();
+    pending.current = controller;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/intelligence/ask', {
+        method: 'POST',
+        credentials: 'same-origin',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text, familyId: family, mode }),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(
+          payload.message ?? 'The question could not be completed.',
+        );
+      if (!controller.signal.aborted) {
+        setMessages((current) => [
+          ...current.slice(-9),
+          { question: text, answer: payload as KnowledgeAnswer },
+        ]);
+        setEngine(payload.engine);
+        setInput('');
+      }
+    } catch (e) {
+      if (!controller.signal.aborted)
+        setError(
+          e instanceof Error
+            ? e.message
+            : 'The question could not be completed.',
+        );
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
   }
   return (
     <div className="assistant-panel">
@@ -141,11 +119,35 @@ export function AssistantPanel({
         </span>
         <h2>Your office, in context.</h2>
         <p>
-          Ask about the portfolio, commitments or latest developments. Every
-          answer stays connected to its evidence.
+          Retrieve sourced passages and calculate from recorded holdings.
+          Answers remain read-only and connected to their evidence.
         </p>
-        <Status tone="violet">Workspace record queries</Status>
+        <Status tone="violet">
+          {engine
+            ? `${engine.name} · ${engine.execution}`
+            : 'Selected workspace engine'}
+        </Status>
       </div>
+      <div className={styles.mode}>
+        <Picker
+          label="Question processing mode"
+          value={mode}
+          options={[
+            { value: 'workflow', label: 'Workflow · one source pass' },
+            { value: 'agentic', label: 'Agentic · bounded source tools' },
+          ]}
+          onChange={(value) => setMode(value as 'workflow' | 'agentic')}
+        />
+        <span className={styles.answerMeta}>
+          {engine?.model ?? 'Engine resolved when you ask'}
+        </span>
+      </div>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Question unavailable</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       {messages.length ? (
         <div className="assistant-messages" aria-live="polite">
           {messages.map((m, i) => (
@@ -153,19 +155,85 @@ export function AssistantPanel({
               <div className="user-message">{m.question}</div>
               <div className="assistant-answer">
                 <Sparkles />
-                <div>
-                  <p>{m.answer.answer}</p>
-                  {m.answer.evidenceCitationIds.length ? (
-                    <div className="answer-sources">
-                      {m.answer.evidenceCitationIds.slice(0, 5).map((id, j) => (
-                        <button key={id} onClick={() => onSource(id)}>
-                          <FileText />
-                          Source {j + 1}
-                          <ArrowUpRight />
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                <div className={styles.answer}>
+                  <p>
+                    {m.answer.status === 'model_unavailable'
+                      ? 'The selected model could not provide a validated answer. No fallback engine was used.'
+                      : m.answer.status === 'insufficient_evidence'
+                        ? 'The accessible indexed sources did not provide a supported answer. Try indexing the relevant original or asking a narrower question.'
+                        : 'These source passages and recorded calculations support your question.'}
+                  </p>
+                  {m.answer.calculations.map((c) => (
+                    <section className={styles.calculation} key={c.id}>
+                      <span>{c.label}</span>
+                      <strong>{money(c.valueEUR, 2)}</strong>
+                      <p className={styles.answerMeta}>
+                        {c.holdingIds.length} accessible holding records ·{' '}
+                        {c.basis}
+                      </p>
+                      {c.holdingIds.slice(0, 8).map((id) => {
+                        const h = data.holdings.find((h) => h.id === id);
+                        const source = data.evidence.find(
+                          (e) => e.id === h?.sourceId,
+                        );
+                        return h ? (
+                          <p key={id} className={styles.answerMeta}>
+                            {h.name} · mark {h.valuationDate}
+                            {source ? (
+                              <Button
+                                size="sm"
+                                variant="link"
+                                onClick={() => onSource(source.id)}
+                              >
+                                Recorded source
+                              </Button>
+                            ) : null}
+                          </p>
+                        ) : null;
+                      })}
+                      {c.holdingIds.length > 8 ? (
+                        <p className={styles.answerMeta}>
+                          And {c.holdingIds.length - 8} more holdings in this
+                          calculation; inspect Investments for the complete
+                          records.
+                        </p>
+                      ) : null}
+                    </section>
+                  ))}
+                  {m.answer.citations.map((c, j) => (
+                    <section key={c.id + ':' + j}>
+                      <blockquote>{c.quote}</blockquote>
+                      <a
+                        href={'/api/documents/' + c.documentId}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {c.filename} · {c.source} · page {c.page}
+                      </a>
+                    </section>
+                  ))}
+                  <p className={styles.answerMeta}>
+                    {m.answer.engine.model} · {m.answer.engine.execution} ·{' '}
+                    {m.answer.mode} · {m.answer.modelCalls} model calls.
+                    Searched {m.answer.coverage.searchedDocuments} indexed
+                    documents / {m.answer.coverage.searchedPages} decoded pages.
+                    {m.answer.coverage.truncated ? ' Coverage capped.' : ''}
+                  </p>
+                  {[...m.answer.warnings, ...m.answer.coverage.warnings].map(
+                    (w, j) => (
+                      <p className={styles.answerMeta} key={j}>
+                        {w}
+                      </p>
+                    ),
+                  )}
+                  <details>
+                    <summary>Read-only processing steps</summary>
+                    {m.answer.trace.map((t, j) => (
+                      <p key={j}>
+                        {t.stage}: {t.detail}
+                      </p>
+                    ))}
+                  </details>
                 </div>
               </div>
             </div>
@@ -174,7 +242,7 @@ export function AssistantPanel({
       ) : (
         <div className="assistant-suggestions">
           {prompts.map((p) => (
-            <button key={p.text} onClick={() => ask(p.text)}>
+            <button key={p.text} disabled={busy} onClick={() => ask(p.text)}>
               <p.icon />
               <span>{p.text}</span>
               <ArrowUpRight />
@@ -186,7 +254,7 @@ export function AssistantPanel({
         className="assistant-composer"
         onSubmit={(e) => {
           e.preventDefault();
-          ask(input);
+          void ask(input);
         }}
       >
         <Field>
@@ -196,12 +264,13 @@ export function AssistantPanel({
           <Textarea
             id="ask-question"
             placeholder="Ask about your office…"
+            maxLength={600}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                ask(input);
+                void ask(input);
               }
             }}
           />
@@ -209,15 +278,23 @@ export function AssistantPanel({
         <Button
           type="submit"
           size="icon"
-          disabled={!input.trim()}
-          aria-label="Send question"
+          disabled={input.trim().length < 2 || busy}
+          aria-label="Ask question"
         >
-          <ArrowUp />
+          {busy ? <Loader2 /> : <ArrowUp />}
         </Button>
       </form>
+      {busy ? (
+        <output className={styles.answerMeta}>
+          Reading accessible evidence with the selected engine. Local inference
+          may take several minutes.
+        </output>
+      ) : null}
       <p className="assistant-footnote">
-        {state.sampleData ? 'Includes sample records · ' : ''}Fixed queries over
-        recorded data · AI document extraction is in Processing
+        {state.sampleData ? 'Includes sample holding records · ' : ''}Family
+        selection limits recorded calculations; document retrieval uses your
+        source-access permissions. Only indexed originals are searched. No
+        messages, trades or record changes.
       </p>
     </div>
   );

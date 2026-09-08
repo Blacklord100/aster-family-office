@@ -100,7 +100,7 @@ export async function PATCH(request: Request) {
         if (!input.role)
           throw new AccessError(400, 'ROLE_REQUIRED', 'Choose a role.');
         await c.query(
-          'UPDATE app_memberships SET role=$3 WHERE organization_id=$1 AND user_id=$2',
+          "UPDATE app_memberships SET role=$3,data_scope=CASE WHEN $3='viewer' THEN data_scope ELSE NULL END WHERE organization_id=$1 AND user_id=$2",
           [ctx.organizationId, input.userId, input.role],
         );
       }

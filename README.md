@@ -2,6 +2,10 @@
 
 A portable family-office workspace with a Linear/Notion-inspired interface, PostgreSQL, invitation-only authentication, mandatory production MFA, and two document-processing modes with independently selected engines. Local execution is the deployment default. This application no longer depends on ChatGPT Sites, Cloudflare D1 or Vinext.
 
+## Current release: 0.4
+
+The seven-item expansion adds a sourced investment register and transaction ledger, per-fact review history, document/manager intelligence, custom-period reconciliation and liquidity reporting, immutable stress-run inputs/results, real selected-engine document answers, a new synthetic model benchmark and operational access/recovery/retention controls. See [access and maintenance](operations/access-recovery-maintenance.md), [intelligence](operations/intelligence.md), and [the release validation record](VALIDATION-SEVEN-ITEMS.md). Earlier validation files remain historical evidence of their recorded versions.
+
 ## What is implemented
 
 - Organization membership and owner/admin/analyst/viewer permissions, enforced at APIs; PostgreSQL row-level security for workspace, documents, jobs, facts and audit records.
@@ -56,7 +60,7 @@ processor/.venv/bin/pip install -r processor/requirements.lock.txt
 npm run processor:dev
 ```
 
-Set `OLLAMA_MODEL` to an installed, reviewed local model. The development helper defaults to `qwen3:1.7b`; the application does not download it automatically. Earlier evaluations used those weights on the GPU. The final extraction regression run uses the already installed Qwen3 0.6B weights through `qwen3-aster-cpu:0.6b`, a local alias with `PARAMETER num_gpu 0`, after this host developed severe GPU contention. This is a measured local fallback, not a general model recommendation or a controlled speed comparison. The original 27B model exceeded this machine's memory budget. See [processor/README.md](processor/README.md) for limits, OCR and model configuration, and [VALIDATION.md](VALIDATION.md) for the preserved evaluation attempts.
+Set `OLLAMA_MODEL` to an installed, reviewed local model. The development helper defaults to `qwen3:1.7b`; the application does not download it automatically. Earlier evaluations used those weights on the GPU. The earlier 0.3 extraction regression used the already installed Qwen3 0.6B weights through `qwen3-aster-cpu:0.6b`, a local alias with `PARAMETER num_gpu 0`, after this host developed severe GPU contention. This is a measured local fallback, not a general model recommendation or a controlled speed comparison. The original 27B model exceeded this machine's memory budget. The 0.4 comparison uses the already installed Gemma model; see [benchmark results](benchmark/README.md). See [processor/README.md](processor/README.md) for limits, OCR and model configuration, and [VALIDATION.md](VALIDATION.md) for the preserved evaluation attempts.
 
 Provision the first owner explicitly with a private mode-0600 password file (15–128 characters). There are no built-in production credentials:
 
@@ -78,13 +82,13 @@ npm audit
 
 Real PostgreSQL suites are explicit opt-ins. `AUTH_TEST_DATABASE_URL` and `APP_TEST_DATABASE_URL` must use the restricted runtime role on a migrated disposable database; cleanup of append-only audit fixtures additionally requires the explicitly configured test maintenance URL. Application-worker tests need the processor and worker running with matching encryption key and processor token. Test fixtures use generated IDs and example.invalid emails.
 
-See [VALIDATION.md](VALIDATION.md) for the actual build, browser, database and local-inference evidence from this upgrade.
+See [VALIDATION-SEVEN-ITEMS.md](VALIDATION-SEVEN-ITEMS.md) for the current build, browser, database and local-inference evidence.
 
 ## Boundaries before a live office rollout
 
 - Read-only Gmail and Microsoft OAuth, per-account historical backfill, scheduled synchronization and scoped MCP access are implemented. Real provider credentials and live consent/backfill tests are still required; no mailbox is connected by default. See [mailbox setup](operations/mailbox-oauth.md) and [assistant access](operations/agent-access.md).
-- EUR valuation posting is supported. Other currencies need an explicit conversion/reconciliation workflow. Notices never execute payments, settle cash or automatically change commitments.
-- The ledger retains sources and accepted events; it is not a general-ledger, tax or custodian reconciliation system. A previously accepted amount cannot be restored by replaying an older fact; that needs a deliberate correction/version workflow.
+- The register supports EUR/USD/GBP/CHF native amounts with explicitly sourced and dated FX into EUR. Reviewed obligations and confirmed settlements are separate; reversals and valuation corrections preserve prior records. Notices never execute payments.
+- Cash-flow reconciliation uses explicit statement coverage and closing balances. It is not a tax, full accounting general-ledger or direct custodian-feed system. Custom-period returns remain unavailable where source marks or reconciled flow coverage are incomplete.
 - Relevance training and local-model evaluation use a tiny synthetic corpus. Workflow is the default. Validate models on a representative, consented document corpus before relying on them.
-- Email delivery/password reset, existing-account linking, SSO/SCIM, data retention/deletion, key rotation, external audit anchoring and a complete accounting reconciliation model need additional integration and operational decisions. The current workspace supports up to 40 saved report snapshots; reaching the limit rejects new saves and preserves existing reports.
+- Optional encrypted password-reset delivery, reviewed retention and controlled key rotation are implemented. A real SMTP relay, production recovery procedure, existing-account linking, SSO/SCIM and external audit anchoring still need deployment/product decisions. Earlier reports allow 40 snapshots; new full-input period/stress snapshots allow 20 and an 8 MiB state bound. Limits reject new saves and preserve existing records.
 - Container deployment, monitored backups/restore, alerting, production capacity tests and independent security review remain release gates. This is a tested application and a reviewable deployment foundation, not certification that a production installation is secure.

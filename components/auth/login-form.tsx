@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type SubmitEvent } from 'react';
 import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
@@ -156,6 +157,14 @@ export function LoginForm() {
           {!busy ? <ArrowRight className="size-4" /> : null}
         </button>
       </form>
+      {step === 'password' ? (
+        <Link
+          href="/forgot-password"
+          className="mt-4 block text-xs text-primary hover:underline"
+        >
+          Forgot your password?
+        </Link>
+      ) : null}
       {step === 'factor' ? (
         <div className="mt-5 flex flex-wrap justify-between gap-3 text-xs">
           <button

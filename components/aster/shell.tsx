@@ -18,6 +18,9 @@ import {
   ArrowUpRight,
   Activity,
   Cpu,
+  BookOpen,
+  Network,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,6 +40,9 @@ import { Separator } from '@/components/ui/separator';
 import { useWorkspace } from './workspace-context';
 
 export type View =
+  | 'ledger'
+  | 'intelligence'
+  | 'operations'
   | 'overview'
   | 'investments'
   | 'timeline'
@@ -49,6 +55,8 @@ export type View =
 export const navigation = [
   { id: 'overview', label: 'Overview', icon: House },
   { id: 'investments', label: 'Investments', icon: BriefcaseBusiness },
+  { id: 'ledger', label: 'Register & ledger', icon: BookOpen },
+  { id: 'intelligence', label: 'Knowledge & managers', icon: Network },
   { id: 'risk', label: 'Exposure & stress', icon: Activity },
   { id: 'timeline', label: 'Timeline', icon: Clock3 },
   { id: 'inbox', label: 'Inbox', icon: Mail },
@@ -56,7 +64,25 @@ export const navigation = [
   { id: 'agents', label: 'Processing', icon: Bot },
   { id: 'engines', label: 'AI engines', icon: Cpu },
   { id: 'connections', label: 'Connections', icon: Link2 },
+  { id: 'operations', label: 'Operations', icon: ShieldCheck },
 ] as const;
+export function navigationFor(
+  identity?: { role: string; dataScope?: unknown } | null,
+) {
+  return navigation.filter(
+    (n) =>
+      (n.id !== 'operations' ||
+        ['owner', 'admin'].includes(identity?.role ?? '')) &&
+      (!identity?.dataScope ||
+        ![
+          'agents',
+          'engines',
+          'connections',
+          'intelligence',
+          'operations',
+        ].includes(n.id)),
+  );
+}
 type Props = {
   view: View;
   family: string;
@@ -108,7 +134,7 @@ function Navigation({
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {navigation.map((n) => (
+            {navigationFor(state.identity).map((n) => (
               <SidebarMenuItem key={n.id}>
                 <SidebarMenuButton
                   isActive={view === n.id}

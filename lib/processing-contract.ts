@@ -69,6 +69,7 @@ export type ProcessingJob = {
   result: Extraction | null;
   engine?: EngineSnapshot | null;
   engineLegacy?: boolean;
+  review?: import('./review-contract').ReviewState | null;
 };
 export type ProcessingPolicy = {
   mode: ProcessingMode;
@@ -83,4 +84,5 @@ export type WorkspaceIdentity = {
   organizationName: string;
   role: 'owner' | 'admin' | 'analyst' | 'viewer';
   mfaEnabled: boolean;
+  dataScope?: import('./data-scope').DataScope | null;
 };

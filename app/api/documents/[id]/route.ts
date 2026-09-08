@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/access';
 import { decrypt } from '@/lib/server/crypto';
 import { audit } from '@/lib/server/audit';
+import { assertDocumentAccess } from '@/lib/server/data-scope';
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -16,6 +17,7 @@ export async function GET(
     if (!/^[0-9a-f-]{36}$/i.test(id))
       throw new AccessError(404, 'NOT_FOUND', 'Document not found.');
     return await withTenant(ctx.organizationId, async (client) => {
+      await assertDocumentAccess(client, ctx, id);
       const { rows } = await client.query(
         'SELECT filename,mime_type,payload FROM app_documents WHERE organization_id=$1 AND id=$2',
         [ctx.organizationId, id],

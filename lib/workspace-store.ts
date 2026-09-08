@@ -3,6 +3,8 @@ import { initialWorkspace, type WorkspaceState } from './workspace';
 import { withTenant } from './server/db';
 import { encrypt, decrypt } from './server/crypto';
 import { audit } from './server/audit';
+import { scopeWorkspace } from './data-scope';
+import { releasedDocumentIds } from './server/data-scope';
 import type { WorkspaceContext } from './server/access';
 export async function readWorkspaceInTransaction(
   client: PoolClient,
@@ -42,9 +44,20 @@ export async function readWorkspaceInTransaction(
   return readWorkspaceInTransaction(client, organizationId, lock);
 }
 export async function readWorkspace(context: WorkspaceContext) {
-  return withTenant(context.organizationId, (client) =>
-    readWorkspaceInTransaction(client, context.organizationId),
-  );
+  return withTenant(context.organizationId, async (client) => {
+    const record = await readWorkspaceInTransaction(
+      client,
+      context.organizationId,
+    );
+    return {
+      ...record,
+      state: scopeWorkspace(
+        record.state,
+        context.scope,
+        await releasedDocumentIds(client, context),
+      ),
+    };
+  });
 }
 export async function saveWorkspace(
   client: PoolClient,

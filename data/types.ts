@@ -25,7 +25,13 @@ export interface Entity {
   id: string;
   familyId: FamilyId;
   name: string;
-  type: 'Holding company' | 'Property SPV';
+  type:
+    | 'Holding company'
+    | 'Property SPV'
+    | 'Trust'
+    | 'Foundation'
+    | 'Partnership'
+    | 'Individual';
   jurisdiction: string;
   ownershipPercent: number;
 }
@@ -62,12 +68,15 @@ export interface Holding {
   valuationMethod:
     | 'Synthetic market mark'
     | 'Reported fund NAV'
+    | 'Reported market mark'
+    | 'Reported mark plus settled capital'
     | 'Equity appraisal, net of debt'
     | 'Cash balance';
 }
 /** All figures are synthetic. Flows are signed, external to the modeled portfolio,
  * and occur after the day's return. Internal distributions/transfers are not external flows. */
 export interface HoldingValuation {
+  flowCoverage?: 'unknown' | 'reconciled' | 'synthetic';
   holdingId: string;
   date: string;
   valueEUR: number;
@@ -92,6 +101,8 @@ export interface MailboxSource {
   coverageEnd: string;
 }
 export interface EvidenceSource {
+  reportedEffectiveDate?: string | null;
+  effectiveDateBasis?: 'Source reported' | 'Receipt date fallback';
   id: string;
   mailboxId: string;
   familyId: FamilyId;
@@ -108,6 +119,9 @@ export interface EvidenceSource {
   documentId?: string;
 }
 export interface TimelineEvent {
+  dateBasis?: 'Source reported' | 'Receipt date fallback';
+  reportedCurrency?: string | null;
+  reportedAmount?: string | null;
   id: string;
   familyId: FamilyId;
   holdingIds: string[];

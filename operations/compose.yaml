@@ -19,18 +19,22 @@ x-app-environment: &app-environment
   BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
   BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
   ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+  ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+  ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
   PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
   AUTH_REQUIRE_MFA: "true"
   AUTH_CLIENT_IP_HEADER: x-real-ip
   PROCESSOR_URL: http://processor:8000
   OLLAMA_BASE_URL: http://ollama:11434
   OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
-  WORKER_HEARTBEAT_FILE: /tmp/aster-worker-heartbeat
+  WORKER_HEARTBEAT_FILE: /run/aster-health/document
+  BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
 x-app-secrets: &app-secrets
   - source: runtime_password
     target: db_password
   - better_auth_secret
   - encryption_key
+  - encryption_keyring
   - processor_token
 services:
   postgres:
@@ -71,14 +75,19 @@ services:
     environment:
       <<: *app-environment
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
+      EMAIL_DELIVERY_ENABLED: ${EMAIL_DELIVERY_ENABLED:-false}
     secrets:
       - source: runtime_password
         target: db_password
       - better_auth_secret
       - encryption_key
+      - encryption_keyring
       - processor_token
       - mailbox_providers
     command: ["node", ".next/standalone/server.js"]
+    volumes:
+      - worker_health:/run/aster-health:ro
+      - ./receipts:/run/aster-receipts:ro
     # Only loopback published. Use Caddy or your own TLS ingress for remote access.
     ports: ["127.0.0.1:${ASTER_LOCAL_PORT:-3000}:3000"]
     tmpfs:
@@ -104,6 +113,7 @@ services:
     secrets: *app-secrets
     command: ["npm", "run", "worker"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=256m,uid=1000,gid=1000"]
+    volumes: ["worker_health:/run/aster-health"]
     # Both networks are internal. Worker has no normal internet route.
     networks: [database, local-confidential]
     depends_on:
@@ -131,12 +141,15 @@ services:
       DB_USER: aster_runtime
       DB_PASSWORD_FILE: /run/secrets/db_password
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       MAILBOX_HEARTBEAT_FILE: /tmp/aster-mailbox-heartbeat
     secrets:
       - source: runtime_password
         target: db_password
       - encryption_key
+      - encryption_keyring
       - mailbox_providers
     command: ["npm", "run", "mailbox:worker"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
@@ -153,6 +166,45 @@ services:
     stop_grace_period: 40s
     mem_limit: 512m
     pids_limit: 64
+  delivery-worker:
+    <<: *hardening
+    profiles: [delivery]
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: delivery
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      EMAIL_DELIVERY_ENABLED: "true"
+      SMTP_SETTINGS_FILE: /run/secrets/smtp_settings
+      DELIVERY_HEARTBEAT_FILE: /tmp/aster-delivery-heartbeat
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+      - smtp_settings
+    command: ["npm", "run", "delivery:worker"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000"]
+    networks: [database, delivery-egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('fs');try{process.exit(Date.now()-Number(fs.readFileSync('/tmp/aster-delivery-heartbeat','utf8'))<120000?0:1)}catch{process.exit(1)}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 60s
+    mem_limit: 256m
+    pids_limit: 64
   migrate:
     <<: *hardening
     profiles: [maintenance]
@@ -168,6 +220,7 @@ services:
         target: db_password
       - better_auth_secret
       - encryption_key
+      - encryption_keyring
       - processor_token
     command: ["npm", "run", "db:migrate"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
@@ -274,9 +327,11 @@ services:
 networks:
   edge: {}
   mail-egress: {}
+  delivery-egress: {}
   database: {internal: true}
   local-confidential: {internal: true}
 volumes:
+  worker_health: {}
   postgres_data: {}
   caddy_data: {}
   caddy_config: {}
@@ -288,3 +343,6 @@ secrets:
   encryption_key: {file: "${ASTER_SECRETS_DIR:-./secrets}/encryption_key"}
   processor_token: {file: "${ASTER_SECRETS_DIR:-./secrets}/processor_token"}
   mailbox_providers: {file: "${ASTER_SECRETS_DIR:-./secrets}/mailbox_providers"}
+
+  encryption_keyring: {file: "${ASTER_SECRETS_DIR:-./secrets}/encryption_keyring"}
+  smtp_settings: {file: "${ASTER_SECRETS_DIR:-./secrets}/smtp_settings"}

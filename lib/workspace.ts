@@ -24,6 +24,9 @@ import { createWorkspaceDemoScenario } from './demo-engine';
 import type { DemoEngineState } from './demo-engine';
 import { calculatePortfolioMetrics } from './finance';
 import type { RiskData, RiskScenario } from './risk-contract';
+import type { FinanceState } from './ledger-contract';
+import type { ReportingState } from './reporting-contract';
+import type { IntelligenceState } from './intelligence-contract';
 export const scenario = createWorkspaceDemoScenario({
   asOfDate: AS_OF_DATE,
   holdings,
@@ -68,6 +71,9 @@ export type WorkspaceState = {
   reports: SavedReport[];
   riskData?: RiskData;
   riskScenarios?: SavedRiskScenario[];
+  finance?: FinanceState;
+  reporting?: ReportingState;
+  intelligence?: IntelligenceState;
   syncs: Record<string, string>;
   officeName: string;
 };

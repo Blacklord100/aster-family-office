@@ -1,6 +1,7 @@
 import 'server-only';
 import { auth, authEnvironment, mfaRequired } from './auth';
 import { isOrganizationId, pool } from './db';
+import { DataScopeSchema, type DataScope } from '../data-scope';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'analyst' | 'viewer';
 export interface WorkspaceContext {
@@ -8,6 +9,7 @@ export interface WorkspaceContext {
   organizationId: string;
   role: WorkspaceRole;
   sessionId: string;
+  scope?: DataScope | null;
 }
 
 export class AccessError extends Error {
@@ -82,8 +84,12 @@ export async function requireWorkspace(
       'INVALID_ORGANIZATION',
       'Choose a valid workspace.',
     );
-  const result = await pool.query<{ organization_id: string; role: string }>(
-    `SELECT organization_id, role FROM app_memberships WHERE user_id = $1 AND revoked_at IS NULL
+  const result = await pool.query<{
+    organization_id: string;
+    role: string;
+    data_scope?: unknown;
+  }>(
+    `SELECT organization_id, role, data_scope FROM app_memberships WHERE user_id = $1 AND revoked_at IS NULL
      ${requested ? 'AND organization_id = $2' : ''} ORDER BY organization_id LIMIT 1`,
     requested ? [current.user.id, requested] : [current.user.id],
   );
@@ -104,6 +110,29 @@ export async function requireWorkspace(
       'Set up or verify your authenticator in Account security to open this workspace.',
     );
   }
+  const scope =
+    membership.data_scope == null
+      ? null
+      : DataScopeSchema.parse(membership.data_scope);
+  if (scope) {
+    const path = new URL(request.url).pathname;
+    const readable =
+      request.method === 'GET' &&
+      (['/api/workspace', '/api/ledger', '/api/reporting'].includes(path) ||
+        /^\/api\/documents\/[a-f0-9-]{36}(?:\/preview)?$/i.test(path));
+    const question =
+      request.method === 'POST' && path === '/api/intelligence/ask';
+    if (
+      membership.role !== 'viewer' ||
+      permission !== 'read' ||
+      (!readable && !question)
+    )
+      throw new AccessError(
+        403,
+        'SCOPED_ACCESS',
+        'This account has read-only access to selected family records.',
+      );
+  }
   return {
     user: {
       id: current.user.id,
@@ -113,5 +142,6 @@ export async function requireWorkspace(
     organizationId: membership.organization_id,
     role: membership.role as WorkspaceRole,
     sessionId: current.session.id,
+    scope,
   };
 }

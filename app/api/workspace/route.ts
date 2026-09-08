@@ -16,7 +16,11 @@ import {
 } from '@/lib/server/access';
 import { parseJson, json } from '@/lib/server/http';
 import type { Holding } from '@/data';
-import { riskActions, changeRiskWorkspace, RiskWorkspaceError } from '@/lib/risk-workspace';
+import {
+  riskActions,
+  changeRiskWorkspace,
+  RiskWorkspaceError,
+} from '@/lib/risk-workspace';
 const Action = z.discriminatedUnion('type', [
   ...riskActions,
   z.object({
@@ -91,6 +95,7 @@ export async function GET(request: Request) {
         organizationId: context.organizationId,
         organizationName: state.officeName,
         role: context.role,
+        dataScope: context.scope ?? null,
         mfaEnabled: true,
       },
     });
@@ -124,7 +129,11 @@ export async function POST(request: Request) {
               return changeRiskWorkspace(s, input);
             } catch (e) {
               if (e instanceof RiskWorkspaceError)
-                throw new AccessError(e.code === 'SCENARIO_NOT_FOUND' ? 404 : 400, e.code, e.message);
+                throw new AccessError(
+                  e.code === 'SCENARIO_NOT_FOUND' ? 404 : 400,
+                  e.code,
+                  e.message,
+                );
               throw e;
             }
           case 'task':

@@ -12,6 +12,7 @@ export function proxy(request: NextRequest) {
     "img-src 'self' data: blob:",
     "font-src 'self'",
     "connect-src 'self'" + (dev ? ' ws: wss:' : ''),
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -29,5 +30,5 @@ export function proxy(request: NextRequest) {
   return response;
 }
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|pdfjs/).*)'],
 };

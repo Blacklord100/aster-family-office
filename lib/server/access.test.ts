@@ -85,6 +85,7 @@ describe('workspace boundary', () => {
       sessionId: 'session-1',
       organizationId: ORG,
       role: 'owner',
+      scope: null,
     });
     expect(mocked.query.mock.calls[0][0]).toContain('ORDER BY organization_id');
   });
@@ -140,6 +141,33 @@ describe('workspace boundary', () => {
     expect(roleAllows('superadmin', 'read')).toBe(false);
     expect(roleAllows('viewer', 'read')).toBe(true);
     expect(roleAllows('analyst', 'write')).toBe(true);
+  });
+  it('limits client viewers to reviewed read endpoints and rejects mixed queues', async () => {
+    mocked.query.mockResolvedValue({
+      rows: [
+        {
+          organization_id: ORG,
+          role: 'viewer',
+          data_scope: { familyIds: ['family-a'] },
+        },
+      ],
+    });
+    expect((await requireWorkspace(request())).scope).toEqual({
+      familyIds: ['family-a'],
+    });
+    await expect(
+      requireWorkspace(new Request('https://aster.example.com/api/processing')),
+    ).rejects.toMatchObject({ code: 'SCOPED_ACCESS' });
+    await expect(
+      requireWorkspace(
+        new Request(
+          'https://aster.example.com/api/intelligence/search?q=private',
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'SCOPED_ACCESS' });
+    await expect(requireWorkspace(request(), 'write')).rejects.toMatchObject({
+      status: 403,
+    });
   });
 });
 

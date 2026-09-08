@@ -11,6 +11,7 @@ import { audit } from '@/lib/server/audit';
 import { decrypt } from '@/lib/server/crypto';
 import { ExtractionSchema } from '@/lib/processing-contract';
 import { activeEngine } from '@/lib/server/engine-store';
+import { readReview } from '@/lib/server/review-store';
 import { EngineSnapshotSchema } from '@/lib/engine-contract';
 export async function GET(request: Request) {
   try {
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
           [ctx.organizationId],
         ),
         client.query(
-          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id WHERE j.organization_id=$1 ORDER BY j.created_at DESC,j.id DESC LIMIT 100',
+          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,j.review_revision,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id WHERE j.organization_id=$1 ORDER BY j.created_at DESC,j.id DESC LIMIT 100',
           [ctx.organizationId],
         ),
       ]);
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
       const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0];
       const stored = selected
         ? await client.query(
-            'SELECT result FROM app_jobs WHERE id=$1 AND organization_id=$2',
+            'SELECT result,review_state FROM app_jobs WHERE id=$1 AND organization_id=$2',
             [selected.id, ctx.organizationId],
           )
         : null;
@@ -66,6 +67,14 @@ export async function GET(request: Request) {
           ? EngineSnapshotSchema.parse(j.engine_snapshot)
           : null,
         engineLegacy: j.engine_legacy,
+        review:
+          j.id === selected?.id && result
+            ? readReview(
+                { ...j, review_state: stored?.rows[0]?.review_state },
+                ctx.organizationId,
+                result,
+              )
+            : null,
       }));
       const engine = (await activeEngine(client, ctx.organizationId)).snapshot;
       return json({

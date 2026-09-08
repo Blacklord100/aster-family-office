@@ -11,6 +11,16 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // The PDF worker may parse source bytes but cannot connect to any network endpoint.
+        source: '/pdfjs/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; script-src 'self'; connect-src 'none'",
+          },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },

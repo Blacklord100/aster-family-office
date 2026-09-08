@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from './workspace-context';
+import { DataAccessSettings } from './data-access-settings';
 type Member = {
   id: string;
   name: string;
@@ -232,6 +233,7 @@ export function TeamSettings() {
           ))}
         </div>
       </details>
+      <DataAccessSettings />
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-for (const name of ['worker', 'mailbox-worker'])
+for (const name of ['worker', 'mailbox-worker', 'delivery-worker'])
   await build({
     entryPoints: ['scripts/' + name + '.ts'],
     outfile: 'dist-' + name + '/index.js',
@@ -11,7 +11,13 @@ for (const name of ['worker', 'mailbox-worker'])
     alias: { 'server-only': './scripts/server-only-stub.ts' },
     sourcemap: false,
   });
-for (const name of ['migrate', 'bootstrap'])
+for (const name of [
+  'migrate',
+  'bootstrap',
+  'rotate-keys',
+  'encryption-maintenance',
+  'monitor',
+])
   await build({
     entryPoints: ['scripts/' + name + '.ts'],
     outfile: 'dist-ops/' + name + '.js',

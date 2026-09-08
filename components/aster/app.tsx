@@ -3,7 +3,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
-import { Shell, navigation, type View } from './shell';
+import { Shell, navigation, navigationFor, type View } from './shell';
 import { Overview } from './overview';
 import { InvestmentsView, InvestmentDetail } from './investments';
 import { TimelineView } from './timeline';
@@ -56,8 +56,24 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 type Route = { view: View; family: string; holding: string | null };
 const DEFAULT_ROUTE: Route = { view: 'overview', family: 'all', holding: null };
-const RiskView = dynamic(() => import('./risk-view').then((module) => module.RiskView));
-const EnginesView = dynamic(() => import('./engines-view').then((module) => module.EnginesView));
+const ReportingWorkbench = dynamic(() =>
+  import('./reporting-workbench').then((module) => module.ReportingWorkbench),
+);
+const LedgerView = dynamic(() =>
+  import('./ledger-view').then((module) => module.LedgerView),
+);
+const IntelligenceView = dynamic(() =>
+  import('./intelligence-view').then((module) => module.IntelligenceView),
+);
+const OperationsView = dynamic(() =>
+  import('./operations-view').then((module) => module.OperationsView),
+);
+const RiskView = dynamic(() =>
+  import('./risk-view').then((module) => module.RiskView),
+);
+const EnginesView = dynamic(() =>
+  import('./engines-view').then((module) => module.EnginesView),
+);
 export function AsterApp() {
   const [route, setRoute] = useState<Route>(DEFAULT_ROUTE),
     [state, setState] = useState<WorkspaceState>(() => initialWorkspace(false)),
@@ -284,16 +300,41 @@ export function AsterApp() {
                 onHolding={openHolding}
               />
             ) : null}
-            {route.view === 'agents' ? <ProcessingView /> : null}
-            {route.view === 'risk' ? <RiskView family={route.family} onFamily={family} /> : null}
-            {route.view === 'engines' ? <EnginesView /> : null}
-            {route.view === 'connections' ? <ConnectionsView /> : null}
+            {route.view === 'ledger' ? (
+              <LedgerView family={route.family} onFamily={family} />
+            ) : null}
+            {route.view === 'intelligence' && !state.identity?.dataScope ? (
+              <IntelligenceView family={route.family} />
+            ) : null}
+            {route.view === 'operations' && canAdmin ? (
+              <OperationsView />
+            ) : null}
+            {route.view === 'agents' && !state.identity?.dataScope ? (
+              <ProcessingView />
+            ) : null}
+            {route.view === 'risk' ? (
+              <RiskView family={route.family} onFamily={family} />
+            ) : null}
+            {route.view === 'engines' && !state.identity?.dataScope ? (
+              <EnginesView />
+            ) : null}
+            {route.view === 'connections' && !state.identity?.dataScope ? (
+              <ConnectionsView />
+            ) : null}
             {route.view === 'reports' ? (
-              <ReportsView
-                family={route.family}
-                onFamily={family}
-                onPreview={preview}
-              />
+              <>
+                <ReportingWorkbench family={route.family} onFamily={family} />
+                <details className="mx-6 mb-8 rounded-xl border bg-white">
+                  <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
+                    Earlier report snapshots & quick exports
+                  </summary>
+                  <ReportsView
+                    family={route.family}
+                    onFamily={family}
+                    onPreview={preview}
+                  />
+                </details>
+              </>
             ) : null}
           </Shell>
           <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
@@ -312,7 +353,7 @@ export function AsterApp() {
                 <CommandList>
                   <CommandEmpty>No matching records.</CommandEmpty>
                   <CommandGroup heading="Workspace">
-                    {navigation.map((n) => (
+                    {navigationFor(state.identity).map((n) => (
                       <CommandItem
                         key={n.id}
                         onSelect={() => {

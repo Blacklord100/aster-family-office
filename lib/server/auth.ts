@@ -7,6 +7,7 @@ import {
 } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { assertDatabaseRole, pool } from './db';
+import { emailDeliveryEnabled, enqueueDelivery } from './delivery';
 
 export const PASSWORD_MIN_LENGTH = 15;
 export const PASSWORD_MAX_LENGTH = 128;
@@ -110,8 +111,35 @@ export function createAsterAuth() {
       minPasswordLength: PASSWORD_MIN_LENGTH,
       maxPasswordLength: PASSWORD_MAX_LENGTH,
       revokeSessionsOnPasswordReset: true,
-      // Password-reset mail is intentionally unavailable until a delivery
-      // provider is configured. No reset token is logged or returned publicly.
+      resetPasswordTokenExpiresIn: 30 * 60,
+      ...(emailDeliveryEnabled()
+        ? {
+            sendResetPassword: async ({
+              user,
+              token,
+            }: {
+              user: { email: string };
+              token: string;
+            }) => {
+              const url =
+                env.origin +
+                '/reset-password#token=' +
+                encodeURIComponent(token);
+              await enqueueDelivery(
+                {
+                  to: user.email,
+                  subject: 'Reset your Aster password',
+                  text:
+                    'A password reset was requested for your Aster account. Open this one-time link within 30 minutes:\n\n' +
+                    url +
+                    '\n\nYour authenticator remains required. If you did not request this, ignore this message.',
+                },
+                'password_reset',
+                new Date(Date.now() + 30 * 60 * 1000),
+              );
+            },
+          }
+        : {}),
     },
     user: {
       modelName: 'auth_user',
@@ -140,6 +168,8 @@ export function createAsterAuth() {
         '/sign-in/email': { window: 60, max: 5 },
         '/two-factor/*': { window: 60, max: 5 },
         '/change-password': { window: 60, max: 5 },
+        '/request-password-reset': { window: 60, max: 3 },
+        '/reset-password': { window: 60, max: 5 },
       },
     },
     advanced: {
@@ -192,8 +222,9 @@ export function createAsterAuth() {
           });
         }
         if (
-          ctx.path === '/request-password-reset' ||
-          ctx.path === '/forget-password'
+          !emailDeliveryEnabled() &&
+          (ctx.path === '/request-password-reset' ||
+            ctx.path === '/forget-password')
         ) {
           throw new APIError('FORBIDDEN', {
             code: 'RECOVERY_NOT_CONFIGURED',

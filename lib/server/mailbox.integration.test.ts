@@ -334,7 +334,7 @@ describe.skipIf(!enabled)(
       );
       const report = JSON.parse(output.trim());
       expect(report.result).toBe('passed');
-      expect(report.tables).toBe(25);
+      expect(report.tables).toBe(30);
       expect(report.decryptedRecords).toBeGreaterThanOrEqual(5);
       expect(
         report.decryptedFields['app_engine_revisions.payload'],

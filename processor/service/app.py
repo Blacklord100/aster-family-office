@@ -43,7 +43,7 @@ class BoundedAuthenticatedUpload:
             if message['type'] == 'http.disconnect':
                 return
             body.extend(message.get('body', b''))
-            if len(body) > (self.maximum if scope['path'] == '/v1/extract' else 65536):
+            if len(body) > (self.maximum if scope['path'] in ('/v1/extract', '/v1/knowledge/decode') else 65536):
                 return await JSONResponse({'detail': 'Request too large'}, status_code=413)(scope, receive, send)
             if not message.get('more_body', False):
                 break
@@ -110,6 +110,9 @@ def create_app(settings: Settings | None = None):
                         if not isinstance(parsed, dict) or set(parsed) != {'ok', 'errorCode'} or type(parsed['ok']) is not bool or parsed['errorCode'] not in (None, 'MODEL_UNAVAILABLE', 'SCHEMA_CHECK_FAILED'):
                             raise ValueError('Invalid engine test result')
                         return parsed
+                    if payload.get('operation') in ('knowledge', 'knowledge_decode'):
+                        from .knowledge import KnowledgeResult, DecodedKnowledge
+                        return (KnowledgeResult if payload['operation'] == 'knowledge' else DecodedKnowledge).model_validate(parsed)
                     return Extraction.model_validate(parsed)
                 except ValueError as exc:
                     raise HTTPException(500, 'Local worker returned an invalid result') from exc
@@ -161,4 +164,6 @@ def create_app(settings: Settings | None = None):
         except Exception:
             raise HTTPException(502, 'Local model discovery unavailable') from None
 
+    from .knowledge_routes import knowledge_router
+    app.include_router(knowledge_router(settings, sandbox))
     return app

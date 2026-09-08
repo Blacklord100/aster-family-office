@@ -6,11 +6,13 @@ import { deriveWorkspace, type PortfolioRecords } from '../workspace';
 import { readWorkspaceInTransaction, saveWorkspace } from '../workspace-store';
 import type { Extraction, ExtractedFact } from '../processing-contract';
 import { sha256 } from './crypto';
+import type { ReviewDecision } from '../review-contract';
+import { postReviewedValuation, convertToEUR } from '../ledger';
+import type { Currency } from '@/data/types';
 import {
   canonicalAmount,
   factAcceptanceIssue,
   supportedMoney,
-  supersededValuationReplay,
 } from '../fact-review';
 export function factFingerprint(fact: ExtractedFact, holdingId: string | null) {
   return sha256(
@@ -30,7 +32,10 @@ export async function acceptFacts(
   ctx: WorkspaceContext,
   job: { id: string; document_id: string; filename: string },
   result: Extraction,
-  selections: { factIndex: number; holdingId: string | null }[],
+  selections: (Pick<
+    ReviewDecision,
+    'factIndex' | 'holdingId' | 'fx' | 'correction'
+  > & { reviewRevision?: number })[],
 ) {
   const { state } = await readWorkspaceInTransaction(
       c,
@@ -38,7 +43,7 @@ export async function acceptFacts(
       true,
     ),
     derived = deriveWorkspace(state);
-  const portfolio: PortfolioRecords = structuredClone({
+  let portfolio: PortfolioRecords = structuredClone({
     holdings: derived.holdings,
     history: derived.history,
     events: derived.events,
@@ -49,6 +54,12 @@ export async function acceptFacts(
     accounts: derived.accounts,
   });
   let applied = 0;
+  let finance = state.finance;
+  const sources: Record<number, string> = {};
+  const provenance = await c.query(
+    'SELECT r.mailbox_id,d.created_at FROM app_documents d LEFT JOIN app_mailbox_receipts r ON r.document_id=d.id AND r.organization_id=d.organization_id WHERE d.id=$1 AND d.organization_id=$2 ORDER BY r.created_at LIMIT 1',
+    [job.document_id, ctx.organizationId],
+  );
   for (const selection of selections) {
     const fact = result.facts[selection.factIndex];
     if (!fact)
@@ -62,7 +73,7 @@ export async function acceptFacts(
         'HOLDING_REQUIRED',
         'Link each accepted fact to a holding in this workspace.',
       );
-    const issue = factAcceptanceIssue(fact);
+    const issue = factAcceptanceIssue(fact, selection.fx);
     if (issue)
       throw new AccessError(
         400,
@@ -72,31 +83,77 @@ export async function acceptFacts(
         issue,
       );
     const sourceId = randomUUID(),
-      fingerprint = factFingerprint(fact, holding.id);
+      baseFingerprint = factFingerprint(fact, holding.id),
+      fingerprint = selection.correction
+        ? sha256(
+            baseFingerprint +
+              ':review-correction:' +
+              job.id +
+              ':' +
+              selection.reviewRevision +
+              ':' +
+              selection.factIndex,
+          )
+        : baseFingerprint;
     const inserted = await c.query(
       'INSERT INTO app_accepted_facts(fingerprint,organization_id,job_id,source_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING fingerprint',
       [fingerprint, ctx.organizationId, job.id, sourceId],
     );
     if (!inserted.rowCount) {
-      if (supersededValuationReplay(fact, holding, portfolio.history))
-        throw new AccessError(
-          409,
-          'CORRECTION_REQUIRES_REVIEW',
-          'This earlier accepted value has been superseded for the same date and cannot be restored by replaying it. An explicit correction review is required.',
+      // Deduplication is a no-op only when it cannot restore a superseded mark.
+      if (fact.kind === 'valuation' && fact.effectiveDate) {
+        const prior = portfolio.history.find(
+          (row) =>
+            row.holdingId === holding.id && row.date === fact.effectiveDate,
         );
+        const current =
+          prior?.valueEUR ??
+          (holding.valuationDate === fact.effectiveDate
+            ? holding.valueEUR
+            : undefined);
+        const intended = convertToEUR(
+          canonicalAmount(fact.amount!),
+          fact.currency as Currency,
+          selection.fx,
+          fact.effectiveDate,
+        );
+        if (current !== undefined && current !== intended)
+          throw new AccessError(
+            409,
+            'CORRECTION_REQUIRES_REVIEW',
+            'This accepted value has been superseded. Confirm the current value and provide an explicit correction reason.',
+          );
+      }
+      const existing = await c.query(
+        'SELECT source_id FROM app_accepted_facts WHERE organization_id=$1 AND fingerprint=$2',
+        [ctx.organizationId, fingerprint],
+      );
+      if (existing.rows[0])
+        sources[selection.factIndex] = existing.rows[0].source_id;
       continue;
     }
+    sources[selection.factIndex] = sourceId;
     applied++;
     const now = new Date().toISOString(),
-      date = fact.effectiveDate ?? now.slice(0, 10);
+      receivedAt = provenance.rows[0]?.created_at
+        ? new Date(provenance.rows[0].created_at).toISOString()
+        : now,
+      date = fact.effectiveDate ?? receivedAt.slice(0, 10),
+      dateBasis = fact.effectiveDate
+        ? ('Source reported' as const)
+        : ('Receipt date fallback' as const);
     portfolio.evidence.unshift({
       id: sourceId,
-      mailboxId: 'upload',
+      mailboxId: provenance.rows[0]?.mailbox_id ?? 'upload',
       familyId: holding.familyId,
       holdingId: holding.id,
       subject: fact.investmentName + ' · ' + fact.kind.replaceAll('_', ' '),
-      sender: 'Uploaded document',
-      receivedAt: now,
+      sender: provenance.rows[0]?.mailbox_id
+        ? 'Imported email source'
+        : 'Uploaded document',
+      receivedAt,
+      reportedEffectiveDate: fact.effectiveDate,
+      effectiveDateBasis: dateBasis,
       effectiveDate: date,
       filename: job.filename,
       page: fact.evidence.page,
@@ -121,7 +178,10 @@ export async function acceptFacts(
       title: fact.investmentName + ' · ' + fact.kind.replaceAll('_', ' '),
       summary: fact.summary,
       date,
-      receivedAt: now,
+      dateBasis,
+      reportedCurrency: fact.currency,
+      reportedAmount: fact.amount,
+      receivedAt,
       sourceId,
       status: fact.kind === 'valuation' ? 'Accepted' : 'Source reported',
       materiality: fact.kind === 'news' ? 'Medium' : 'High',
@@ -132,26 +192,25 @@ export async function acceptFacts(
         fact.kind === 'valuation' ? 'Accepted valuation' : 'None',
     });
     if (fact.kind === 'valuation') {
-      if (date >= holding.valuationDate) {
-        holding.valueEUR = Number(fact.amount);
-        holding.originalValue = Number(fact.amount);
-        holding.currency = 'EUR';
-        holding.syntheticFXRateToEUR = 1;
-        holding.valuationDate = date;
-        holding.sourceId = sourceId;
-        holding.valuationMethod = 'Reported fund NAV';
-      }
-      // Recorded marks do not imply a complete cash-flow series or an investable return.
-      portfolio.history = portfolio.history.filter(
-        (h) => !(h.holdingId === holding.id && h.date === date),
+      const posted = postReviewedValuation(
+        portfolio,
+        finance,
+        {
+          holdingId: holding.id,
+          amount: canonicalAmount(fact.amount!),
+          currency: fact.currency as Currency,
+          effectiveDate: fact.effectiveDate!,
+          sourceId,
+          fx: selection.fx,
+          correction: selection.correction,
+        },
+        { id: randomUUID(), actorId: ctx.user.id, at: now },
       );
-      portfolio.history.push({
-        holdingId: holding.id,
-        date,
-        valueEUR: Number(fact.amount),
-        netExternalFlowEUR: 0,
-        valuationBasis: 'Reported mark',
-      });
+      portfolio = posted.portfolio;
+      finance = posted.finance;
+      // Use the reviewed conversion on the timeline while the valuation record retains source currency and FX provenance.
+      const event = portfolio.events.find((row) => row.sourceId === sourceId);
+      if (event) event.amountEUR = posted.valuation.valueEUR;
     }
     if (fact.kind === 'capital_call')
       portfolio.tasks.unshift({
@@ -169,6 +228,6 @@ export async function acceptFacts(
         category: 'Capital call',
       });
   }
-  await saveWorkspace(c, ctx.organizationId, { ...state, portfolio });
-  return { applied, duplicates: selections.length - applied };
+  await saveWorkspace(c, ctx.organizationId, { ...state, portfolio, finance });
+  return { applied, duplicates: selections.length - applied, sources };
 }

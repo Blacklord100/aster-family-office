@@ -41,7 +41,10 @@ vi.mock('./access', () => {
       Response.json({ error: error.code }, { status: error.status ?? 500 }),
   };
 });
-vi.mock('./crypto', () => ({ decrypt: fixtures.decrypt }));
+vi.mock('./crypto', async () => ({
+  ...(await vi.importActual<typeof import('./crypto')>('./crypto')),
+  decrypt: fixtures.decrypt,
+}));
 vi.mock('./audit', () => ({ audit: vi.fn() }));
 vi.mock('./engine-store', () => ({
   activeEngine: async () => ({
@@ -96,7 +99,7 @@ describe('processing list result minimization', () => {
             result: Buffer.from(id),
           })),
         };
-      if (sql.startsWith('SELECT result FROM app_jobs')) {
+      if (sql.startsWith('SELECT result,review_state FROM app_jobs')) {
         expect(values[1]).toBe(fixtures.organizationId);
         return { rows: [{ result: Buffer.from(values[0]) }] };
       }
@@ -138,7 +141,7 @@ describe('processing list result minimization', () => {
       ),
     );
     expect(fixtures.query).toHaveBeenLastCalledWith(
-      expect.stringContaining('SELECT result FROM app_jobs'),
+      expect.stringContaining('SELECT result,review_state FROM app_jobs'),
       [fixtures.ids[0], fixtures.organizationId],
     );
   });

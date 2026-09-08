@@ -20,7 +20,7 @@ DATE_LABEL = re.compile(r'(?im)\b(?P<label>effective date|valuation date|reporti
 WORD = r"[A-ZÀ-ÖØ-Þ][\wÀ-ž&'’.-]*"
 NAME = WORD + r'(?:[ \t]+(?:' + WORD + r'|of|and|the|&)){0,11}'
 NAME = NAME.replace("[\\wÀ-ž&'’.-]*", "[\\wÀ-ž&'’-]*")
-NAME_VERB = r'(?:is issuing|issues|issued (?:this |a |the )?(?:capital call|drawdown)|will (?:make|pay) (?:a |the )?distribution|capital call|valuation|distribution|distributed|paid|returned|appointed|announced|company update|portfolio update|news update)\b'
+NAME_VERB = r'(?:is issuing|issues|issued (?:this |a |the )?(?:capital call|drawdown)|will (?:make|pay) (?:a |the )?distribution|reports? (?:a |the )?(?:capital call|drawdown|distribution|(?:investor )?NAV|valuation|net asset value)|capital call|valuation|distribution|distributed|paid|returned|appointed|announced|company update|portfolio update|news update)\b'
 NAME_VERB = NAME_VERB.replace(' ', r'\s+')
 
 
@@ -53,8 +53,12 @@ def _positive_matches(text, kind):
         clause = re.split(r'[.;]|\bbut\b|\bhowever\b', before, flags=re.I)[-1]
         if re.search(r'(?i)\b(?:no|not|without|neither|excluding)\b', clause):
             continue
-        after = text[match.end():match.end()+65]
-        if re.match(r'(?i)\s+(?:is|are|was|were)\s+(?:not|unavailable|withdrawn)', after):
+        after = text[match.end():match.end()+300]
+        negative_predicate = r'(?i:\s+(?:is|are|was|were)\s+(?:not|unavailable|withdrawn))'
+        # In an event-first clause the explicit owner's name can separate the
+        # event noun from its negated predicate: "call for <Name> is not ...".
+        if (re.match(negative_predicate, after)
+                or re.match(r'(?i:\s+for)\s+' + NAME + negative_predicate, after)):
             continue
         found.append(match)
     return found
@@ -112,7 +116,8 @@ def name_mentions(text, hint=None):
             labelled.append(mention)
     patterns = [
         r'(?P<name>' + NAME + r')\s+(?i:' + NAME_VERB + r')',
-        r'(?i:interest in|statement for|statement\s*[-:]|(?:valuation|net\s+asset\s+value|NAV) (?:of|for))\s+(?P<name>' + NAME + r')',
+        r'(?i:interest in|statement for|statement\s*[-:]|(?:valuation|net\s+asset\s+value|NAV) (?:of|for)|(?:capital\s+call|drawdown|distribution)\s+for)\s+(?P<name>' + NAME + r')',
+        r'(?P<name>' + NAME + r')\s*:\s*(?i:(?:investor\s+)?(?:NAV|net\s+asset\s+value|valuation))\b',
         r'(?P<name>' + NAME + r')\s*[-–—]\s*(?i:your|update|news|company|business|portfolio|capital|valuation|distribution)',
     ]
     for pattern in patterns:
@@ -149,13 +154,14 @@ def _name_for(names, start, end, position):
     if preceding:
         last_start = max(name.start for name in preceding)
         return max((name for name in preceding if name.start == last_start), key=lambda name: len(name.name))
-    if local:
-        return min(local, key=lambda name: name.start)
     earlier = [name for name in names if name.start <= start]
     if earlier:
         return max(earlier, key=lambda name: (name.start, len(name.name)))
-    distinct = {normalize(name.name).casefold(): name for name in names}
-    return next(iter(distinct.values())) if len(distinct) == 1 else None
+    # A name first appearing after an amount cannot establish its owner. In
+    # particular, a later underlying-issuer table must never label an earlier
+    # fund NAV, even when that issuer is the only independently recognized name.
+    # Explicit event-first phrases bind the named owner before their amount.
+    return None
 
 
 def _date_role(text, mention):

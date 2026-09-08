@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import {
   AlertCircle,
   ArrowDownToLine,
-  ArrowRight,
   Bot,
   Check,
   CheckCheck,
@@ -21,17 +20,13 @@ import {
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from '@/components/ui/field';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -41,20 +36,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { factAcceptanceIssue } from '@/lib/fact-review';
+import { ReviewWorkbench } from './review-workbench';
+import type { ReviewDecision, ReviewState } from '@/lib/review-contract';
 import type { Holding } from '@/data/types';
 import type {
-  ExtractedFact,
   ProcessingJob,
   ProcessingMode,
   ProcessingPolicy,
@@ -68,15 +55,15 @@ type ProcessingResponse = {
   policy: ProcessingPolicy;
   role: WorkspaceIdentity['role'];
 };
-type ReviewSelection = { factIndex: number; holdingId: string | null };
-type JobAction = 'accept' | 'reject' | 'retry' | 'cancel';
+type ReviewSelection = ReviewDecision;
+type JobAction = 'review' | 'reject' | 'retry' | 'cancel';
 type ReviewResponse = {
   ok: boolean;
   status: string;
   applied: number;
   duplicates: number;
+  review?: ReviewState;
 };
-type FactChoice = { selected: boolean; holdingId: string | null };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const statusLabels: Record<string, string> = {
@@ -87,12 +74,6 @@ const statusLabels: Record<string, string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
   rejected: 'Rejected',
-};
-const factLabels: Record<ExtractedFact['kind'], string> = {
-  valuation: 'Valuation',
-  capital_call: 'Capital call',
-  distribution: 'Distribution',
-  news: 'Manager update',
 };
 const modeName = (mode: ProcessingMode) =>
   mode === 'agentic' ? 'Agentic' : 'Classical workflow';
@@ -116,26 +97,6 @@ function timestamp(value: string) {
         minute: '2-digit',
       });
 }
-function calendarDate(value: string | null) {
-  if (!value) return 'Not provided';
-  const date = new Date(value + 'T12:00:00Z');
-  return Number.isNaN(date.getTime())
-    ? 'Not provided'
-    : date.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-}
-function factAmount(fact: ExtractedFact) {
-  if (fact.amount === null) return 'Amount not provided';
-  const [whole, decimals] = fact.amount.split('.');
-  const amount =
-    whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') +
-    (decimals ? '.' + decimals : '');
-  return (fact.currency || 'Currency not provided') + ' ' + amount;
-}
-
 class ProcessingRequestError extends Error {
   constructor(
     message: string,
@@ -255,7 +216,7 @@ export function ProcessingView() {
     run: () => Promise<T>,
     done: (result: T) => void,
   ) {
-    if (mutationLock.current) return;
+    if (mutationLock.current) return false;
     mutationLock.current = true;
     responseEpoch.current += 1;
     setBusy(key);
@@ -263,6 +224,7 @@ export function ProcessingView() {
     setNotice(null);
     try {
       done(await run());
+      return true;
     } catch (error) {
       setActionError(errorMessage(error));
       if (
@@ -270,6 +232,7 @@ export function ProcessingView() {
         [401, 403].includes(error.status)
       )
         setSnapshot(null);
+      return false;
     } finally {
       mutationLock.current = false;
       setBusy(null);
@@ -347,13 +310,14 @@ export function ProcessingView() {
       },
     );
   }
-  function reviewJob(
+  async function reviewJob(
     job: ProcessingJob,
     action: JobAction,
     selections?: ReviewSelection[],
+    expectedRevision?: number,
   ) {
-    if (!canWrite) return;
-    void mutate(
+    if (!canWrite) return false;
+    return mutate(
       job.id,
       () =>
         requestJson<ReviewResponse>(
@@ -362,7 +326,14 @@ export function ProcessingView() {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(
-              action === 'accept' ? { action, selections } : { action },
+              action === 'review'
+                ? {
+                    action,
+                    decisions: selections,
+                    expectedRevision:
+                      expectedRevision ?? job.review?.revision ?? 0,
+                  }
+                : { action },
             ),
           },
         ),
@@ -376,6 +347,7 @@ export function ProcessingView() {
                     ? {
                         ...item,
                         status: result.status,
+                        review: result.review ?? item.review,
                         errorCode: null,
                         updatedAt: new Date().toISOString(),
                       }
@@ -384,16 +356,19 @@ export function ProcessingView() {
               }
             : current,
         );
-        if (action === 'accept') {
+        if (action === 'review') {
           setNotice(
-            result.applied +
-              ' selected ' +
-              (result.applied === 1 ? 'fact' : 'facts') +
-              ' applied. ' +
+            'Review decision saved. ' +
+              (result.applied
+                ? result.applied +
+                  (result.applied === 1
+                    ? ' fact applied. '
+                    : ' facts applied. ')
+                : '') +
               (result.duplicates
                 ? result.duplicates + ' already recorded. '
                 : '') +
-              'Review closed; unselected facts were not applied.',
+              'Other facts remain unchanged.',
           );
           reload();
         } else {
@@ -417,9 +392,15 @@ export function ProcessingView() {
         title="Document processing"
         subtitle="Turn statements and correspondence into source-linked updates."
       >
-        <Status tone={snapshot?.policy.execution === 'cloud' ? 'warning' : 'success'}>
+        <Status
+          tone={snapshot?.policy.execution === 'cloud' ? 'warning' : 'success'}
+        >
           {snapshot?.policy.execution === 'cloud' ? <Cloud /> : <ShieldCheck />}
-          {snapshot ? (snapshot.policy.execution === 'cloud' ? 'Cloud selected' : 'Local selected') : 'Loading policy'}
+          {snapshot
+            ? snapshot.policy.execution === 'cloud'
+              ? 'Cloud selected'
+              : 'Local selected'
+            : 'Loading policy'}
         </Status>
         {snapshot?.role === 'viewer' ? <Status>View only</Status> : null}
         <Button
@@ -497,7 +478,8 @@ export function ProcessingView() {
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <LockKeyhole className="size-3.5" /> No automatic provider fallback
+                <LockKeyhole className="size-3.5" /> No automatic provider
+                fallback
               </span>
               {snapshot ? (
                 <span>Policy revision {snapshot.policy.revision}</span>
@@ -511,12 +493,14 @@ export function ProcessingView() {
                 ? ' A workspace owner or admin can change the default.'
                 : ''}
             </p>
-            {snapshot?.policy.engine ? <p className="text-xs leading-relaxed text-muted-foreground">
-              New documents use {snapshot.policy.engine.model}.
-              {snapshot.policy.execution === 'cloud'
-                ? ' Document content will be sent to the selected cloud provider.'
-                : ' Inference runs on the configured local runtime.'}
-            </p> : null}
+            {snapshot?.policy.engine ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                New documents use {snapshot.policy.engine.model}.
+                {snapshot.policy.execution === 'cloud'
+                  ? ' Document content will be sent to the selected cloud provider.'
+                  : ' Inference runs on the configured local runtime.'}
+              </p>
+            ) : null}
           </div>
         </Panel>
         <Panel
@@ -688,7 +672,7 @@ export function ProcessingView() {
           <div className="min-w-0 p-5 sm:p-6">
             {selected ? (
               <JobDetail
-                key={selected.id + ':' + selected.updatedAt}
+                key={selected.id}
                 job={selected}
                 holdings={data.holdings}
                 canWrite={canWrite}
@@ -701,8 +685,8 @@ export function ProcessingView() {
                   ) &&
                   !loadError
                 }
-                onAction={(action, selections) =>
-                  reviewJob(selected, action, selections)
+                onAction={(action, selections, expectedRevision) =>
+                  reviewJob(selected, action, selections, expectedRevision)
                 }
               />
             ) : loading ? (
@@ -746,11 +730,12 @@ function JobDetail({
   canWrite: boolean;
   busy: boolean;
   loadingResult: boolean;
-  onAction: (action: JobAction, selections?: ReviewSelection[]) => void;
+  onAction: (
+    action: JobAction,
+    selections?: ReviewSelection[],
+    expectedRevision?: number,
+  ) => Promise<boolean>;
 }) {
-  const [choices, setChoices] = useState<Record<number, FactChoice>>({});
-  const [confirmed, setConfirmed] = useState(false);
-  const [confirmReject, setConfirmReject] = useState(false);
   const result = job.result;
   const unreadableSource = result?.trace.some(
     (entry) => entry.stage === 'input_coverage' && entry.status === 'warning',
@@ -760,37 +745,6 @@ function JobDetail({
       warning,
     ),
   );
-  const reviewing = job.status === 'awaiting_review';
-  const selections = Object.entries(choices)
-    .filter(([, choice]) => choice.selected)
-    .map(([index, choice]) => ({
-      factIndex: Number(index),
-      holdingId: choice.holdingId,
-    }));
-  const complete =
-    selections.length > 0 &&
-    selections.every(
-      (selection) =>
-        !!selection.holdingId &&
-        holdings.some((holding) => holding.id === selection.holdingId) &&
-        !!result?.facts[selection.factIndex] &&
-        !factAcceptanceIssue(result.facts[selection.factIndex]),
-    );
-  const options = holdings.map((holding) => ({
-    value: holding.id,
-    label: holding.name,
-  }));
-  function updateChoice(index: number, update: Partial<FactChoice>) {
-    setChoices((current) => ({
-      ...current,
-      [index]: {
-        ...(current[index] ?? { selected: false, holdingId: null }),
-        ...update,
-      },
-    }));
-    setConfirmed(false);
-  }
-
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-3">
@@ -800,22 +754,33 @@ function JobDetail({
           </Status>
           <Status>{modeName(job.mode)}</Status>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            {job.engine?.execution === 'cloud' || result?.execution === 'cloud' ? <Cloud className="size-3" /> : <LockKeyhole className="size-3" />}
-            {job.engine?.execution === 'cloud' || result?.execution === 'cloud' ? 'Cloud execution' : 'Local execution'}
+            {job.engine?.execution === 'cloud' ||
+            result?.execution === 'cloud' ? (
+              <Cloud className="size-3" />
+            ) : (
+              <LockKeyhole className="size-3" />
+            )}
+            {job.engine?.execution === 'cloud' || result?.execution === 'cloud'
+              ? 'Cloud execution'
+              : 'Local execution'}
           </span>
         </div>
         <h3 className="break-words text-lg font-medium tracking-tight">
           {job.filename}
         </h3>
-        {job.engineLegacy ? <p className="text-xs leading-relaxed text-muted-foreground">
-          {job.engine
-            ? 'Legacy job: this engine was recorded when processing resumed. Earlier attempts did not record an engine profile.'
-            : 'Legacy job: no engine profile was recorded. A retry will capture the deployment-local default at worker pickup.'}
-        </p> : null}
+        {job.engineLegacy ? (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {job.engine
+              ? 'Legacy job: this engine was recorded when processing resumed. Earlier attempts did not record an engine profile.'
+              : 'Legacy job: no engine profile was recorded. A retry will capture the deployment-local default at worker pickup.'}
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Received {timestamp(job.createdAt)} · Policy {job.policyRevision}
-            {job.engine ? ` · ${job.engine.model} · Engine revision ${job.engine.revision}` : ''}
+            {job.engine
+              ? ` · ${job.engine.model} · Engine revision ${job.engine.revision}`
+              : ''}
           </p>
           <a
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
@@ -866,8 +831,8 @@ function JobDetail({
           <CheckCheck />
           <AlertTitle>Review closed</AlertTitle>
           <AlertDescription>
-            Only the facts selected during acceptance were applied. Unselected
-            facts were not applied.
+            Every current fact decision is retained below. Accepted values and
+            any amendments have their own review history.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -944,8 +909,8 @@ function JobDetail({
               </AlertTitle>
               <AlertDescription>
                 Open the original document and check its contents, including
-                attachments. Supply readable copies of any skipped content before
-                relying on the extraction result.
+                attachments. Supply readable copies of any skipped content
+                before relying on the extraction result.
               </AlertDescription>
             </Alert>
           ) : !result.relevant ? (
@@ -978,173 +943,15 @@ function JobDetail({
           ) : null}
 
           {result.facts.length ? (
-            <FieldSet>
-              <FieldLegend>
-                {reviewing ? 'Review extracted facts' : 'Extracted facts'}
-              </FieldLegend>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {reviewing
-                  ? 'Select the facts to accept, link each to an existing investment, and compare the quoted source.'
-                  : 'This is the extraction record. It includes facts that may not have been selected during review.'}
-              </p>
-              {reviewing && !holdings.length ? (
-                <Alert>
-                  <AlertCircle />
-                  <AlertTitle>Add an investment first</AlertTitle>
-                  <AlertDescription>
-                    Create an investment in the Investments view, then return
-                    here to link and accept its facts.
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              {result.facts.map((fact, index) => {
-                const choice = choices[index] ?? {
-                  selected: false,
-                  holdingId: null,
-                };
-                const issue = factAcceptanceIssue(fact);
-                const selectable = reviewing && canWrite;
-                const missingHolding = choice.selected && !choice.holdingId;
-                const checkboxId = 'fact-' + job.id + '-' + index;
-                return (
-                  <article
-                    key={index}
-                    className={cn(
-                      'flex min-w-0 flex-col gap-4 rounded-lg border border-border p-4',
-                      choice.selected && 'border-primary/40 bg-accent/20',
-                    )}
-                  >
-                    <Field
-                      orientation="horizontal"
-                      data-disabled={
-                        selectable && (!!issue || !holdings.length || busy)
-                      }
-                    >
-                      {selectable ? (
-                        <Checkbox
-                          id={checkboxId}
-                          checked={choice.selected}
-                          disabled={!!issue || !holdings.length || busy}
-                          onCheckedChange={(checked) =>
-                            updateChoice(index, { selected: checked })
-                          }
-                          aria-describedby={
-                            issue ? checkboxId + '-issue' : undefined
-                          }
-                        />
-                      ) : null}
-                      <FieldContent>
-                        {selectable ? (
-                          <FieldLabel htmlFor={checkboxId}>
-                            {fact.investmentName}
-                          </FieldLabel>
-                        ) : (
-                          <h4 className="break-words text-sm font-medium">
-                            {fact.investmentName}
-                          </h4>
-                        )}
-                        <FieldDescription>
-                          {factLabels[fact.kind]}
-                        </FieldDescription>
-                      </FieldContent>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        Fact {index + 1}
-                      </span>
-                    </Field>
-                    <p className="break-words text-sm leading-relaxed">
-                      {fact.summary}
-                    </p>
-                    <dl className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <dt className="text-muted-foreground">
-                          Reported amount
-                        </dt>
-                        <dd className="mt-1 break-words font-medium">
-                          {factAmount(fact)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">
-                          Effective date
-                        </dt>
-                        <dd className="mt-1">
-                          {calendarDate(fact.effectiveDate)}
-                        </dd>
-                      </div>
-                      {fact.dueDate ? (
-                        <div>
-                          <dt className="text-muted-foreground">Due date</dt>
-                          <dd className="mt-1">{calendarDate(fact.dueDate)}</dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                    <div className="flex flex-col gap-2 rounded-md bg-muted/50 p-3">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <FileText className="size-3.5" /> Source evidence · Page{' '}
-                        {fact.evidence.page}
-                      </span>
-                      <blockquote className="whitespace-pre-wrap break-words text-xs leading-relaxed">
-                        {fact.evidence.quote}
-                      </blockquote>
-                    </div>
-                    {selectable ? (
-                      <Field
-                        data-invalid={missingHolding}
-                        data-disabled={busy || !!issue || !holdings.length}
-                      >
-                        <FieldLabel htmlFor={checkboxId + '-holding'}>
-                          Link to investment
-                        </FieldLabel>
-                        <Select
-                          value={choice.holdingId}
-                          items={options}
-                          disabled={busy || !!issue || !holdings.length}
-                          onValueChange={(holdingId) =>
-                            updateChoice(index, { holdingId })
-                          }
-                        >
-                          <SelectTrigger
-                            id={checkboxId + '-holding'}
-                            className="w-full"
-                            aria-invalid={missingHolding}
-                          >
-                            <SelectValue
-                              placeholder={
-                                holdings.length
-                                  ? 'Choose an existing investment'
-                                  : 'No investments in this workspace'
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {options.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        {missingHolding ? (
-                          <FieldError>
-                            Choose the investment this selected fact belongs to.
-                          </FieldError>
-                        ) : null}
-                        {issue ? (
-                          <FieldDescription id={checkboxId + '-issue'}>
-                            {issue}
-                          </FieldDescription>
-                        ) : null}
-                      </Field>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </FieldSet>
+            <ReviewWorkbench
+              job={job}
+              holdings={holdings}
+              canWrite={canWrite}
+              busy={busy}
+              onReview={(decisions, revision) =>
+                onAction('review', decisions, revision)
+              }
+            />
           ) : (
             <Empty>
               <EmptyHeader>
@@ -1153,79 +960,21 @@ function JobDetail({
                 </EmptyMedia>
                 <EmptyTitle>No supported facts found</EmptyTitle>
                 <EmptyDescription>
-                  Review the original and processing warnings. You can reject
-                  this review if it contains no usable investment update.
+                  Check the original source and warnings. No facts have been
+                  posted.
                 </EmptyDescription>
               </EmptyHeader>
-            </Empty>
-          )}
-
-          {reviewing && canWrite ? (
-            <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
-              <p className="text-sm font-medium">
-                {selections.length} {selections.length === 1 ? 'fact' : 'facts'}{' '}
-                selected for acceptance
-              </p>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Accepted valuations update reported marks. Capital calls and
-                distributions add source-linked events; a capital call also
-                creates a review task. Acceptance does not move money or change
-                cash balances.
-              </p>
-              <Field orientation="horizontal" data-disabled={!complete || busy}>
-                <Checkbox
-                  id={'confirm-' + job.id}
-                  checked={confirmed}
-                  disabled={!complete || busy}
-                  onCheckedChange={setConfirmed}
-                />
-                <FieldContent>
-                  <FieldLabel htmlFor={'confirm-' + job.id}>
-                    I have checked the selected facts and their investment
-                    links.
-                  </FieldLabel>
-                  <FieldDescription>
-                    Accepting closes this review. All unselected facts are
-                    ignored; they do not remain pending.
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              {canWrite && job.status === 'awaiting_review' ? (
                 <Button
                   variant="outline"
                   disabled={busy}
-                  onClick={() => setConfirmReject((current) => !current)}
+                  onClick={() => void onAction('reject')}
                 >
-                  {confirmReject ? 'Keep reviewing' : 'Reject review'}
+                  Close empty review
                 </Button>
-                <Button
-                  disabled={busy || !complete || !confirmed}
-                  onClick={() => onAction('accept', selections)}
-                >
-                  <Check data-icon="inline-start" /> Accept selected facts{' '}
-                  <ArrowRight data-icon="inline-end" />
-                </Button>
-              </div>
-              {confirmReject ? (
-                <Alert>
-                  <AlertTitle>Reject this document review?</AlertTitle>
-                  <AlertDescription>
-                    No facts will be applied. The original document and
-                    extraction record remain available.
-                  </AlertDescription>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="destructive"
-                      disabled={busy}
-                      onClick={() => onAction('reject')}
-                    >
-                      Confirm rejection
-                    </Button>
-                  </div>
-                </Alert>
               ) : null}
-            </div>
-          ) : null}
+            </Empty>
+          )}
 
           <details className="rounded-lg border border-border p-4">
             <summary className="cursor-pointer text-sm font-medium">

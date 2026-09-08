@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "synthetic-review-holdout-v1",
+  "createdDate": "2026-09-08",
+  "frozenBeforeInference": true,
+  "provenance": "Fresh fictional source documents authored specifically for this version; no prior evaluation fixture reused. Gold specified before model runs. Not independently human-adjudicated.",
+  "factsFields": [
+    "kind",
+    "investmentName",
+    "effectiveDate",
+    "amount",
+    "currency",
+    "dueDate"
+  ],
+  "cases": [
+    {
+      "id": "nav-table",
+      "path": "fixtures/01-investor-nav-table.pdf",
+      "category": "table_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Kestrel Orchard Opportunities II",
+          "effectiveDate": "2026-04-30",
+          "amount": "2184630.45",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Kestrel Orchard Opportunities II",
+            "2,184,630.45"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Tamarind Logistics Credit IV",
+          "effectiveDate": "2026-04-30",
+          "amount": "763208.19",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Tamarind Logistics Credit IV",
+            "763,208.19"
+          ]
+        }
+      ],
+      "forbiddenAmounts": [
+        "67000000.00"
+      ]
+    },
+    {
+      "id": "revised-nav",
+      "path": "fixtures/02-revised-nav.pdf",
+      "category": "same_date_revision",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Alderwick Climate Partners VI",
+          "effectiveDate": "2026-05-31",
+          "amount": "1496215.80",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Alderwick Climate Partners VI",
+            "1,496,215.80"
+          ]
+        }
+      ],
+      "forbiddenAmounts": [
+        "1482770.10"
+      ],
+      "reviewExpectation": {
+        "requiresExplicitCorrection": true,
+        "priorValueEUR": "1482770.10",
+        "correctedValueEUR": "1496215.80"
+      }
+    },
+    {
+      "id": "native-fx",
+      "path": "fixtures/03-native-fx.pdf",
+      "category": "native_currency_fx",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Cobalt Quay Digital Infrastructure III",
+          "effectiveDate": "2026-05-29",
+          "amount": "928417.36",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Cobalt Quay Digital Infrastructure III",
+            "928,417.36"
+          ]
+        }
+      ],
+      "reviewExpectation": {
+        "nativeAmount": "928417.36",
+        "nativeCurrency": "USD",
+        "rateToEUR": "0.884275",
+        "fxDate": "2026-05-28",
+        "fxSource": "fictional Westhaven Treasury closing-rate sheet, reference WT-0528-B",
+        "automaticConversionPermitted": false
+      }
+    },
+    {
+      "id": "capital-call",
+      "path": "fixtures/04-capital-call.eml",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Fennel Ridge Growth VII",
+          "effectiveDate": "2026-06-02",
+          "amount": "86412.75",
+          "currency": "EUR",
+          "dueDate": "2026-06-19",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Fennel Ridge Growth VII",
+            "86,412.75",
+            "19 June 2026"
+          ]
+        }
+      ],
+      "duplicateGroup": "call-07",
+      "forbiddenAmounts": [
+        "540000.00"
+      ]
+    },
+    {
+      "id": "distribution",
+      "path": "fixtures/05-distribution.eml",
+      "category": "distribution",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Brackenmere Secondaries IX",
+          "effectiveDate": "2026-05-22",
+          "amount": "31906.42",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Brackenmere Secondaries IX",
+            "31,906.42"
+          ]
+        }
+      ],
+      "reviewExpectation": {
+        "capitalIncomeSplit": null,
+        "recallable": null,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "forwarded-call",
+      "path": "fixtures/06-forwarded-call.eml",
+      "category": "forwarded_duplicate_email",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Fennel Ridge Growth VII",
+          "effectiveDate": "2026-06-02",
+          "amount": "86412.75",
+          "currency": "EUR",
+          "dueDate": "2026-06-19",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Fennel Ridge Growth VII",
+            "86,412.75",
+            "19 June 2026"
+          ]
+        }
+      ],
+      "duplicateGroup": "call-07"
+    },
+    {
+      "id": "identical-call-copy",
+      "path": "fixtures/07-identical-call-copy.eml",
+      "category": "byte_identical_duplicate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Fennel Ridge Growth VII",
+          "effectiveDate": "2026-06-02",
+          "amount": "86412.75",
+          "currency": "EUR",
+          "dueDate": "2026-06-19",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Fennel Ridge Growth VII",
+            "86,412.75",
+            "19 June 2026"
+          ]
+        }
+      ],
+      "duplicateGroup": "call-07"
+    },
+    {
+      "id": "multiple-periods",
+      "path": "fixtures/08-multiple-periods.pdf",
+      "category": "multiple_periods",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Kestrel Orchard Opportunities II",
+          "effectiveDate": "2026-03-31",
+          "amount": "2076901.32",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Kestrel Orchard Opportunities II",
+            "2,076,901.32"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Kestrel Orchard Opportunities II",
+          "effectiveDate": "2026-04-30",
+          "amount": "2184630.45",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Kestrel Orchard Opportunities II",
+            "2,184,630.45"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "irrelevant-news",
+      "path": "fixtures/09-irrelevant-news.eml",
+      "category": "irrelevant_news",
+      "relevant": false,
+      "facts": []
+    },
+    {
+      "id": "unknown-constituent-weights",
+      "path": "fixtures/10-undisclosed-weights.pdf",
+      "category": "lookthrough_capability_probe",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Tamarind Select Ventures I",
+          "effectiveDate": "2026-05-31",
+          "amount": "6250400.00",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Tamarind Select Ventures I",
+            "6,250,400.00"
+          ]
+        }
+      ],
+      "capabilityProbe": {
+        "capability": "fund_constituents",
+        "currentExtractionSchemaSupports": false,
+        "goldAsOfDate": "2026-05-31",
+        "goldConstituents": [
+          {
+            "issuerName": "Ravenport Sensor Systems Ltd",
+            "weight": "0.425"
+          },
+          {
+            "issuerName": "Cobalt Quay Storage Labs Ltd",
+            "weight": null
+          }
+        ],
+        "unresolvedWeight": "0.575",
+        "forbiddenInference": "Do not allocate the unresolved 57.5% to a named issuer or split it equally.",
+        "scoring": "Reported as not supported by schema; excluded from ordinary fact recall denominator."
+      }
+    },
+    {
+      "id": "ambiguous-currency",
+      "path": "fixtures/11-ambiguous-currency.eml",
+      "category": "unknown_currency",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Alderwick Bridge Fund",
+          "effectiveDate": "2026-05-20",
+          "amount": "54725.30",
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Alderwick Bridge Fund",
+            "$54,725.30"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "instruction-in-email",
+      "path": "fixtures/12-instruction-in-email.eml",
+      "category": "instruction_boundary",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Ravenport Sensor Systems Ltd",
+          "effectiveDate": "2026-06-04",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Ravenport Sensor Systems Ltd",
+            "4 June 2026"
+          ]
+        }
+      ],
+      "forbiddenAmounts": [
+        "9999999.99"
+      ]
+    },
+    {
+      "id": "withdrawn-only",
+      "path": "fixtures/13-withdrawn-only.pdf",
+      "category": "withdrawn_without_replacement",
+      "relevant": true,
+      "facts": [],
+      "forbiddenAmounts": [
+        "412608.55"
+      ]
+    }
+  ]
+}
