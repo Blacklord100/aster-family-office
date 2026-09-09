@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "testedCommit": "c9864ee49c96d272845b99db802872eda8b3f35b",
+  "ciRun": 34403006395,
+  "ciURL": "https://github.com/Blacklord100/aster-family-office/actions/runs/34403006395",
+  "platform": "Linux amd64 / GitHub ubuntu-24.04 runner",
+  "application": {
+    "testsPassed": 594,
+    "testsSkipped": 59,
+    "databaseIntegrationPassed": 38,
+    "hostProcessorAndRuntimePassed": 601,
+    "lint": "passed",
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "npmAuditVulnerabilities": 0,
+    "dependencySbomArtifact": 10124371829
+  },
+  "containers": {
+    "webBuild": "passed",
+    "processorBuild": "passed",
+    "runtimeProbes": "passed",
+    "processorTestsPassed": 589,
+    "processorDependencyWarnings": 2,
+    "webHighCriticalFindings": 0,
+    "repositorySecretScan": "passed"
+  },
+  "processor": {
+    "imageID": "sha256:07f503440f5e7d44127b63bebdbfaecd201fd3c8126735478cca6f9a8b9542e0",
+    "os": {
+      "Family": "debian",
+      "Name": "13.6"
+    },
+    "versions": {
+      "python": "3.12.13",
+      "tesseract": "5.5.3",
+      "libtiff": "4.7.2",
+      "pillow": "12.3.0"
+    },
+    "pillowTiffVersion": "4.7.2",
+    "sourceSignaturesAndHashes": "verified during build",
+    "nativePillowRecordHashesVerified": 4,
+    "imageRoundTrips": [
+      "PNG",
+      "JPEG",
+      "TIFF"
+    ],
+    "copiedNativePackagesCovered": 27,
+    "scannedOsPackages": 34,
+    "lockedPythonPackagesCovered": 32,
+    "scannedPythonPackages": 32
+  },
+  "releaseGate": "blocked",
+  "findings": [
+    {
+      "VulnerabilityID": "CVE-2026-36849",
+      "PkgName": "libtiff6",
+      "InstalledVersion": "4.7.2-1+aster1",
+      "FixedVersion": null,
+      "Status": "will_not_fix",
+      "Severity": "HIGH",
+      "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-36849"
+    },
+    {
+      "VulnerabilityID": "CVE-2026-52490",
+      "PkgName": "libtiff6",
+      "InstalledVersion": "4.7.2-1+aster1",
+      "FixedVersion": null,
+      "Status": "affected",
+      "Severity": "HIGH",
+      "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-52490"
+    },
+    {
+      "VulnerabilityID": "CVE-2026-73066",
+      "PkgName": "tesseract-ocr",
+      "InstalledVersion": "5.5.3-1+aster1",
+      "FixedVersion": null,
+      "Status": "affected",
+      "Severity": "HIGH",
+      "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-73066"
+    }
+  ],
+  "coverageNote": "Canonical Debian package/source identities retained. All three advisory records have no fixed Debian version; the strict high/critical gate remains red despite the verified upstream source upgrades. No finding is suppressed.",
+  "securityArtifact": 10124501159,
+  "artifactHashes": {
+    "processor-runtime-manifest.json": {
+      "sha256": "93443a33108ecf8c8cd9255e296c0ee44284cad7f026851d6a9efbea17ee3792",
+      "bytes": 78567
+    },
+    "processor-image-scan.json": {
+      "sha256": "741f7cef442fbc08e8527c02c1424482884d06828596efa4651f887bf404907f",
+      "bytes": 146222
+    }
+  },
+  "limits": [
+    "No live mailbox-provider OAuth or backfill was tested.",
+    "No real model was called in Linux CI; the native live Gemma demo has its own frozen evaluation.",
+    "The existing macOS demo runtime is separate from the upgraded Linux image.",
+    "Complete LP Compose deployment, target-host egress/TLS, capacity and production streaming backup/restore remain unqualified."
+  ]
+}
