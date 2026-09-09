@@ -4,9 +4,11 @@ This is a portable single-host Docker Compose template. It has not been booted w
 
 ## Files and application contract
 
-Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-mailbox-worker/index.js`, `dist-delivery-worker/index.js`, `dist-report-obligations-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs the workers. Health routes are web `/api/health` and processor `/healthz`; the document worker and report monitor write separate heartbeat files in their shared health volume. See [report monitoring](report-obligations-monitor.md) for its lease, restart and health contract.
+Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-mailbox-worker/index.js`, `dist-folder-worker/index.js`, `dist-delivery-worker/index.js`, `dist-report-obligations-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs the workers. Health routes are web `/api/health` and processor `/healthz`; the document worker and report monitor write separate heartbeat files in their shared health volume. See [report monitoring](report-obligations-monitor.md) for its lease, restart and health contract.
 
 The entrypoint reads Docker secret files and constructs `DATABASE_URL` without placing a password in Compose configuration. Only the maintenance service also receives `MIGRATION_DATABASE_URL` and `BOOTSTRAP_DATABASE_URL`. Canonical auth variables are `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`. The processor receives `PROCESSOR_TOKEN` and authenticates `X-Processor-Key`.
+
+The web/worker runtime uses the pinned Distroless Node 24 Debian 13 image at UID/GID 1000. Its Node binary is `/nodejs/bin/node`; package managers and shells are absent. Build tooling remains in the separate official Node 24 Trixie stage. Run container maintenance commands directly with `node dist-ops/...`; the documented `npm run ...` commands remain valid for native installations. The host bootstrap wrapper sends the password through stdin to a Node helper that creates and removes a private temporary file. Use a separate reviewed debug image when shell access is required. Updating the runtime digest requires repeating the image scan, import/start probes and deployment checks; a clean base scan does not qualify the complete application image.
 
 ## Prepare locally
 
@@ -21,7 +23,7 @@ Build and validate after configuration:
 docker compose config --quiet
 docker compose build web processor ollama
 docker compose up -d postgres processor ollama
-docker compose run --rm migrate npm run db:migrate
+docker compose run --rm migrate node dist-ops/migrate.js
 ```
 
 The PostgreSQL role initializer runs only for an empty data volume. Existing installations need an explicit reviewed role/password migration; changing the files does not rotate database passwords. Never delete a volume to fix an initialization error.
@@ -68,7 +70,7 @@ Back up first; test the image and migrations against a restored database. Run mi
 
 ## Mailboxes and assistant access
 
-See [mailbox-oauth.md](mailbox-oauth.md) to register read-only Google/Microsoft connections and run the separate collection worker. See [agent-access.md](agent-access.md) for scoped, expiring MCP access. Both are disabled for outside tools/accounts until explicitly configured.
+See [mailbox-oauth.md](mailbox-oauth.md) to register read-only Google/Microsoft connections and run the separate collection worker. See [local-intake.md](local-intake.md) for approved local folders, durable import receipts and the explicit synthetic demo deployment. See [agent-access.md](agent-access.md) for scoped, expiring MCP access. Outside accounts and tools require explicit configuration.
 
 ## Access and maintenance
 

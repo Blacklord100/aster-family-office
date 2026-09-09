@@ -164,6 +164,10 @@ export async function purgeRetainedInputs(
       [ctx.organizationId, preview.documentIds],
     );
     await c.query(
+      'UPDATE app_folder_receipts SET document_id=NULL WHERE organization_id=$1 AND document_id=ANY($2::uuid[])',
+      [ctx.organizationId, preview.documentIds],
+    );
+    await c.query(
       'DELETE FROM app_jobs WHERE organization_id=$1 AND document_id=ANY($2::uuid[])',
       [ctx.organizationId, preview.documentIds],
     );

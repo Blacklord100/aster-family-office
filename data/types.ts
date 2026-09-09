@@ -45,6 +45,11 @@ export interface Account {
   type: 'Custody' | 'Private investments' | 'Property';
 }
 export interface Holding {
+  costBasisStatus?: 'reported' | 'unknown';
+  unfundedStatus?: 'reported' | 'unknown';
+  valuationStatus?: 'reported' | 'unknown';
+  liquidityStatus?: 'reported' | 'unknown';
+  assetClassStatus?: 'reported' | 'inferred';
   id: string;
   name: string;
   ticker?: string;
@@ -101,6 +106,8 @@ export interface MailboxSource {
   coverageEnd: string;
 }
 export interface EvidenceSource {
+  /** Real retained source bytes belonging to an explicitly synthetic demo run. */
+  demoSource?: boolean;
   reportedEffectiveDate?: string | null;
   effectiveDateBasis?: 'Source reported' | 'Receipt date fallback';
   id: string;

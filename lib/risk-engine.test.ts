@@ -541,3 +541,72 @@ describe('sample look-through fixtures', () => {
     ).toEqual(emptyRiskData());
   });
 });
+
+it('does not fund stress calls from unreported cash liquidity classifications', () => {
+  const cash = holding('known-cash', 100, { assetClass: 'Cash' });
+  const unknown = holding('unreported-cash', 900, {
+    assetClass: 'Cash',
+    liquidityStatus: 'unknown',
+    assetClassStatus: 'inferred',
+  });
+  const exposure = buildTotalExposure([cash, unknown]);
+  expect(exposure.cashEUR).toBe(100);
+  expect(exposure.cashHoldingIds).toEqual(['known-cash']);
+  expect(exposure.coverage).toMatchObject({
+    liquidityKnownCount: 1,
+    liquidityUnknownCount: 1,
+    assetClassInferredCount: 1,
+  });
+  expect(exposure.warnings.map((warning) => warning.code)).toContain(
+    'LIQUIDITY_COVERAGE_INCOMPLETE',
+  );
+  expect(exposure.warnings.map((warning) => warning.code)).toContain(
+    'ASSET_CLASS_INFERRED',
+  );
+  const result = runStressScenario(exposure, RISK_PRESETS[0]);
+  expect(result.liquidity.cashBeforeEUR).toBe(100);
+  expect(result.liquidity.coverageComplete).toBe(false);
+  expect(
+    runStressScenario(buildTotalExposure([cash]), RISK_PRESETS[0]).liquidity
+      .coverageComplete,
+  ).toBe(true);
+  const inferredOnly = buildTotalExposure([
+    { ...cash, assetClassStatus: 'inferred' },
+  ]);
+  expect(inferredOnly.cashEUR).toBe(0);
+  expect(
+    runStressScenario(inferredOnly, RISK_PRESETS[0]).liquidity.coverageComplete,
+  ).toBe(false);
+});
+
+it('excludes unknown NAV and commitment placeholders and marks stress liquidity as partial', () => {
+  const known = holding('known', 100, { unfundedCommitmentEUR: 20 });
+  const unknown = holding('unknown', 9000, {
+    valuationStatus: 'unknown',
+    unfundedStatus: 'unknown',
+    unfundedCommitmentEUR: 8000,
+    valuationDate: '',
+  });
+  const exposure = buildTotalExposure([known, unknown]);
+  expect(exposure.totalValueEUR).toBe(100);
+  expect(exposure.unfundedCommitmentEUR).toBe(20);
+  expect(exposure.coverage).toMatchObject({
+    valuationKnownCount: 1,
+    valuationUnknownCount: 1,
+    unfundedKnownCount: 1,
+    unfundedUnknownCount: 1,
+  });
+  expect(exposure.lots.every((lot) => lot.holdingId === 'known')).toBe(true);
+  expect(exposure.warnings.map((warning) => warning.code)).toContain(
+    'COMMITMENT_COVERAGE_INCOMPLETE',
+  );
+  expect(exposure.asOfDate).toBe(new Date().toISOString().slice(0, 10));
+  const stress = runStressScenario(exposure, RISK_PRESETS[0]);
+  expect(stress.liquidity.coverageComplete).toBe(false);
+  expect(stress.liquidity.capitalCallsEUR).toBe(
+    20 * RISK_PRESETS[0].capitalCallRate,
+  );
+  const unknownOnly = buildTotalExposure([unknown]);
+  expect(unknownOnly.totalValueEUR).toBe(0);
+  expect(unknownOnly.coverage.valuationUnknownCount).toBe(1);
+});

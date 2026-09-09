@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Shell, navigation, navigationFor, type View } from './shell';
 import { Overview } from './overview';
@@ -14,6 +15,8 @@ import { TeamSettings } from './team-settings';
 import { ReportsView, PrintableReport, downloadHoldings } from './reports';
 import { EvidencePanel } from './evidence';
 import { AssistantPanel } from './assistant';
+import { DemoWorkspaceBanner } from './demo-workspace';
+import { PageHeading } from './primitives';
 import { WorkspaceContext } from './workspace-context';
 import {
   initialWorkspace,
@@ -91,6 +94,7 @@ const EnginesView = dynamic(() =>
   import('./engines-view').then((module) => module.EnginesView),
 );
 export function AsterApp() {
+  const searchQuery = useSearchParams().toString();
   const [route, setRoute] = useState<Route>(DEFAULT_ROUTE),
     [state, setState] = useState<WorkspaceState>(() => initialWorkspace(false)),
     [loading, setLoading] = useState(true),
@@ -106,7 +110,12 @@ export function AsterApp() {
     [reportRange, setReportRange] = useState('YTD');
   const canAdmin = ['owner', 'admin'].includes(state.identity?.role ?? '');
   const data = useMemo(() => deriveWorkspace(state), [state]);
+  const loadInFlight = useRef(false);
+  const stateEpoch = useRef(0);
   const load = useCallback(async () => {
+    if (loadInFlight.current) return;
+    loadInFlight.current = true;
+    const epoch = stateEpoch.current;
     try {
       const response = await fetch('/api/workspace', { cache: 'no-store' });
       if (response.status === 401) {
@@ -127,15 +136,19 @@ export function AsterApp() {
         error?: string;
         message?: string;
       };
-      setState(next);
-      setError(null);
+      if (epoch === stateEpoch.current) {
+        setState(next);
+        setError(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load workspace');
     } finally {
+      loadInFlight.current = false;
       setLoading(false);
     }
   }, []);
   const mutate = useCallback(async (input: Record<string, unknown>) => {
+    stateEpoch.current += 1;
     try {
       const response = await fetch('/api/workspace', {
         method: 'POST',
@@ -147,6 +160,7 @@ export function AsterApp() {
         message?: string;
       };
       if (!response.ok) throw new Error(next.message || 'Could not save');
+      stateEpoch.current += 1;
       setState(next);
       setError(null);
       if (!['advance', 'run'].includes(String(input.type)))
@@ -174,11 +188,22 @@ export function AsterApp() {
   useEffect(() => {
     // oxlint-disable-next-line react/react-compiler -- Async server hydration; state changes after the fetch resolves.
     void load();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load();
+    }, 10000);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void load();
+    };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [load]);
   // oxlint-disable-next-line react/react-compiler -- Synchronize client route with the external browser URL after SSR.
   useEffect(() => {
     function read() {
-      const p = new URLSearchParams(window.location.search);
+      const p = new URLSearchParams(searchQuery);
       const v = p.get('view') ?? 'overview';
       setRoute({
         view: navigation.some((n) => n.id === v) ? (v as View) : 'overview',
@@ -188,9 +213,7 @@ export function AsterApp() {
       });
     }
     read();
-    window.addEventListener('popstate', read);
-    return () => window.removeEventListener('popstate', read);
-  }, []);
+  }, [searchQuery]);
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -244,6 +267,7 @@ export function AsterApp() {
     setReportRange(range);
     setReportOpen(true);
   };
+  const liveDemo = state.demo;
   const activeHolding = data.holdings.find((h) => h.id === route.holding);
   const context = {
     state,
@@ -253,6 +277,9 @@ export function AsterApp() {
     error,
     reload: () => void load(),
   };
+  const viewAllowed = navigationFor(state.identity).some(
+    (item) => item.id === route.view,
+  );
   const pendingReviews = data.evidence.filter(
     (e) => (state.reviews[e.id] ?? e.status) === 'Needs review',
   ).length;
@@ -275,6 +302,17 @@ export function AsterApp() {
             workspaceName={state.officeName}
             inboxCount={pendingReviews}
           >
+            {liveDemo ? <DemoWorkspaceBanner demo={liveDemo} /> : null}
+            {!loading && !viewAllowed ? (
+              <Alert>
+                <AlertDescription>
+                  This page is unavailable for your workspace access.
+                  <Button variant="link" onClick={() => navigate('overview')}>
+                    Open overview
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {error ? (
               <Alert className="storage-alert">
                 <AlertDescription>
@@ -372,6 +410,10 @@ export function AsterApp() {
             ) : null}
             {route.view === 'reports' ? (
               <>
+                <PageHeading
+                  title="Reports"
+                  subtitle="Reproducible reporting, reconciled cash flows and portfolio scenarios."
+                />
                 <ReportingWorkbench family={route.family} onFamily={family} />
                 <details className="mx-6 mb-8 rounded-xl border bg-white">
                   <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
@@ -516,7 +558,10 @@ export function AsterApp() {
                 Account security & sessions
               </Link>
               <TeamSettings />
-              {canAdmin && state.sampleDataAllowed && !data.holdings.length ? (
+              {canAdmin &&
+              !state.demo &&
+              state.sampleDataAllowed &&
+              !data.holdings.length ? (
                 <Button
                   variant="outline"
                   onClick={() => void mutate({ type: 'seed' })}
@@ -525,6 +570,7 @@ export function AsterApp() {
                 </Button>
               ) : null}
               {canAdmin &&
+              !state.demo &&
               state.sampleData &&
               !data.evidence.some((e) => !e.synthetic) ? (
                 <Button variant="outline" onClick={() => setResetConfirm(true)}>

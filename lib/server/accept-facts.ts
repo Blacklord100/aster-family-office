@@ -57,7 +57,7 @@ export async function acceptFacts(
   let finance = state.finance;
   const sources: Record<number, string> = {};
   const provenance = await c.query(
-    'SELECT r.mailbox_id,d.created_at FROM app_documents d LEFT JOIN app_mailbox_receipts r ON r.document_id=d.id AND r.organization_id=d.organization_id WHERE d.id=$1 AND d.organization_id=$2 ORDER BY r.created_at LIMIT 1',
+    'SELECT r.mailbox_id,f.connection_id AS folder_id,d.created_at FROM app_documents d LEFT JOIN app_mailbox_receipts r ON r.document_id=d.id AND r.organization_id=d.organization_id LEFT JOIN app_folder_receipts f ON f.document_id=d.id AND f.organization_id=d.organization_id WHERE d.id=$1 AND d.organization_id=$2 ORDER BY r.created_at,f.created_at LIMIT 1',
     [job.document_id, ctx.organizationId],
   );
   for (const selection of selections) {
@@ -144,13 +144,19 @@ export async function acceptFacts(
         : ('Receipt date fallback' as const);
     portfolio.evidence.unshift({
       id: sourceId,
-      mailboxId: provenance.rows[0]?.mailbox_id ?? 'upload',
+      mailboxId:
+        provenance.rows[0]?.mailbox_id ??
+        (provenance.rows[0]?.folder_id
+          ? 'folder:' + provenance.rows[0].folder_id
+          : 'upload'),
       familyId: holding.familyId,
       holdingId: holding.id,
       subject: fact.investmentName + ' · ' + fact.kind.replaceAll('_', ' '),
       sender: provenance.rows[0]?.mailbox_id
         ? 'Imported email source'
-        : 'Uploaded document',
+        : provenance.rows[0]?.folder_id
+          ? 'Local folder import'
+          : 'Uploaded document',
       receivedAt,
       reportedEffectiveDate: fact.effectiveDate,
       effectiveDateBasis: dateBasis,
@@ -160,6 +166,7 @@ export async function acceptFacts(
       excerpt: fact.evidence.quote,
       status: 'Accepted',
       synthetic: false,
+      ...(state.demo ? { demoSource: true } : {}),
       documentId: job.document_id,
     });
     portfolio.events.unshift({

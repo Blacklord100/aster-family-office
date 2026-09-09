@@ -24,6 +24,9 @@ export interface AllocationGroup {
   percentage: number;
   count: number;
   color: string;
+  knownValuationCount: number;
+  unknownValuationCount: number;
+  percentageBasis: 'Known recorded marks';
 }
 export interface PortfolioHistoryPoint {
   date: string;
@@ -32,10 +35,25 @@ export interface PortfolioHistoryPoint {
   twrIndex: number | null;
   isComplete: boolean;
 }
+export type MetricCoverage = {
+  knownCount: number;
+  unknownCount: number;
+  totalCount: number;
+  complete: boolean;
+};
 export interface PortfolioMetrics {
+  asOfDate: string;
+  coverage: {
+    valuation: MetricCoverage;
+    costBasis: MetricCoverage;
+    unfunded: MetricCoverage;
+    cash: MetricCoverage;
+    liquidity: MetricCoverage;
+  };
+  basis: string;
   totalValueEUR: number;
   costBasisEUR: number;
-  unrealizedGainEUR: number;
+  unrealizedGainEUR: number | null;
   unrealizedGainPercent: number | null;
   cashEUR: number;
   liquidValueEUR: number;
@@ -120,19 +138,28 @@ export function aggregateAllocation(
     | 'liquidityBucket'
     | 'geography' = 'assetClass',
 ): AllocationGroup[] {
-  const total = sumMoney(positions.map((holding) => holding.valueEUR));
+  const total = sumMoney(
+    positions
+      .filter((holding) => holding.valuationStatus !== 'unknown')
+      .map((holding) => holding.valueEUR),
+  );
   const groups = new Map<
     string,
-    { values: number[]; count: number; color: string }
+    { values: number[]; count: number; color: string; unknown: number }
   >();
   for (const holding of positions) {
-    const id = holding[key];
+    const id =
+      key === 'liquidityBucket' && holding.liquidityStatus === 'unknown'
+        ? 'Unknown liquidity'
+        : holding[key];
     const group = groups.get(id) ?? {
       values: [],
       count: 0,
       color: holding.color,
+      unknown: 0,
     };
-    group.values.push(holding.valueEUR);
+    if (holding.valuationStatus === 'unknown') group.unknown++;
+    else group.values.push(holding.valueEUR);
     group.count += 1;
     groups.set(id, group);
   }
@@ -141,11 +168,14 @@ export function aggregateAllocation(
       const valueEUR = sumMoney(group.values);
       return {
         id,
-        label: key === 'familyId' ? familyNames[id as FamilyId] : id,
+        label: key === 'familyId' ? (familyNames[id as FamilyId] ?? id) : id,
         valueEUR,
         percentage: total > 0 ? (valueEUR / total) * 100 : 0,
         count: group.count,
         color: group.color,
+        knownValuationCount: group.count - group.unknown,
+        unknownValuationCount: group.unknown,
+        percentageBasis: 'Known recorded marks' as const,
       };
     })
     .sort((a, b) => b.valueEUR - a.valueEUR);
@@ -189,7 +219,9 @@ export function aggregateValuationHistory(
         (row) =>
           Number.isFinite(row.valueEUR) &&
           row.valueEUR >= 0 &&
-          Number.isFinite(row.netExternalFlowEUR),
+          Number.isFinite(row.netExternalFlowEUR) &&
+          (row.flowCoverage === 'reconciled' ||
+            row.flowCoverage === 'synthetic'),
       );
     const previous = points.at(-1);
     if (!isComplete) index = null;
@@ -253,11 +285,44 @@ function indexReturn(
 export function calculatePortfolioMetrics(
   positions: readonly Holding[],
   history: readonly HoldingValuation[] = [],
-  asOfDate = '2026-09-07',
+  asOfDate = new Date().toISOString().slice(0, 10),
 ): PortfolioMetrics {
-  const totalValueEUR = sumMoney(positions.map((holding) => holding.valueEUR));
+  const coverageFor = (
+    rows: readonly Holding[],
+    status:
+      | 'valuationStatus'
+      | 'costBasisStatus'
+      | 'unfundedStatus'
+      | 'liquidityStatus',
+  ): MetricCoverage => {
+    const knownCount = rows.filter(
+      (holding) => holding[status] !== 'unknown',
+    ).length;
+    return {
+      knownCount,
+      unknownCount: rows.length - knownCount,
+      totalCount: rows.length,
+      complete: rows.length > 0 && knownCount === rows.length,
+    };
+  };
+  const coverage = {
+    valuation: coverageFor(positions, 'valuationStatus'),
+    costBasis: coverageFor(positions, 'costBasisStatus'),
+    unfunded: coverageFor(positions, 'unfundedStatus'),
+    liquidity: coverageFor(positions, 'liquidityStatus'),
+    cash: coverageFor(
+      positions.filter((holding) => holding.assetClass === 'Cash'),
+      'valuationStatus',
+    ),
+  };
+  const valued = positions.filter(
+    (holding) => holding.valuationStatus !== 'unknown',
+  );
+  const totalValueEUR = sumMoney(valued.map((holding) => holding.valueEUR));
   const costBasisEUR = sumMoney(
-    positions.map((holding) => holding.costBasisEUR),
+    positions
+      .filter((holding) => holding.costBasisStatus !== 'unknown')
+      .map((holding) => holding.costBasisEUR),
   );
   const daily = aggregateValuationHistory(
     history,
@@ -269,27 +334,40 @@ export function calculatePortfolioMetrics(
   const dateAgo = (days: number) =>
     new Date(asOf - days * 86_400_000).toISOString().slice(0, 10);
   const yesterday = daily.find((point) => point.date === dateAgo(1));
-  const unrealizedGainEUR = sumMoney([totalValueEUR, -costBasisEUR]);
+  const unrealizedGainEUR =
+    coverage.valuation.complete && coverage.costBasis.complete
+      ? sumMoney([totalValueEUR, -costBasisEUR])
+      : null;
   return {
+    asOfDate,
+    coverage,
+    basis:
+      'Amounts are known recorded subtotals. Missing valuations, cost basis and commitments are excluded, never confirmed zero. Liquid assets require known valuations and liquidity classifications; unknown liquidity establishes neither availability nor lockup. Recorded cash is a balance, not confirmed funding availability. Marks can have different dates; performance requires complete value and cash-flow coverage.',
     totalValueEUR,
     costBasisEUR,
     unrealizedGainEUR,
     unrealizedGainPercent:
-      costBasisEUR > 0 ? (unrealizedGainEUR / costBasisEUR) * 100 : null,
+      costBasisEUR > 0 && unrealizedGainEUR !== null
+        ? (unrealizedGainEUR / costBasisEUR) * 100
+        : null,
     cashEUR: sumMoney(
-      positions
+      valued
         .filter((holding) => holding.assetClass === 'Cash')
         .map((holding) => holding.valueEUR),
     ),
     liquidValueEUR: sumMoney(
-      positions
-        .filter((holding) =>
-          ['Daily', 'Within 30 days'].includes(holding.liquidityBucket),
+      valued
+        .filter(
+          (holding) =>
+            holding.liquidityStatus !== 'unknown' &&
+            ['Daily', 'Within 30 days'].includes(holding.liquidityBucket),
         )
         .map((holding) => holding.valueEUR),
     ),
     unfundedCommitmentEUR: sumMoney(
-      positions.map((holding) => holding.unfundedCommitmentEUR),
+      positions
+        .filter((holding) => holding.unfundedStatus !== 'unknown')
+        .map((holding) => holding.unfundedCommitmentEUR),
     ),
     holdingsCount: positions.length,
     familyCount: new Set(positions.map((holding) => holding.familyId)).size,
@@ -299,11 +377,11 @@ export function calculatePortfolioMetrics(
         90 * 86_400_000,
     ).length,
     dayChangeEUR:
-      today && yesterday
+      today?.isComplete && yesterday?.isComplete
         ? sumMoney([today.valueEUR, -yesterday.valueEUR])
         : null,
     dayInvestmentGainEUR:
-      today && yesterday
+      today?.isComplete && yesterday?.isComplete
         ? sumMoney([
             today.valueEUR,
             -yesterday.valueEUR,

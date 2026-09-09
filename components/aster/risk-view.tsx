@@ -654,6 +654,28 @@ export function RiskView({
           {state.sampleData ? 'Synthetic sample data' : 'Recorded portfolio'}
         </Badge>
       </div>
+      {holdings.some(
+        (h) =>
+          h.valuationStatus === 'unknown' ||
+          h.unfundedStatus === 'unknown' ||
+          h.liquidityStatus === 'unknown' ||
+          h.assetClassStatus === 'inferred',
+      ) ? (
+        <Alert>
+          <AlertTitle>Source coverage is incomplete</AlertTitle>
+          <AlertDescription>
+            Scenario amounts include reported values and commitments only.
+            Holdings without a valuation contribute no priced exposure;
+            unreported commitments are excluded from capital-call estimates.
+            {holdings.some((h) => h.liquidityStatus === 'unknown')
+              ? ' Unreported liquidity terms cannot establish available cash.'
+              : ''}
+            {holdings.some((h) => h.assetClassStatus === 'inferred')
+              ? ' Asset-class scenarios include inferred classifications that require review.'
+              : ''}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {state.sampleData ? (
         <p className={styles.note}>{RISK_DEMO_NOTICE}</p>
       ) : null}
@@ -849,30 +871,59 @@ export function RiskView({
                   subtitle="Capital-call stress · separate from valuation loss"
                   className={styles.panel}
                 >
+                  {!stress.liquidity.coverageComplete ? (
+                    <p className={styles.note}>
+                      Cash stress is unavailable: complete valuations,
+                      commitments and reported liquidity terms are required.
+                    </p>
+                  ) : null}
                   <dl className={styles.facts}>
                     <dt>Recorded cash</dt>
-                    <dd>{money(stress.liquidity.cashBeforeEUR)}</dd>
+                    <dd>
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.cashBeforeEUR)
+                        : 'Unavailable'}
+                    </dd>
                     <dt>Cash after valuation / FX shock</dt>
-                    <dd>{money(stress.liquidity.cashAfterStressEUR)}</dd>
+                    <dd>
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.cashAfterStressEUR)
+                        : 'Unavailable'}
+                    </dd>
                     <dt>Unfunded commitments</dt>
-                    <dd>{money(stress.liquidity.unfundedCommitmentEUR)}</dd>
+                    <dd>
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.unfundedCommitmentEUR)
+                        : 'Incomplete coverage'}
+                    </dd>
                     <dt>Assumed capital calls</dt>
-                    <dd>{money(stress.liquidity.capitalCallsEUR)}</dd>
+                    <dd>
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.capitalCallsEUR)
+                        : 'Unavailable'}
+                    </dd>
                   </dl>
                   <Separator className={styles.separator} />
                   <dl className={styles.facts}>
                     <dt>Cash after assumed calls</dt>
                     <dd
                       className={
+                        stress.liquidity.coverageComplete &&
                         stress.liquidity.cashAfterCallsEUR < 0
                           ? styles.loss
                           : undefined
                       }
                     >
-                      {money(stress.liquidity.cashAfterCallsEUR)}
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.cashAfterCallsEUR)
+                        : 'Unavailable'}
                     </dd>
                     <dt>Funding shortfall</dt>
-                    <dd>{money(stress.liquidity.shortfallEUR)}</dd>
+                    <dd>
+                      {stress.liquidity.coverageComplete
+                        ? money(stress.liquidity.shortfallEUR)
+                        : 'Unavailable'}
+                    </dd>
                   </dl>
                   <p className={styles.note}>
                     Uses recorded cash only. No asset sales, financing,
@@ -990,9 +1041,14 @@ export function RiskView({
                     total={exposure.totalValueEUR}
                   />
                   <p className={styles.note}>
-                    Reported classifications only. Geography and effective
-                    currency are not inferred from a fund’s name or
-                    denomination.
+                    {dimension === 'assetClass' &&
+                    holdings.some(
+                      (holding) => holding.assetClassStatus === 'inferred',
+                    )
+                      ? 'Includes inferred asset classes that require review. '
+                      : 'Reported classifications only. '}
+                    Geography and effective currency are not inferred from a
+                    fund’s name or denomination.
                   </p>
                 </Panel>
                 <Panel

@@ -33,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWorkspace } from './workspace-context';
 import { PageHeading, Panel, Status, Metric, Picker } from './primitives';
 import { IntegrationAccess } from './integration-access';
+import { FolderConnections } from './folder-connections';
 import styles from './connections.module.css';
 
 import type {
@@ -234,7 +235,7 @@ export function ConnectionsView() {
     <>
       <PageHeading
         title="Connections"
-        subtitle="From everyone’s inbox to one clear picture."
+        subtitle="Bring emails, documents and investment updates into one workspace."
       >
         <Button
           variant="outline"
@@ -245,11 +246,15 @@ export function ConnectionsView() {
           Refresh
         </Button>
       </PageHeading>
-      <Tabs defaultValue="mailboxes" className="gap-6">
+      <Tabs defaultValue="folders" className="gap-6">
         <TabsList variant="line">
+          <TabsTrigger value="folders">Folders</TabsTrigger>
           <TabsTrigger value="mailboxes">Mailboxes</TabsTrigger>
           <TabsTrigger value="tools">Apps & agents</TabsTrigger>
         </TabsList>
+        <TabsContent value="folders">
+          <FolderConnections refresh={refresh} />
+        </TabsContent>
         <TabsContent value="mailboxes" className="flex flex-col gap-5">
           {error ? (
             <Alert variant="destructive">

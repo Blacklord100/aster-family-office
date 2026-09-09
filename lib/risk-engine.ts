@@ -189,9 +189,28 @@ export function buildTotalExposure(
       );
     }
   }
+  const allHoldings = holdings;
+  const valuationUnknownCount = holdings.filter(
+    (holding) => holding.valuationStatus === 'unknown',
+  ).length;
+  const unfundedUnknownCount = holdings.filter(
+    (holding) => holding.unfundedStatus === 'unknown',
+  ).length;
+  const liquidityUnknownCount = holdings.filter(
+    (holding) => holding.liquidityStatus === 'unknown',
+  ).length;
+  const assetClassInferredCount = holdings.filter(
+    (holding) => holding.assetClassStatus === 'inferred',
+  ).length;
+  // Unreported fields are storage placeholders, not zero-valued economic positions.
+  holdings = holdings.filter(
+    (holding) => holding.valuationStatus !== 'unknown',
+  );
   const totalValueEUR = total(holdings.map((holding) => holding.valueEUR));
   const unfundedCommitmentEUR = total(
-    holdings.map((holding) => holding.unfundedCommitmentEUR),
+    allHoldings
+      .filter((holding) => holding.unfundedStatus !== 'unknown')
+      .map((holding) => holding.unfundedCommitmentEUR),
   );
   if (
     totalValueEUR > RISK_LIMITS.maxValueEUR ||
@@ -200,10 +219,7 @@ export function buildTotalExposure(
     throw new Error(
       'Portfolio value or commitments exceed the model’s EUR 1 trillion bound.',
     );
-  const valuationDates = holdings
-    .map((holding) => holding.valuationDate)
-    .sort();
-  const date = asOfDate ?? valuationDates.at(-1) ?? '1970-01-01';
+  const date = asOfDate ?? new Date().toISOString().slice(0, 10);
   const parsedDate = new Date(`${date}T00:00:00Z`);
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
@@ -223,6 +239,26 @@ export function buildTotalExposure(
   }
   const lots: ExposureLot[] = [];
   const warnings: RiskWarning[] = [];
+  if (valuationUnknownCount)
+    warnings.push({
+      code: 'VALUATION_COVERAGE_INCOMPLETE',
+      message: `${valuationUnknownCount} holdings have no reported NAV and are excluded from numeric exposure and stress totals. Their economic exposure is unknown, not zero.`,
+    });
+  if (unfundedUnknownCount)
+    warnings.push({
+      code: 'COMMITMENT_COVERAGE_INCOMPLETE',
+      message: `${unfundedUnknownCount} holdings have no reported unfunded commitment. Capital-call simulations cover only recorded commitments; missing commitments are not zero.`,
+    });
+  if (liquidityUnknownCount)
+    warnings.push({
+      code: 'LIQUIDITY_COVERAGE_INCOMPLETE',
+      message: `${liquidityUnknownCount} holdings have no reported liquidity classification. They are excluded from funding cash; their availability or lockup is unknown, not zero.`,
+    });
+  if (assetClassInferredCount)
+    warnings.push({
+      code: 'ASSET_CLASS_INFERRED',
+      message: `${assetClassInferredCount} holdings use inferred asset classes. Allocation and asset-class stress assumptions using these categories are provisional, not source-confirmed classifications.`,
+    });
   const warningKeys = new Set<string>();
   const warn = (warning: RiskWarning) => {
     const key = JSON.stringify(warning);
@@ -510,6 +546,13 @@ export function buildTotalExposure(
       name: lot.holdingName,
     })),
     coverage: {
+      valuationKnownCount: holdings.length,
+      valuationUnknownCount,
+      unfundedKnownCount: allHoldings.length - unfundedUnknownCount,
+      unfundedUnknownCount,
+      liquidityKnownCount: allHoldings.length - liquidityUnknownCount,
+      liquidityUnknownCount,
+      assetClassInferredCount,
       issuerKnownEUR,
       issuerUnknownEUR: money(totalValueEUR - issuerKnownEUR),
       issuerCoveragePercent: percent(issuerKnownEUR, totalValueEUR),
@@ -535,11 +578,21 @@ export function buildTotalExposure(
     asOfDate: date,
     cashEUR: total(
       holdings
-        .filter((holding) => holding.assetClass === 'Cash')
+        .filter(
+          (holding) =>
+            holding.assetClass === 'Cash' &&
+            holding.liquidityStatus !== 'unknown' &&
+            holding.assetClassStatus !== 'inferred',
+        )
         .map((holding) => holding.valueEUR),
     ),
     cashHoldingIds: holdings
-      .filter((holding) => holding.assetClass === 'Cash')
+      .filter(
+        (holding) =>
+          holding.assetClass === 'Cash' &&
+          holding.liquidityStatus !== 'unknown' &&
+          holding.assetClassStatus !== 'inferred',
+      )
       .map((holding) => holding.id),
     unfundedCommitmentEUR,
     limitations: RISK_MODEL_LIMITATIONS,
@@ -684,14 +737,20 @@ export function runStressScenario(
     liquidity: {
       cashBeforeEUR: exposure.cashEUR,
       cashAfterStressEUR,
+      coverageComplete:
+        exposure.coverage.valuationUnknownCount === 0 &&
+        exposure.coverage.unfundedUnknownCount === 0 &&
+        exposure.coverage.liquidityUnknownCount === 0 &&
+        exposure.coverage.assetClassInferredCount === 0,
       unfundedCommitmentEUR: exposure.unfundedCommitmentEUR,
       capitalCallRate: scenario.capitalCallRate,
       capitalCallsEUR,
       cashAfterCallsEUR,
       shortfallEUR: Math.max(0, -cashAfterCallsEUR),
       assumptions: [
+        'Numeric liquidity results use only known recorded values, commitments and liquidity classifications. Unknown liquidity establishes neither availability nor lockup. When coverageComplete is false, these are partial subtotals and cannot establish actual funding headroom, a confirmed shortfall or the absence of capital calls.',
         'The selected portion of current unfunded commitments is assumed called immediately after valuation shocks. Calls use EUR commitments without forecasting FX or call schedules.',
-        'Only holdings classified as Cash fund calls. No asset sales, incoming distributions, credit facilities, taxes, fees or minimum cash reserve are assumed. Fund look-through cash is not treated as directly available cash.',
+        'Only holdings with confirmed Cash and known liquidity classifications fund calls; inferred asset classifications do not establish funding availability. No asset sales, incoming distributions, credit facilities, taxes, fees or minimum cash reserve are assumed. Fund look-through cash is not treated as directly available cash.',
         'Selected families’ and entities’ balances are aggregated for indicative headroom only. Cash availability, account restrictions and the legal or operational ability to fund another entity’s calls are not established, and no transfers are executed.',
         'Capital calls are a liquidity requirement, not an investment loss. Before/after portfolio values show valuation shocks only; the call cash flow is shown separately without assuming an immediate NAV mark for the funded investment.',
       ],

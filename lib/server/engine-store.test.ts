@@ -3,6 +3,7 @@ vi.mock('server-only', () => ({}));
 vi.mock('./auth', () => ({}));
 import { EngineInputSchema } from '../engine-contract';
 import {
+  deploymentEngine,
   cloudReadiness,
   processorEndpoint,
   validateEngineConfig,
@@ -31,6 +32,22 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe('engine isolation and secret contract', () => {
+  it('defaults to local Gemma while retaining deployment overrides and pinned jobs', () => {
+    vi.stubEnv('OLLAMA_MODEL', undefined);
+    expect(deploymentEngine().snapshot).toMatchObject({
+      model: 'gemma4:e4b-m3',
+      execution: 'local',
+      profileId: null,
+    });
+    const original = deploymentEngine();
+    const pin = sealJobEngine(original.config, original.snapshot, org, id);
+    vi.stubEnv('OLLAMA_MODEL', 'qwen3:1.7b');
+    expect(deploymentEngine().config.model).toBe('qwen3:1.7b');
+    expect(
+      openJobEngine(pin.payload, original.snapshot, org, id).config.model,
+    ).toBe('gemma4:e4b-m3');
+  });
+
   it('keeps encrypted secrets out of snapshots and every profile DTO', () => {
     const snapshot = snapshotOf(config, id, 1);
     expect(JSON.stringify(snapshot)).not.toContain(config.apiKey);

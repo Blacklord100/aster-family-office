@@ -11,6 +11,7 @@ import {
   type IntegrationTokenInfo,
 } from '../integration-contract';
 import type { z } from 'zod';
+import type { PoolClient } from 'pg';
 
 export type McpPrincipal = {
   organizationId: string;
@@ -72,7 +73,7 @@ export async function requireMcpAccess(
        JOIN app_memberships m ON m.organization_id=t.organization_id AND m.user_id=t.created_by
        JOIN auth_user u ON u.id=t.created_by
        WHERE t.organization_id=$1 AND t.token_hash=$2 AND t.revoked_at IS NULL AND t.expires_at>now()
-       AND m.revoked_at IS NULL AND m.role IN ('owner','admin') AND u."twoFactorEnabled"=true`,
+       AND m.revoked_at IS NULL AND m.role IN ('owner','admin') AND m.data_scope IS NULL AND u."twoFactorEnabled"=true`,
       [organizationId, hash],
     );
     const token = result.rows[0];
@@ -93,6 +94,31 @@ export async function requireMcpAccess(
       tokenId: token.id,
       scopes: token.scopes,
     };
+  });
+}
+
+/** Revalidate at the read transaction, including revocation since HTTP authentication. */
+export async function withMcpTenant<T>(
+  principal: McpPrincipal,
+  read: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withTenant(principal.organizationId, async (client) => {
+    const active = await client.query(
+      `SELECT 1 FROM app_integration_tokens t
+       JOIN app_memberships m ON m.organization_id=t.organization_id AND m.user_id=t.created_by
+       JOIN auth_user u ON u.id=t.created_by
+       WHERE t.organization_id=$1 AND t.id=$2 AND t.created_by=$3
+       AND t.revoked_at IS NULL AND t.expires_at>now() AND t.scopes @> $4::text[]
+       AND m.revoked_at IS NULL AND m.role IN ('owner','admin') AND m.data_scope IS NULL AND u."twoFactorEnabled"=true`,
+      [
+        principal.organizationId,
+        principal.tokenId,
+        principal.userId,
+        principal.scopes,
+      ],
+    );
+    if (!active.rowCount) throw invalidToken();
+    return read(client);
   });
 }
 export async function listIntegrationTokens(

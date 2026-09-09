@@ -1,0 +1,24 @@
+{
+  "name": "aster-local",
+  "version": "0.1.0",
+  "description": "Read Aster holdings, source documents, processing reviews and reporting obligations through an authenticated local MCP connection.",
+  "author": {
+    "name": "Aster Family Office"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Aster Local",
+    "shortDescription": "Sourced family office intelligence from your Aster installation.",
+    "longDescription": "Inspect holdings and look-through exposure, follow document processing, and review reporting deadlines and exceptions. Requires an expiring Aster read token; the plugin cannot send mail, change records, or accept financial facts.",
+    "developerName": "Aster Family Office",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Show ingestion progress and pending reviews.",
+      "What reporting is overdue and who owns it?",
+      "Show total exposure and the unknown portion."
+    ]
+  },
+  "mcpServers": "./.mcp.json",
+  "repository": "https://github.com/Blacklord100/aster-family-office"
+}

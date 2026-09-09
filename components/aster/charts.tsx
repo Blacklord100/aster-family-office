@@ -112,16 +112,19 @@ export function ValueChart({
     Date.parse(points.at(-1)!.date) - Date.parse(points[0].date) <
       40 * 86400000;
   const seen = new Set<string>();
-  const ticks = shortPeriod
-    ? undefined
-    : points
-        .filter((p, i) => {
-          const month = p.date.slice(0, 7);
-          if (seen.has(month)) return false;
-          seen.add(month);
-          return i !== 0 || Number(p.date.slice(8)) < 26;
-        })
-        .map((p) => p.date);
+  const ticks =
+    points.length === 1
+      ? [points[0].date]
+      : shortPeriod
+        ? undefined
+        : points
+            .filter((p, i) => {
+              const month = p.date.slice(0, 7);
+              if (seen.has(month)) return false;
+              seen.add(month);
+              return i !== 0 || Number(p.date.slice(8)) < 26;
+            })
+            .map((p) => p.date);
   const values = points
     .map((p) => (performance ? p.index : p.value))
     .filter((v): v is number => v !== null);
@@ -174,7 +177,7 @@ export function ValueChart({
             tickFormatter={(v) =>
               new Date(v + 'T12:00:00Z').toLocaleDateString(
                 'en-GB',
-                shortPeriod
+                shortPeriod || points.length === 1
                   ? { day: 'numeric', month: 'short' }
                   : { month: 'short' },
               )
@@ -209,6 +212,11 @@ export function ValueChart({
             stroke="#8064e5"
             strokeWidth={2.3}
             fill={'url(#' + (performance ? 'returnFill' : 'valueFill') + ')'}
+            dot={
+              points.length === 1
+                ? { r: 5, fill: '#8064e5', stroke: 'white', strokeWidth: 2 }
+                : false
+            }
             activeDot={{
               r: 5,
               fill: '#8064e5',

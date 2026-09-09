@@ -1,0 +1,28 @@
+# Explicit synthetic demo override. Never point this at a directory of real mail.
+# Base deployment keeps web intake read-only and demo automation disabled.
+services:
+  web:
+    environment:
+      ASTER_ENABLE_DEMO: "true"
+      ASTER_DEMO_CORPUS_ROOT: /app/benchmark/mailroom-v1
+      ASTER_DEMO_MODEL: ${OLLAMA_MODEL:?Choose the operator-approved locally imported Gemma model alias}
+    volumes:
+      - type: bind
+        source: ${ASTER_DEMO_INTAKE_DIR:?Choose a private empty demo intake directory}
+        target: /run/aster-intake
+        read_only: false
+        bind: {create_host_path: false}
+  worker:
+    environment:
+      ASTER_ENABLE_DEMO: "true"
+      ASTER_DEMO_CORPUS_ROOT: /app/benchmark/mailroom-v1
+  folder-worker:
+    environment:
+      ASTER_ENABLE_DEMO: "true"
+      ASTER_DEMO_CORPUS_ROOT: /app/benchmark/mailroom-v1
+    volumes:
+      - type: bind
+        source: ${ASTER_DEMO_INTAKE_DIR:?Choose a private empty demo intake directory}
+        target: /run/aster-intake
+        read_only: true
+        bind: {create_host_path: false}

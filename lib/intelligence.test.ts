@@ -15,6 +15,7 @@ import {
 } from './intelligence-contract';
 import { emptyRiskData } from './risk-contract';
 import type { Holding } from '../data/types';
+import { holdings as recordedHoldings } from '../data/portfolio';
 const document: IndexedDocument = {
   documentId: '85b40b73-f0d4-49ba-966c-09b746522539',
   filename: 'synthetic.txt',
@@ -318,5 +319,68 @@ it('keeps an excluded disclosure excluded across page boundaries', () => {
   ];
   expect(constituentProposals({ ...document, pages }, 'fund-a', [])).toEqual(
     [],
+  );
+});
+
+it('distinguishes a recorded cash balance from unknown liquidity or inferred classification', () => {
+  const cash = {
+    ...recordedHoldings[0],
+    id: 'cash',
+    assetClass: 'Cash' as const,
+    valueEUR: 100,
+    liquidityStatus: 'unknown' as const,
+    assetClassStatus: 'inferred' as const,
+  };
+  const calculation = recordedCalculations([cash]).find(
+    (row) => row.id === 'cash',
+  );
+  expect(calculation).toMatchObject({
+    valueEUR: 100,
+    liquidityCoverage: {
+      complete: false,
+      knownHoldingCount: 0,
+      totalHoldingCount: 1,
+      unknownHoldingIds: ['cash'],
+    },
+  });
+  expect(calculation?.basis).toContain(
+    'neither available liquidity nor lockup',
+  );
+  expect(calculation?.basis).toContain('inferred, not source-confirmed');
+});
+
+it('omits unavailable recorded calculations and labels known partial subtotals', () => {
+  const unknown = {
+    ...recordedHoldings[0],
+    id: 'unknown',
+    valueEUR: 999,
+    unfundedCommitmentEUR: 777,
+    valuationStatus: 'unknown' as const,
+    unfundedStatus: 'unknown' as const,
+  };
+  expect(recordedCalculations([unknown])).toEqual([]);
+  expect(recordedCalculations([])).toEqual([]);
+  const known = {
+    ...recordedHoldings[0],
+    id: 'known',
+    valueEUR: 100,
+    unfundedCommitmentEUR: 0,
+  };
+  const calculated = recordedCalculations([known, unknown]);
+  expect(calculated.find((row) => row.id === 'nav')).toMatchObject({
+    valueEUR: 100,
+    coverage: {
+      knownHoldingCount: 1,
+      totalHoldingCount: 2,
+      complete: false,
+      unknownHoldingIds: ['unknown'],
+    },
+  });
+  expect(calculated.find((row) => row.id === 'unfunded')).toMatchObject({
+    valueEUR: 0,
+    coverage: { complete: false },
+  });
+  expect(calculated.find((row) => row.id === 'unfunded')?.basis).toContain(
+    'Missing values are excluded',
   );
 });

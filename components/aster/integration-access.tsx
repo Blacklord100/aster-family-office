@@ -37,18 +37,20 @@ import { Panel, Picker, Status } from './primitives';
 const scopes: { id: IntegrationScope; label: string; description: string }[] = [
   {
     id: 'portfolio:read',
-    label: 'Holdings & timeline',
-    description: 'Recorded holdings and investment events.',
+    label: 'Portfolio & exposure',
+    description: 'Recorded holdings, investment events and total exposure.',
   },
   {
     id: 'sources:read',
-    label: 'Original documents',
-    description: 'Imported reports and email files, including their contents.',
+    label: 'Sources & reviews',
+    description:
+      'Original emails and reports, processing status and fact reviews.',
   },
   {
     id: 'mailboxes:read',
     label: 'Connection status',
-    description: 'Mailbox addresses and synchronization status.',
+    description:
+      'Mailbox and folder connections, import counts and synchronization status.',
   },
 ];
 const when = (value: string) =>
@@ -369,6 +371,10 @@ export function IntegrationAccess() {
                 </Field>
                 <FieldSet>
                   <FieldLegend>Allowed information</FieldLegend>
+                  <p className="text-xs text-muted-foreground">
+                    Reporting calendars and exceptions require both portfolio
+                    and source access. All tools are read-only.
+                  </p>
                   {scopes.map((scope) => (
                     <Field orientation="horizontal" key={scope.id}>
                       <Checkbox

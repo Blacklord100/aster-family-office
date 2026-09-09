@@ -463,3 +463,35 @@ describe('dated liquidity and snapshot scoping', () => {
     expect(data.nodes[0].name).toBe('Root');
   });
 });
+
+it('suppresses funding projections for unknown holding liquidity even in an unrestricted account', () => {
+  const state = fixture();
+  state.portfolio.holdings[0].liquidityStatus = 'unknown';
+  const report = evaluatePeriod(state.portfolio, state.finance, query, at);
+  expect(report.liquidity[0]).toMatchObject({
+    recordedCashNative: 600,
+    restrictionUnknownAccountCount: 0,
+    liquidityUnknownHoldingCount: 1,
+    projectedAvailableNative: null,
+  });
+});
+
+it('does not turn an unknown cash placeholder into zero available liquidity', () => {
+  const portfolio = records();
+  portfolio.holdings[0] = {
+    ...portfolio.holdings[0],
+    valuationStatus: 'unknown',
+    valueEUR: 999,
+    originalValue: 999,
+    valuationDate: '',
+  };
+  const result = evaluatePeriod(portfolio, emptyFinanceState(), query, at);
+  expect(result.liquidity[0]).toMatchObject({
+    recordedCashNative: 0,
+    unavailableBalanceCount: 1,
+    projectedAvailableNative: null,
+  });
+  expect(
+    result.holdings.find((row) => row.holdingId === 'cash')?.opening,
+  ).toBeNull();
+});

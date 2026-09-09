@@ -10,6 +10,8 @@ import { withTenant } from './db';
 import { decrypt, encrypt, sha256 } from './crypto';
 import { audit, rateLimit } from './audit';
 import { readBody } from './http';
+import { hasDemoSourceVerification } from './demo-review-policy';
+import { loadDemoCatalog } from './demo-corpus';
 import {
   activeEngine,
   assertEngineEnabled,
@@ -178,19 +180,6 @@ export async function indexDocument(ctx: WorkspaceContext, documentId: string) {
   requireUnscoped(ctx);
   const original = await withTenant(ctx.organizationId, async (c) => {
     await assertDocumentAccess(c, ctx, documentId);
-    if (
-      !(await rateLimit(
-        c,
-        'intelligence-index:' + ctx.organizationId + ':' + ctx.user.id,
-        30,
-        3600,
-      ))
-    )
-      throw new AccessError(
-        429,
-        'RATE_LIMITED',
-        'Decoding limit reached. Try later.',
-      );
     const row = (
       await c.query<{
         payload: Buffer;
@@ -203,6 +192,24 @@ export async function indexDocument(ctx: WorkspaceContext, documentId: string) {
       )
     ).rows[0];
     if (!row) throw new AccessError(404, 'NOT_FOUND', 'Document not found.');
+    const verifiedDemo =
+      (await hasDemoSourceVerification(c, ctx, documentId)) &&
+      (await loadDemoCatalog()).documents.some(
+        (source) => source.sha256 === row.content_hash,
+      );
+    if (
+      !(await rateLimit(
+        c,
+        'intelligence-index:' + ctx.organizationId + ':' + ctx.user.id,
+        verifiedDemo ? 120 : 30,
+        3600,
+      ))
+    )
+      throw new AccessError(
+        429,
+        'RATE_LIMITED',
+        'Decoding limit reached. Try later.',
+      );
     return {
       ...row,
       bytes: decrypt(
@@ -263,7 +270,11 @@ export async function indexDocument(ctx: WorkspaceContext, documentId: string) {
     indexedAt: indexed.indexedAt,
   };
 }
-async function loadDocument(c: PoolClient, ctx: WorkspaceContext, id: string) {
+export async function loadIndexedDocument(
+  c: PoolClient,
+  ctx: WorkspaceContext,
+  id: string,
+) {
   await assertDocumentAccess(c, ctx, id);
   const row = (
     await c.query<{ payload: Buffer }>(
@@ -341,7 +352,7 @@ export async function changeIntelligence(
       if (command.action === 'propose') {
         if (!data.holdings.some((h) => h.id === command.holdingId))
           throw new IntelligenceError('Choose an existing holding.');
-        const document = await loadDocument(c, ctx, command.documentId);
+        const document = await loadIndexedDocument(c, ctx, command.documentId);
         const proposals = constituentProposals(
           document,
           command.holdingId,
@@ -364,7 +375,7 @@ export async function changeIntelligence(
         );
         if (!proposal || proposal.status !== 'pending')
           throw new IntelligenceError('This proposal is no longer pending.');
-        const document = await loadDocument(
+        const document = await loadIndexedDocument(
           c,
           ctx,
           proposal.citation.documentId,
@@ -516,21 +527,61 @@ export async function changeIntelligence(
     throw e;
   }
 }
+export const INTELLIGENCE_DOCUMENT_LIMIT = 500;
+export const INTELLIGENCE_ENCRYPTED_BYTE_LIMIT = 32 * 1024 * 1024;
+export const INTELLIGENCE_CHARACTER_LIMIT = 8_000_000;
 async function sourceSet(c: PoolClient, ctx: WorkspaceContext) {
   const released = await releasedDocumentIds(c, ctx);
+  // The SQL byte window prevents a large library from transferring unbounded
+  // ciphertext. The extra metadata row detects a real document-limit overflow.
   const rows = (
-    await c.query<{ document_id: string; payload: Buffer }>(
-      'SELECT document_id,payload FROM app_intelligence_documents WHERE organization_id=$1 AND ($2::uuid[] IS NULL OR document_id=ANY($2::uuid[])) ORDER BY indexed_at DESC,document_id DESC LIMIT 41',
-      [ctx.organizationId, ctx.scope ? [...released] : null],
+    await c.query<{
+      document_id: string;
+      payload: Buffer | null;
+      page_count: number;
+    }>(
+      `WITH candidates AS (
+       SELECT document_id,indexed_at,page_count,octet_length(payload) AS encrypted_bytes
+       FROM app_intelligence_documents
+       WHERE organization_id=$1 AND ($2::uuid[] IS NULL OR document_id=ANY($2::uuid[]))
+       ORDER BY indexed_at DESC,document_id DESC LIMIT $3
+     ), bounded AS (
+       SELECT *,row_number() OVER(ORDER BY indexed_at DESC,document_id DESC) AS ordinal,
+        sum(encrypted_bytes) OVER(ORDER BY indexed_at DESC,document_id DESC) AS running_bytes
+       FROM candidates
+     )
+     SELECT b.document_id,b.page_count,
+      CASE WHEN b.ordinal<=$4 AND b.running_bytes<=$5 THEN i.payload ELSE NULL END AS payload
+     FROM bounded b JOIN app_intelligence_documents i ON i.document_id=b.document_id AND i.organization_id=$1
+     ORDER BY b.ordinal`,
+      [
+        ctx.organizationId,
+        ctx.scope ? [...released] : null,
+        INTELLIGENCE_DOCUMENT_LIMIT + 1,
+        INTELLIGENCE_DOCUMENT_LIMIT,
+        INTELLIGENCE_ENCRYPTED_BYTE_LIMIT,
+      ],
     )
   ).rows;
   const documents: IndexedDocument[] = [];
   let chars = 0,
     pages = 0,
-    indexedPages = 0;
+    indexedPages = 0,
+    encryptedBytes = 0;
+  let truncated = rows.length > INTELLIGENCE_DOCUMENT_LIMIT;
   const warnings: string[] = [];
-  for (const row of rows.slice(0, 40)) {
+  for (const row of rows.slice(0, INTELLIGENCE_DOCUMENT_LIMIT)) {
+    // Even an omitted payload contributes coverage metadata, so its grant must
+    // still be current before returning either a source or an aggregate count.
     await assertDocumentAccess(c, ctx, row.document_id);
+    if (
+      !row.payload ||
+      encryptedBytes + row.payload.length > INTELLIGENCE_ENCRYPTED_BYTE_LIMIT
+    ) {
+      truncated = true;
+      indexedPages += row.page_count ?? 0;
+      continue;
+    }
     const doc = indexSchema.parse(
       JSON.parse(
         decrypt(
@@ -539,39 +590,50 @@ async function sourceSet(c: PoolClient, ctx: WorkspaceContext) {
         ).toString(),
       ),
     );
+    encryptedBytes += row.payload.length;
     indexedPages += doc.pages.length;
     const selected = [];
     for (const page of doc.pages) {
-      const remaining = 100000 - chars;
-      if (remaining <= 0) break;
-      const text = page.text.slice(0, remaining);
+      const remaining = INTELLIGENCE_CHARACTER_LIMIT - chars;
+      if (remaining <= 0 && page.text.length) {
+        truncated = true;
+        break;
+      }
+      const text = page.text.slice(0, Math.max(0, remaining));
+      if (text.length < page.text.length) truncated = true;
       chars += text.length;
       pages++;
       selected.push({ ...page, text });
     }
     if (selected.length) documents.push({ ...doc, pages: selected });
-    warnings.push(...doc.warnings.map((w) => doc.filename + ': ' + w));
+    warnings.push(
+      ...doc.warnings.map((warning) => doc.filename + ': ' + warning),
+    );
   }
+  for (const sentinel of rows.slice(INTELLIGENCE_DOCUMENT_LIMIT))
+    await assertDocumentAccess(c, ctx, sentinel.document_id);
   const coverage: IntelligenceCoverage = {
-    indexedDocuments: Math.min(rows.length, 40),
+    indexedDocuments: Math.min(rows.length, INTELLIGENCE_DOCUMENT_LIMIT),
     searchedDocuments: documents.length,
     indexedPages,
     searchedPages: pages,
-    documentLimit: 40,
-    characterLimit: 100000,
+    documentLimit: INTELLIGENCE_DOCUMENT_LIMIT,
+    characterLimit: INTELLIGENCE_CHARACTER_LIMIT,
+    encryptedByteLimit: INTELLIGENCE_ENCRYPTED_BYTE_LIMIT,
+    scannedEncryptedBytes: encryptedBytes,
     scannedCharacters: chars,
-    truncated: rows.length > 40 || chars >= 100000,
+    truncated,
     warnings: warnings.slice(0, 30),
   };
-  if (coverage.truncated)
+  if (truncated)
     coverage.warnings.push(
-      'Coverage is capped at the newest 40 accessible indexed documents and 100,000 decoded characters. Unindexed originals are not searched.',
+      'Coverage reached its bound: at most the newest 500 accessible indexed documents, 32 MiB of encrypted index records and 8,000,000 decoded characters. Unindexed or omitted originals are not searched.',
     );
   return {
     documents,
     coverage,
     released,
-    checkedDocumentIds: rows.slice(0, 40).map((row) => row.document_id),
+    checkedDocumentIds: rows.map((row) => row.document_id),
   };
 }
 export async function searchIntelligence(

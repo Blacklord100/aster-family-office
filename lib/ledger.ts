@@ -306,6 +306,7 @@ export function postReviewedValuation(
     holding.syntheticFXRateToEUR =
       input.currency === 'EUR' ? 1 : Number(input.fx!.rateToEUR);
     holding.valuationDate = input.effectiveDate;
+    holding.valuationStatus = 'reported';
     holding.sourceId = input.sourceId;
     holding.valuationMethod = valuationMethod;
     const priorDetail = finance.holdings[holding.id];

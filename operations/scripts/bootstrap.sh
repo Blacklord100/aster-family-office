@@ -5,10 +5,4 @@ test "$#" -eq 4 || { echo "Usage: $0 PASSWORD_FILE EMAIL NAME ORGANIZATION" >&2;
 test -f "$1"
 test -r "$1"
 docker compose run --rm --no-deps -T \
-  -e BOOTSTRAP_PASSWORD_FILE=/tmp/bootstrap-password \
-  migrate /bin/sh -eu -c '
-    umask 077
-    cat > "$BOOTSTRAP_PASSWORD_FILE"
-    trap '\''rm -f "$BOOTSTRAP_PASSWORD_FILE"'\'' EXIT
-    npm run bootstrap -- --email "$1" --name "$2" --organization "$3"
-  ' bootstrap "$2" "$3" "$4" < "$1"
+  migrate node /opt/aster/bootstrap-stdin.mjs "$2" "$3" "$4" < "$1"

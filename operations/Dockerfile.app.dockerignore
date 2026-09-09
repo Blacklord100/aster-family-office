@@ -22,9 +22,16 @@
 !migrations/**
 !scripts/
 !scripts/**
+!benchmark/
+!benchmark/mailroom-v1/
+!benchmark/mailroom-v1/catalog.json
+!benchmark/mailroom-v1/fixtures/
+!benchmark/mailroom-v1/fixtures/emails/
+!benchmark/mailroom-v1/fixtures/emails/*.eml
 !operations/
 !operations/scripts/
 !operations/scripts/app-entrypoint.mjs
+!operations/scripts/bootstrap-stdin.mjs
 !operations/scripts/worker-healthcheck.mjs
 **/*.test.ts
 **/.env*

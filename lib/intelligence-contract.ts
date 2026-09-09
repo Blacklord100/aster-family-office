@@ -127,6 +127,8 @@ export type IntelligenceCoverage = {
   documentLimit: number;
   characterLimit: number;
   scannedCharacters: number;
+  encryptedByteLimit?: number;
+  scannedEncryptedBytes?: number;
   truncated: boolean;
   warnings: string[];
 };
@@ -150,6 +152,18 @@ export type SearchResponse = {
   coverage: IntelligenceCoverage;
 };
 export type Calculation = {
+  liquidityCoverage?: {
+    knownHoldingCount: number;
+    totalHoldingCount: number;
+    complete: boolean;
+    unknownHoldingIds: string[];
+  };
+  coverage?: {
+    knownHoldingCount: number;
+    totalHoldingCount: number;
+    complete: boolean;
+    unknownHoldingIds: string[];
+  };
   id: string;
   label: string;
   valueEUR: number;

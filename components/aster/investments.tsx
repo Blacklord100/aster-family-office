@@ -81,7 +81,9 @@ export function InvestmentsView({
           scoped.length +
           ' investments · ' +
           money(total) +
-          ' in portfolio value'
+          (scoped.some((h) => h.valuationStatus === 'unknown')
+            ? ' in reported value · valuations incomplete'
+            : ' in portfolio value')
         }
       >
         <FamilyPicker
@@ -247,7 +249,13 @@ export function InvestmentDetail({
         <Button onClick={onBack}>All investments</Button>
       </div>
     );
-  const costRatio = h.costBasisEUR ? h.valueEUR / h.costBasisEUR : null;
+  const valueKnown = h.valuationStatus !== 'unknown';
+  const costKnown = h.costBasisStatus !== 'unknown';
+  const unfundedKnown = h.unfundedStatus !== 'unknown';
+  const costRatio =
+    valueKnown && costKnown && h.costBasisEUR
+      ? h.valueEUR / h.costBasisEUR
+      : null;
   return (
     <>
       <button className="back-link" onClick={onBack}>
@@ -265,7 +273,10 @@ export function InvestmentDetail({
           h.currency
         }
       >
-        <Status>{h.assetClass}</Status>
+        <Status>
+          {h.assetClass}
+          {h.assetClassStatus === 'inferred' ? ' · Inferred' : ''}
+        </Status>
         <Button variant="outline" onClick={() => onSource(h.sourceId)}>
           <FileText data-icon="inline-start" />
           View source
@@ -276,21 +287,46 @@ export function InvestmentDetail({
         onChange={setTab}
         items={['Overview', 'Timeline', 'Documents']}
       />
+      <p className="method-note">
+        Liquidity ·{' '}
+        {h.liquidityStatus === 'unknown' ? 'Not reported' : h.liquidityBucket}
+        {h.assetClassStatus === 'inferred'
+          ? ' · Asset class is inferred and requires review.'
+          : ''}
+      </p>
       <div className="metrics-row three">
         <Metric
           label="Net asset value"
-          value={money(h.valueEUR)}
-          note={'As of ' + dateLabel(h.valuationDate)}
+          value={valueKnown ? money(h.valueEUR) : 'Not reported'}
+          note={
+            valueKnown
+              ? 'As of ' + dateLabel(h.valuationDate)
+              : 'A source valuation is still required'
+          }
         />
         <Metric
           label={
-            h.unfundedCommitmentEUR ? 'Unfunded commitment' : 'Unrealized gain'
+            !unfundedKnown || h.unfundedCommitmentEUR
+              ? 'Unfunded commitment'
+              : 'Unrealized gain'
           }
-          value={money(h.unfundedCommitmentEUR || h.valueEUR - h.costBasisEUR)}
+          value={
+            !unfundedKnown
+              ? 'Not reported'
+              : h.unfundedCommitmentEUR
+                ? money(h.unfundedCommitmentEUR)
+                : valueKnown && costKnown
+                  ? money(h.valueEUR - h.costBasisEUR)
+                  : 'Unavailable'
+          }
           note={
-            h.unfundedCommitmentEUR
-              ? 'Excluded from portfolio NAV'
-              : 'Versus remaining cost basis'
+            !unfundedKnown
+              ? 'A reported commitment is still required'
+              : !costKnown && !h.unfundedCommitmentEUR
+                ? 'Remaining cost basis is not reported'
+                : h.unfundedCommitmentEUR
+                  ? 'Excluded from portfolio NAV'
+                  : 'Versus remaining cost basis'
           }
         />
         <Metric
@@ -416,24 +452,30 @@ export function InvestmentDetail({
             {h.unfundedCommitmentEUR ? (
               <Panel title="Capital overview">
                 <div className="capital-value">
-                  {money(h.costBasisEUR + h.unfundedCommitmentEUR)}
+                  {costKnown
+                    ? money(h.costBasisEUR + h.unfundedCommitmentEUR)
+                    : 'Cost basis not reported'}
                 </div>
                 <p className="method-note">
                   Cost basis plus remaining commitment
                 </p>
-                <div className="capital-track">
-                  <span
-                    style={{
-                      width: percent(
-                        h.costBasisEUR /
-                          (h.costBasisEUR + h.unfundedCommitmentEUR),
-                      ),
-                    }}
-                  />
-                </div>
+                {costKnown ? (
+                  <div className="capital-track">
+                    <span
+                      style={{
+                        width: percent(
+                          h.costBasisEUR /
+                            (h.costBasisEUR + h.unfundedCommitmentEUR),
+                        ),
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <div className="capital-row">
                   <span>Invested cost basis</span>
-                  <strong>{money(h.costBasisEUR)}</strong>
+                  <strong>
+                    {costKnown ? money(h.costBasisEUR) : 'Not reported'}
+                  </strong>
                 </div>
                 <div className="capital-row">
                   <span>Remaining commitment</span>

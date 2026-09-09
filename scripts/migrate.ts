@@ -47,7 +47,7 @@ try {
   await client.query('REVOKE ALL ON aster_migrations FROM ' + role);
   await client.query('REVOKE UPDATE,DELETE,TRUNCATE ON app_audit FROM ' + role);
   await client.query(
-    'GRANT EXECUTE ON FUNCTION claim_report_obligations(uuid,uuid[]),finish_report_obligations(uuid,uuid,bigint,text) TO ' +
+    'GRANT EXECUTE ON FUNCTION claim_report_obligations(uuid,uuid[]),finish_report_obligations(uuid,uuid,bigint,text),claim_folder_connection(uuid,uuid[]) TO ' +
       role,
   );
   await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');

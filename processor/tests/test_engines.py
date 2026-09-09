@@ -122,3 +122,13 @@ def test_malformed_provider_envelopes_are_safe_model_errors(provider,payload):
         with pytest.raises(LocalModelError) as caught:model.structured(SyntheticCheck,'Synthetic')
         assert SECRET not in str(caught.value)
     finally:model.close()
+
+
+def test_local_gemma_default_and_explicit_deployment_override(monkeypatch):
+    monkeypatch.delenv('OLLAMA_MODEL', raising=False)
+    monkeypatch.setenv('PROCESSOR_TOKEN', TOKEN)
+    assert Settings(TOKEN).ollama_model == 'gemma4:e4b-m3'
+    assert Settings.from_env().ollama_model == 'gemma4:e4b-m3'
+    monkeypatch.setenv('OLLAMA_MODEL', 'qwen3:1.7b')
+    assert Settings.from_env().ollama_model == 'qwen3:1.7b'
+    assert Settings(TOKEN, ollama_model='approved-local:gguf').ollama_model == 'approved-local:gguf'

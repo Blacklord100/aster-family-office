@@ -22,6 +22,7 @@ import {
   readPdfPreview,
 } from '@/lib/pdf-preview';
 import styles from './pdf-preview.module.css';
+import { emailAttachmentPreviewPath } from '@/lib/email-preview-contract';
 
 /** Canvas only: no annotation links, scripting manager, XFA, attachments or external asset URLs. */
 export function PdfPreview({
@@ -29,11 +30,13 @@ export function PdfPreview({
   onOpened,
   expanded = false,
   initialPage = 1,
+  attachmentIndex,
 }: {
   documentId: string;
   onOpened: () => void;
   expanded?: boolean;
   initialPage?: number;
+  attachmentIndex?: number;
 }) {
   const [page, setPage] = useState(initialPage),
     [count, setCount] = useState(0);
@@ -90,12 +93,17 @@ export function PdfPreview({
         canvas.height = 0;
       }
       try {
-        const response = await fetch(pdfPreviewPath(documentId), {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          redirect: 'error',
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          attachmentIndex === undefined
+            ? pdfPreviewPath(documentId)
+            : emailAttachmentPreviewPath(documentId, attachmentIndex),
+          {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'error',
+            signal: controller.signal,
+          },
+        );
         const bytes = await readPdfPreview(response, controller.signal);
         const pdfjs = await import('pdfjs-dist');
         controller.signal.throwIfAborted();
@@ -190,7 +198,7 @@ export function PdfPreview({
         canvas.height = 0;
       }
     };
-  }, [documentId, page]);
+  }, [documentId, attachmentIndex, page]);
   return (
     <div className={styles.preview} aria-label="PDF source preview">
       <div className={styles.toolbar}>
@@ -288,6 +296,7 @@ export function PdfPreview({
             </DialogHeader>
             <PdfPreview
               documentId={documentId}
+              attachmentIndex={attachmentIndex}
               onOpened={onOpened}
               expanded
               initialPage={page}

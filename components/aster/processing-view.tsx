@@ -739,6 +739,30 @@ function JobDetail({
   ) => Promise<boolean>;
 }) {
   const result = job.result;
+  const failure =
+    job.errorCode === 'PROCESSOR_HTTP_422'
+      ? {
+          title: 'Input needs attention',
+          description:
+            'The processor could not read or validate this input. Open the original and check for protected or unreadable content. Check the selected engine configuration before retrying.',
+        }
+      : job.errorCode === 'PROCESSOR_HTTP_413'
+        ? {
+            title: 'Input exceeds the processing limit',
+            description:
+              'This input exceeded a processing size limit. Review the original and provide a supported smaller source before retrying.',
+          }
+        : job.errorCode === 'PROCESSOR_HTTP_504'
+          ? {
+              title: 'Processing timed out',
+              description:
+                'The processor exceeded its time limit. Check engine responsiveness and the source document before retrying.',
+            }
+          : {
+              title: 'Processing did not finish',
+              description:
+                'Check the source document and the selected processor and engine configuration before retrying.',
+            };
   const unreadableSource = result?.trace.some(
     (entry) => entry.stage === 'input_coverage' && entry.status === 'warning',
   );
@@ -816,10 +840,9 @@ function JobDetail({
       {job.status === 'failed' ? (
         <Alert variant="destructive">
           <AlertCircle />
-          <AlertTitle>Processing did not finish</AlertTitle>
+          <AlertTitle>{failure.title}</AlertTitle>
           <AlertDescription>
-            Try again after checking that your selected processor and configured
-            model are available.
+            {failure.description}
             {job.errorCode ? (
               <p className="mt-2 break-words text-xs">
                 Reference: {job.errorCode}

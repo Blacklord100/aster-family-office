@@ -11,6 +11,10 @@ import { POST } from '../../app/api/mcp/route';
 import { createIntegrationToken, revokeIntegrationToken } from './mcp-access';
 import { pool } from './db';
 import { encrypt } from './crypto';
+import { initialWorkspace } from '../workspace';
+import { holdings as fixtureHoldings } from '../../data/portfolio';
+import { createAsterMcpServer } from './mcp-server';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { WorkspaceContext } from './access';
 
 const enabled = process.env.ASTER_MCP_INTEGRATION === '1';
@@ -21,7 +25,9 @@ describe.skipIf(!enabled)(
       otherOrg = randomUUID(),
       user = randomUUID(),
       document = randomUUID(),
-      foreignDocument = randomUUID();
+      foreignDocument = randomUUID(),
+      jobId = randomUUID(),
+      foreignJobId = randomUUID();
     let admin: Pool, token: string, tokenId: string;
     const context: WorkspaceContext = {
       organizationId: org,
@@ -107,6 +113,76 @@ describe.skipIf(!enabled)(
             encrypt(original, 'document:' + organizationId + ':' + id),
           ],
         );
+      for (const [id, organizationId, documentId] of [
+        [jobId, org, document],
+        [foreignJobId, otherOrg, foreignDocument],
+      ]) {
+        const extraction = {
+          schemaVersion: 1,
+          documentId,
+          mode: 'agentic',
+          execution: 'local',
+          documentType: 'nav_statement',
+          relevant: true,
+          confidence: 1,
+          facts: [
+            {
+              kind: 'valuation',
+              investmentName: 'Synthetic Meridian',
+              effectiveDate: '2026-06-30',
+              amount: '2800000',
+              currency: 'EUR',
+              dueDate: null,
+              summary: 'Synthetic NAV',
+              evidence: { page: 1, quote: 'Meridian NAV EUR 2800000.' },
+            },
+          ],
+          warnings: [],
+          trace: [],
+          model: 'gemma4:e4b-m3',
+        };
+        await admin.query(
+          "INSERT INTO app_jobs(id,organization_id,document_id,created_by,mode,status,result,policy_revision,engine_legacy) VALUES($1,$2,$3,$4,'agentic','awaiting_review',$5,0,true)",
+          [
+            id,
+            organizationId,
+            documentId,
+            user,
+            encrypt(
+              JSON.stringify(extraction),
+              `result:${organizationId}:${id}`,
+            ),
+          ],
+        );
+      }
+      const state = initialWorkspace(false);
+      state.portfolio = {
+        holdings: [
+          {
+            ...fixtureHoldings[0],
+            id: 'unvalued-source',
+            valueEUR: 9000,
+            originalValue: 9000,
+            costBasisEUR: 8000,
+            unfundedCommitmentEUR: 7000,
+            valuationStatus: 'unknown',
+            costBasisStatus: 'unknown',
+            unfundedStatus: 'unknown',
+            liquidityStatus: 'unknown',
+          },
+        ],
+        history: [],
+        events: [],
+        evidence: [],
+        tasks: [],
+        families: [],
+        entities: [],
+        accounts: [],
+      };
+      await admin.query(
+        'INSERT INTO app_workspace(organization_id,payload) VALUES($1,$2)',
+        [org, encrypt(JSON.stringify(state), 'workspace:' + org)],
+      );
       const created = await createIntegrationToken(context, {
         name: 'Fixture read token',
         scopes: ['portfolio:read', 'sources:read'],
@@ -121,6 +197,7 @@ describe.skipIf(!enabled)(
           'app_integration_tokens',
           'app_audit',
           'app_workspace',
+          'app_jobs',
           'app_documents',
           'app_memberships',
         ])
@@ -149,10 +226,31 @@ describe.skipIf(!enabled)(
           'list_timeline',
           'list_sources',
           'read_source',
+          'read_exposure',
+          'list_processing',
+          'read_processing',
+          'list_reporting_calendar',
+          'list_exceptions',
         ]);
         expect(
           tools.tools.every((tool) => tool.annotations?.readOnlyHint === true),
         ).toBe(true);
+        const portfolio = await client.callTool({
+          name: 'list_holdings',
+          arguments: {},
+        });
+        expect(portfolio.structuredContent).toMatchObject({
+          holdings: [
+            {
+              id: 'unvalued-source',
+              valueEUR: null,
+              originalValue: null,
+              costBasisEUR: null,
+              unfundedCommitmentEUR: null,
+              liquidityBucket: null,
+            },
+          ],
+        });
         const sources = await client.callTool({
           name: 'list_sources',
           arguments: {},
@@ -181,6 +279,137 @@ describe.skipIf(!enabled)(
         await client.close();
       }
     });
+    it('reads current processing facts without accepting them and rejects foreign job IDs', async () => {
+      const client = await connect(token);
+      try {
+        const listed = await client.callTool({
+          name: 'list_processing',
+          arguments: { status: 'awaiting_review', limit: 1 },
+        });
+        expect(
+          (listed.structuredContent as { jobs: { id: string }[] }).jobs.map(
+            (row) => row.id,
+          ),
+        ).toEqual([jobId]);
+        const detail = await client.callTool({
+          name: 'read_processing',
+          arguments: { jobId },
+        });
+        expect(detail.isError).not.toBe(true);
+        expect(detail.structuredContent).toMatchObject({
+          jobId,
+          documentId: document,
+          mode: 'agentic',
+          reviewRevision: 0,
+          facts: [
+            {
+              reviewStatus: 'pending',
+              fact: { amount: '2800000' },
+              originalFact: { amount: '2800000' },
+            },
+          ],
+        });
+        expect(
+          (
+            await client.callTool({
+              name: 'read_processing',
+              arguments: { jobId: foreignJobId },
+            })
+          ).isError,
+        ).toBe(true);
+        const saved = await admin.query(
+          'SELECT status,review_revision FROM app_jobs WHERE id=$1',
+          [jobId],
+        );
+        expect(saved.rows[0]).toEqual({
+          status: 'awaiting_review',
+          review_revision: 0,
+        });
+        for (const name of [
+          'read_exposure',
+          'list_reporting_calendar',
+          'list_exceptions',
+        ]) {
+          const response = await client.callTool({ name, arguments: {} });
+          expect(response.isError, name).not.toBe(true);
+        }
+        expect(
+          (
+            await client.callTool({
+              name: 'list_reporting_calendar',
+              arguments: { from: '2026-09-30', through: '2026-01-01' },
+            })
+          ).isError,
+        ).toBe(true);
+      } finally {
+        await client.close();
+      }
+    });
+    it('does not expose portfolio or calendar tools to source-only clients', async () => {
+      const created = await createIntegrationToken(context, {
+        name: 'Sources only',
+        scopes: ['sources:read'],
+        expiresInDays: 1,
+      });
+      const client = await connect(created.token);
+      try {
+        expect(
+          (await client.listTools()).tools.map((tool) => tool.name),
+        ).toEqual([
+          'list_sources',
+          'read_source',
+          'list_processing',
+          'read_processing',
+        ]);
+        expect(
+          (await client.callTool({ name: 'list_exceptions', arguments: {} }))
+            .isError,
+        ).toBe(true);
+      } finally {
+        await client.close();
+        await revokeIntegrationToken(context, created.id);
+        await admin.query('DELETE FROM app_request_limits WHERE key=$1', [
+          'mcp:' + created.id,
+        ]);
+      }
+    });
+    it('rechecks revocation after HTTP authorization and before accessing a record', async () => {
+      const created = await createIntegrationToken(context, {
+        name: 'Revoke race',
+        scopes: ['sources:read'],
+        expiresInDays: 1,
+      });
+      const server = createAsterMcpServer({
+        organizationId: org,
+        userId: user,
+        tokenId: created.id,
+        scopes: ['sources:read'],
+      });
+      const client = new Client({
+        name: 'revocation-fixture',
+        version: '1.0.0',
+      });
+      const [clientTransport, serverTransport] =
+        InMemoryTransport.createLinkedPair();
+      await Promise.all([
+        server.connect(serverTransport),
+        client.connect(clientTransport),
+      ]);
+      try {
+        await revokeIntegrationToken(context, created.id);
+        expect(
+          (
+            await client.callTool({
+              name: 'read_source',
+              arguments: { documentId: document },
+            })
+          ).isError,
+        ).toBe(true);
+      } finally {
+        await client.close();
+        await server.close();
+      }
+    });
     it('stores a hash, audits reads, and requires explicit source scope', async () => {
       const stored = await admin.query(
         'SELECT token_hash FROM app_integration_tokens WHERE id=$1',
@@ -202,7 +431,7 @@ describe.skipIf(!enabled)(
       try {
         expect(
           (await client.listTools()).tools.map((tool) => tool.name),
-        ).toEqual(['list_holdings', 'list_timeline']);
+        ).toEqual(['list_holdings', 'list_timeline', 'read_exposure']);
       } finally {
         await client.close();
         await revokeIntegrationToken(context, created.id);

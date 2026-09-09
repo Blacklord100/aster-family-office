@@ -95,6 +95,30 @@ export const encryptedTables: EncryptedTable[] = [
     ],
   },
   {
+    table: 'app_folder_connections',
+    key: ['id'],
+    tenant: true,
+    fields: [
+      {
+        name: 'config',
+        context: (r) =>
+          `folder-config:${String(r.organization_id)}:${String(r.id)}`,
+      },
+    ],
+  },
+  {
+    table: 'app_folder_receipts',
+    key: ['connection_id', 'receipt_key'],
+    tenant: true,
+    fields: [
+      {
+        name: 'payload',
+        context: (r) =>
+          `folder-receipt:${String(r.organization_id)}:${String(r.connection_id)}:${String(r.receipt_key)}`,
+      },
+    ],
+  },
+  {
     table: 'app_mailbox_oauth_states',
     key: ['state_hash'],
     tenant: true,

@@ -48,7 +48,7 @@ def main():
             if args.real_local:
                 settings = Settings('evaluation-only-synthetic-token',
                                     ollama_base_url=os.getenv('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
-                                    ollama_model=os.getenv('OLLAMA_MODEL', 'qwen3:1.7b'))
+                                    ollama_model=os.getenv('OLLAMA_MODEL', 'gemma4:e4b-m3'))
                 output = process(document, row['id'], mode, settings, classifier)
             else:
                 # Scripted golden replies test orchestration/schema/validation only.

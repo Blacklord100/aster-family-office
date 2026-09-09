@@ -10,6 +10,8 @@ export interface WorkspaceContext {
   role: WorkspaceRole;
   sessionId: string;
   scope?: DataScope | null;
+  /** A read recovered from a stale cookie; the workspace GET clears it. */
+  staleWorkspaceSelection?: true;
 }
 
 export class AccessError extends Error {
@@ -77,23 +79,52 @@ export async function requireWorkspace(
   });
   if (!current)
     throw new AccessError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
-  const requested = request.headers.get('x-aster-organization');
-  if (requested !== null && !isOrganizationId(requested))
+  // Explicit organization headers fail closed. Stale browser selections may
+  // recover on reads, but must never silently redirect a write to another office.
+  const explicit = request.headers.get('x-aster-organization');
+  const cookieWorkspace = selectedWorkspaceCookie(request);
+  if (explicit !== null && !isOrganizationId(explicit))
     throw new AccessError(
       400,
       'INVALID_ORGANIZATION',
       'Choose a valid workspace.',
     );
-  const result = await pool.query<{
-    organization_id: string;
-    role: string;
-    data_scope?: unknown;
-  }>(
-    `SELECT organization_id, role, data_scope FROM app_memberships WHERE user_id = $1 AND revoked_at IS NULL
-     ${requested ? 'AND organization_id = $2' : ''} ORDER BY organization_id LIMIT 1`,
-    requested ? [current.user.id, requested] : [current.user.id],
+  const readOnly = ['GET', 'HEAD', 'OPTIONS'].includes(
+    request.method.toUpperCase(),
   );
-  const membership = result.rows[0];
+  let staleWorkspaceSelection =
+    explicit === null &&
+    cookieWorkspace !== null &&
+    !isOrganizationId(cookieWorkspace);
+  if (staleWorkspaceSelection && !readOnly)
+    throw new AccessError(
+      409,
+      'WORKSPACE_SELECTION_CHANGED',
+      'Reload Aster before changing records; your previous workspace selection is no longer available.',
+    );
+  const requested =
+    explicit ?? (staleWorkspaceSelection ? null : cookieWorkspace);
+  const membershipQuery = (organizationId: string | null) =>
+    pool.query<{
+      organization_id: string;
+      role: string;
+      data_scope?: unknown;
+    }>(
+      `SELECT organization_id, role, data_scope FROM app_memberships WHERE user_id = $1 AND revoked_at IS NULL
+     ${organizationId ? 'AND organization_id = $2' : ''} ORDER BY (SELECT demo_owner_user_id IS NOT NULL FROM app_organizations WHERE id=organization_id), created_at, organization_id LIMIT 1`,
+      organizationId ? [current.user.id, organizationId] : [current.user.id],
+    );
+  let membership = (await membershipQuery(requested)).rows[0];
+  if (!membership && explicit === null && requested !== null) {
+    if (!readOnly)
+      throw new AccessError(
+        409,
+        'WORKSPACE_SELECTION_CHANGED',
+        'Reload Aster before changing records; your previous workspace selection is no longer available.',
+      );
+    staleWorkspaceSelection = true;
+    membership = (await membershipQuery(null)).rows[0];
+  }
   if (!membership || !roleAllows(membership.role, permission))
     throw new AccessError(
       403,
@@ -124,7 +155,9 @@ export async function requireWorkspace(
         '/api/reporting',
         '/api/report-obligations',
       ].includes(path) ||
-        /^\/api\/documents\/[a-f0-9-]{36}(?:\/preview)?$/i.test(path));
+        /^\/api\/documents\/[a-f0-9-]{36}(?:\/preview|\/email(?:\/attachments\/\d{1,2})?)?$/i.test(
+          path,
+        ));
     const question =
       request.method === 'POST' && path === '/api/intelligence/ask';
     if (
@@ -148,5 +181,33 @@ export async function requireWorkspace(
     role: membership.role as WorkspaceRole,
     sessionId: current.session.id,
     scope,
+    ...(staleWorkspaceSelection
+      ? { staleWorkspaceSelection: true as const }
+      : {}),
   };
+}
+
+export function selectedWorkspaceCookie(request: Request): string | null {
+  return (
+    request.headers
+      .get('cookie')
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('aster_workspace='))
+      ?.slice('aster_workspace='.length) ?? null
+  );
+}
+export function clearStaleWorkspaceCookie(
+  response: Response,
+  context: WorkspaceContext,
+): Response {
+  if (context.staleWorkspaceSelection)
+    response.headers.append(
+      'Set-Cookie',
+      'aster_workspace=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict' +
+        (new URL(authEnvironment().origin).protocol === 'https:'
+          ? '; Secure'
+          : ''),
+    );
+  return response;
 }

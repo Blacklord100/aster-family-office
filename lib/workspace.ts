@@ -20,7 +20,10 @@ import type {
   Entity,
   Account,
 } from '@/data';
-import { createWorkspaceDemoScenario } from './demo-engine';
+import {
+  createWorkspaceDemoScenario,
+  createDemoEngineState,
+} from './demo-engine';
 import type { DemoEngineState } from './demo-engine';
 import { calculatePortfolioMetrics } from './finance';
 import type { RiskData, RiskScenario } from './risk-contract';
@@ -39,7 +42,8 @@ export type SavedReport = {
   family: string;
   range: string;
   createdAt: string;
-  totalValueEUR: number;
+  totalValueEUR: number | null;
+  valuationCoverage?: import('./finance').MetricCoverage;
   holdingCount: number;
   holdings: Holding[];
   history: {
@@ -60,6 +64,7 @@ export type PortfolioRecords = {
   accounts: Account[];
 };
 export type WorkspaceState = {
+  demo?: import('./demo-contract').DemoWorkspaceState;
   sampleData?: boolean;
   sampleDataAllowed?: boolean;
   identity?: import('./processing-contract').WorkspaceIdentity;
@@ -91,7 +96,7 @@ export function initialWorkspace(sampleData = true): WorkspaceState {
     sampleData,
     taskStatus: {},
     reviews: {},
-    engine: scenario.state,
+    engine: sampleData ? scenario.state : createDemoEngineState(),
     reports: [],
     syncs: {},
     officeName: 'Aster Family Office',
@@ -199,6 +204,6 @@ export function deriveWorkspace(state: WorkspaceState) {
           : ('Needs review' as const),
       })),
     ],
-    metrics: calculatePortfolioMetrics(currentHoldings, history),
+    metrics: calculatePortfolioMetrics(currentHoldings, history, AS_OF_DATE),
   };
 }

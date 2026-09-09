@@ -21,6 +21,7 @@ import {
 } from './primitives';
 import { rangeStartDate } from '@/lib/date-ranges';
 import { aggregateRecordedMarks } from '@/lib/recorded-marks';
+import { reportValue } from '@/lib/report-value';
 import type { Holding } from '@/data';
 import type { SavedReport } from '@/lib/workspace';
 import { ValueChart, makeHistory } from './charts';
@@ -44,17 +45,29 @@ export function downloadHoldings(holdings: Holding[], family: string) {
       'Unfunded EUR',
       'Valuation date',
       'Source ID',
+      'Valuation coverage',
+      'Cost basis coverage',
+      'Unfunded coverage',
+      'Asset class status',
+      'Liquidity terms',
+      'Liquidity coverage',
     ],
     ...holdings.map((h) => [
       h.name,
       h.familyId,
       h.assetClass,
       h.currency,
-      h.valueEUR.toFixed(2),
-      h.costBasisEUR.toFixed(2),
-      h.unfundedCommitmentEUR.toFixed(2),
-      h.valuationDate,
+      h.valuationStatus === 'unknown' ? '' : h.valueEUR.toFixed(2),
+      h.costBasisStatus === 'unknown' ? '' : h.costBasisEUR.toFixed(2),
+      h.unfundedStatus === 'unknown' ? '' : h.unfundedCommitmentEUR.toFixed(2),
+      h.valuationStatus === 'unknown' ? '' : h.valuationDate,
       h.sourceId,
+      h.valuationStatus ?? 'reported',
+      h.costBasisStatus ?? 'reported',
+      h.unfundedStatus ?? 'reported',
+      h.assetClassStatus ?? 'reported',
+      h.liquidityStatus === 'unknown' ? '' : h.liquidityBucket,
+      h.liquidityStatus ?? 'reported',
     ]),
   ];
   const blob = new Blob(
@@ -91,6 +104,7 @@ export function ReportsView({
     visible = state.reports.filter(
       (r) => family === 'all' || r.family === family,
     );
+  const valuation = reportValue(hs);
   async function create() {
     setSaving(true);
     await mutate({
@@ -142,9 +156,13 @@ export function ReportsView({
           </div>
           <div className="report-cover-bottom">
             <span>
-              Portfolio value
+              {valuation.label}
               <br />
-              <strong>{money(hs.reduce((s, h) => s + h.valueEUR, 0))}</strong>
+              <strong>
+                {valuation.valueEUR === null
+                  ? 'Not reported'
+                  : money(valuation.valueEUR)}
+              </strong>
             </span>
             <ArrowUpRight />
           </div>
@@ -169,14 +187,9 @@ export function ReportsView({
             <strong>{hs.length}</strong>
             <span>Portfolio snapshot</span>
             <strong>
-              {hs.length
-                ? dateLabel(
-                    hs
-                      .map((h) => h.valuationDate)
-                      .sort()
-                      .at(-1)!,
-                  )
-                : 'No recorded positions'}
+              {valuation.asOfDate
+                ? dateLabel(valuation.asOfDate)
+                : 'No reported valuation date'}
             </strong>
           </div>
           <div className="report-builder-actions">
@@ -209,26 +222,34 @@ export function ReportsView({
       >
         {visible.length ? (
           <div className="saved-report-list">
-            {visible.map((r) => (
-              <button key={r.id} onClick={() => onPreview(r)}>
-                <span className="report-file-icon">
-                  <FileText />
-                </span>
-                <div>
-                  <h3>{r.name}</h3>
-                  <p>
-                    {new Date(r.createdAt).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}{' '}
-                    · {r.holdingCount} investments · {r.range}
-                  </p>
-                </div>
-                <strong>{money(r.totalValueEUR)}</strong>
-                <ArrowUpRight />
-              </button>
-            ))}
+            {visible.map((r) => {
+              const snapshot = reportValue(r.holdings);
+              return (
+                <button key={r.id} onClick={() => onPreview(r)}>
+                  <span className="report-file-icon">
+                    <FileText />
+                  </span>
+                  <div>
+                    <h3>{r.name}</h3>
+                    <p>
+                      {new Date(r.createdAt).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}{' '}
+                      · {r.holdingCount} investments · {r.range} ·{' '}
+                      {snapshot.label}
+                    </p>
+                  </div>
+                  <strong>
+                    {snapshot.valueEUR === null
+                      ? 'Not reported'
+                      : money(snapshot.valueEUR)}
+                  </strong>
+                  <ArrowUpRight />
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="empty-report">
@@ -260,7 +281,8 @@ export function PrintableReport({
   const hs =
     saved?.holdings ??
     data.holdings.filter((h) => scope === 'all' || h.familyId === scope);
-  const total = hs.reduce((s, h) => s + h.valueEUR, 0);
+  const valuation = reportValue(hs);
+  const total = valuation.valueEUR ?? 0;
   const selectedRange = saved?.range ?? range;
   const history =
     saved?.history ??
@@ -295,14 +317,9 @@ export function PrintableReport({
         <span>
           {saved
             ? dateLabel(saved.createdAt.slice(0, 10))
-            : hs.length
-              ? dateLabel(
-                  hs
-                    .map((h) => h.valuationDate)
-                    .sort()
-                    .at(-1)!,
-                )
-              : 'No positions'}{' '}
+            : valuation.asOfDate
+              ? dateLabel(valuation.asOfDate)
+              : 'No reported valuation date'}{' '}
           · {containsSampleRecords ? 'Sample records' : 'Workspace records'}
         </span>
       </header>
@@ -319,8 +336,10 @@ export function PrintableReport({
       ) : null}
       <div className="print-report-metrics">
         <div>
-          <span>Total portfolio</span>
-          <strong>{money(total)}</strong>
+          <span>{valuation.label}</span>
+          <strong>
+            {valuation.valueEUR === null ? 'Not reported' : money(total)}
+          </strong>
         </div>
         <div>
           <span>{selectedRange} return</span>
@@ -331,17 +350,25 @@ export function PrintableReport({
         <div>
           <span>Unfunded</span>
           <strong>
-            {money(hs.reduce((s, h) => s + h.unfundedCommitmentEUR, 0))}
+            {hs.some((h) => h.unfundedStatus === 'unknown')
+              ? 'Coverage incomplete'
+              : money(hs.reduce((s, h) => s + h.unfundedCommitmentEUR, 0))}
           </strong>
         </div>
         <div>
           <span>Cash</span>
           <strong>
-            {money(
-              hs
-                .filter((h) => h.assetClass === 'Cash')
-                .reduce((s, h) => s + h.valueEUR, 0),
-            )}
+            {hs.some(
+              (h) =>
+                h.assetClassStatus === 'inferred' ||
+                h.valuationStatus === 'unknown',
+            )
+              ? 'Unavailable'
+              : money(
+                  hs
+                    .filter((h) => h.assetClass === 'Cash')
+                    .reduce((s, h) => s + h.valueEUR, 0),
+                )}
           </strong>
         </div>
       </div>
@@ -366,6 +393,12 @@ export function PrintableReport({
         />
       ) : null}
       <h2>Asset allocation</h2>
+      {hs.some((h) => h.assetClassStatus === 'inferred') ? (
+        <p className="report-chart-note">
+          Includes inferred asset classes. Proposed classifications require
+          review against source documents.
+        </p>
+      ) : null}
       <div className="print-allocation">
         {[
           'Public equities',
@@ -375,14 +408,22 @@ export function PrintableReport({
           'Fixed income',
           'Cash',
         ].map((name) => {
-          const v = hs
-            .filter((h) => h.assetClass === name)
-            .reduce((s, h) => s + h.valueEUR, 0);
+          const rows = hs.filter((h) => h.assetClass === name);
+          const allocation = reportValue(rows);
+          const v = allocation.valueEUR ?? 0;
+          const unavailable = rows.length > 0 && allocation.valueEUR === null;
           return (
             <div key={name}>
-              <span>{name}</span>
-              <strong>{money(v)}</strong>
-              <span>{percent(v / total)}</span>
+              <span>
+                {name}
+                {allocation.coverage.unknownCount > 0
+                  ? ' · partial coverage'
+                  : ''}
+              </span>
+              <strong>{unavailable ? 'Not reported' : money(v)}</strong>
+              <span>
+                {unavailable || total === 0 ? '—' : percent(v / total)}
+              </span>
             </div>
           );
         })}
@@ -401,15 +442,36 @@ export function PrintableReport({
           {hs.map((h) => (
             <tr key={h.id}>
               <td>{h.name}</td>
-              <td>{money(h.valueEUR, 2)}</td>
-              <td>{percent(h.valueEUR / total)}</td>
-              <td>{dateLabel(h.valuationDate)}</td>
+              <td>
+                {h.valuationStatus === 'unknown'
+                  ? 'Not reported'
+                  : money(h.valueEUR, 2)}
+              </td>
+              <td>
+                {h.valuationStatus === 'unknown' || total === 0
+                  ? '—'
+                  : percent(h.valueEUR / total)}
+              </td>
+              <td>
+                {h.valuationStatus === 'unknown'
+                  ? 'Not reported'
+                  : dateLabel(h.valuationDate)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="print-note">
         {containsSampleRecords ? 'This report includes sample records. ' : ''}
+        {state.demo
+          ? 'Synthetic source files and demonstration FX assumptions. '
+          : ''}
+        {hs.some((h) => h.liquidityStatus === 'unknown')
+          ? 'Liquidity terms are not reported for all holdings; available liquidity cannot be established. '
+          : ''}
+        {hs.some((h) => h.valuationStatus === 'unknown')
+          ? 'Portfolio totals include reported valuations only; unvalued holdings are excluded from allocation weights. '
+          : ''}
         Private investments use their latest recorded valuation. Unfunded
         commitments are excluded from NAV.{' '}
         {performanceAvailable

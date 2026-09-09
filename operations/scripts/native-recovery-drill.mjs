@@ -38,6 +38,9 @@ const order = [
   'app_mailbox_queue',
   'app_mailbox_receipts',
   'app_mailbox_oauth_states',
+  'app_folder_connections',
+  'app_folder_queue',
+  'app_folder_receipts',
   'app_integration_tokens',
   'aster_migrations',
 ];

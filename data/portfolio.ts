@@ -484,6 +484,7 @@ export const valuationHistory: HoldingValuation[] = holdings.flatMap(
         date,
         valueEUR: Math.round(value * 100) / 100,
         netExternalFlowEUR: flow,
+        flowCoverage: 'synthetic',
         valuationBasis: !activeMark
           ? 'Carried forward'
           : isPrivate

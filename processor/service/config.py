@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 class Settings:
     token: str
     ollama_base_url: str = 'http://127.0.0.1:11434'
-    ollama_model: str = 'qwen3:1.7b'
+    ollama_model: str = 'gemma4:e4b-m3'
     ollama_timeout: float = 120
     max_agent_steps: int = 32
     max_model_calls: int = 64
@@ -55,7 +55,7 @@ class Settings:
     def from_env(cls):
         return cls(token=os.environ.get('PROCESSOR_TOKEN', ''),
                    ollama_base_url=os.environ.get('OLLAMA_BASE_URL', 'http://127.0.0.1:11434').rstrip('/'),
-                   ollama_model=os.environ.get('OLLAMA_MODEL', 'qwen3:1.7b'),
+                   ollama_model=os.environ.get('OLLAMA_MODEL', 'gemma4:e4b-m3'),
                    ollama_timeout=float(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '120')),
                    max_agent_steps=int(os.environ.get('MAX_AGENT_STEPS', '32')),
                    max_model_calls=int(os.environ.get('MAX_MODEL_CALLS', '64')),

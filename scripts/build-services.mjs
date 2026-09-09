@@ -2,6 +2,7 @@ import { build } from 'esbuild';
 for (const name of [
   'worker',
   'mailbox-worker',
+  'folder-worker',
   'delivery-worker',
   'report-obligations-worker',
 ])
@@ -22,6 +23,7 @@ for (const name of [
   'rotate-keys',
   'encryption-maintenance',
   'monitor',
+  'demo-status',
 ])
   await build({
     entryPoints: ['scripts/' + name + '.ts'],

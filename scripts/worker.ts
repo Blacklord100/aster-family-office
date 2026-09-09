@@ -12,6 +12,14 @@ import {
 } from '../lib/server/engine-store';
 import { retryDecision } from '../lib/server/worker-retry';
 import {
+  publishDemoJob,
+  publishReadyDemoJobs,
+} from '../lib/server/demo-publish';
+import {
+  indexDemoJobSources,
+  indexReadyDemoSources,
+} from '../lib/server/demo-intelligence';
+import {
   claimDocumentJob,
   workerOrganizationScope,
 } from '../lib/server/worker-scope';
@@ -49,7 +57,21 @@ const heartbeat = setInterval(
   10000,
 );
 await writeFile(heartbeatFile, String(Date.now()));
+let lastDemoRecovery = 0;
 while (!stopping) {
+  if (Date.now() - lastDemoRecovery > 30_000) {
+    lastDemoRecovery = Date.now();
+    await publishReadyDemoJobs(organizationScope).catch(() =>
+      console.error(
+        'Demo publication recovery needs attention. Extraction processing continues.',
+      ),
+    );
+    await indexReadyDemoSources(organizationScope).catch(() =>
+      console.error(
+        'Demo source indexing needs attention. Extraction processing continues.',
+      ),
+    );
+  }
   const queue = await claimDocumentJob(pool, owner, organizationScope);
   if (!queue) {
     await new Promise((r) => setTimeout(r, 1000));
@@ -191,6 +213,12 @@ while (!stopping) {
         [queue.id, owner],
       );
     });
+    await publishDemoJob(queue.organization_id, queue.id);
+    await indexDemoJobSources(queue.organization_id, queue.id).catch(() =>
+      console.error(
+        'Demo source indexing will retry after this completed extraction.',
+      ),
+    );
   } catch (error) {
     const code =
       error instanceof Error && /^PROCESSOR_HTTP_\d{3}$/.test(error.message)

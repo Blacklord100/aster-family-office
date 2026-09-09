@@ -8,8 +8,10 @@ import {
 import { rangeStartDate } from '@/lib/date-ranges';
 import { aggregateRecordedMarks } from '@/lib/recorded-marks';
 import { aggregateValuationHistory } from '@/lib/finance';
+import { reportValue } from '@/lib/report-value';
 import {
   requireWorkspace,
+  clearStaleWorkspaceCookie,
   assertSameOrigin,
   AccessError,
   errorResponse,
@@ -87,18 +89,21 @@ export async function GET(request: Request) {
   try {
     const context = await requireWorkspace(request, 'read'),
       { state } = await readWorkspace(context);
-    return json({
-      ...state,
-      sampleDataAllowed: process.env.ASTER_ALLOW_SAMPLE_DATA === 'true',
-      identity: {
-        user: context.user,
-        organizationId: context.organizationId,
-        organizationName: state.officeName,
-        role: context.role,
-        dataScope: context.scope ?? null,
-        mfaEnabled: true,
-      },
-    });
+    return clearStaleWorkspaceCookie(
+      json({
+        ...state,
+        sampleDataAllowed: process.env.ASTER_ALLOW_SAMPLE_DATA === 'true',
+        identity: {
+          user: context.user,
+          organizationId: context.organizationId,
+          organizationName: state.officeName,
+          role: context.role,
+          dataScope: context.scope ?? null,
+          mfaEnabled: true,
+        },
+      }),
+      context,
+    );
   } catch (e) {
     return errorResponse(e);
   }
@@ -333,6 +338,7 @@ export async function POST(request: Request) {
             const positions = data.holdings.filter(
               (h) => input.family === 'all' || h.familyId === input.family,
             );
+            const valuation = reportValue(positions);
             const completeSample =
               s.sampleData && !data.evidence.some((e) => !e.synthetic);
             const asOf = completeSample
@@ -372,7 +378,8 @@ export async function POST(request: Request) {
                   family: input.family,
                   range: input.range,
                   createdAt: new Date().toISOString(),
-                  totalValueEUR: positions.reduce((v, h) => v + h.valueEUR, 0),
+                  totalValueEUR: valuation.valueEUR,
+                  valuationCoverage: valuation.coverage,
                   holdingCount: positions.length,
                   holdings: positions,
                   history,

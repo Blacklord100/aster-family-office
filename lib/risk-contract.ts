@@ -247,6 +247,13 @@ export type ExposureGroup = {
   pathCount: number;
 };
 export type ExposureCoverage = {
+  valuationKnownCount: number;
+  valuationUnknownCount: number;
+  unfundedKnownCount: number;
+  unfundedUnknownCount: number;
+  liquidityKnownCount: number;
+  liquidityUnknownCount: number;
+  assetClassInferredCount: number;
   issuerKnownEUR: number;
   issuerUnknownEUR: number;
   issuerCoveragePercent: number;
@@ -315,6 +322,7 @@ export type StressResult = {
   liquidity: {
     cashBeforeEUR: number;
     cashAfterStressEUR: number;
+    coverageComplete: boolean;
     unfundedCommitmentEUR: number;
     capitalCallRate: number;
     capitalCallsEUR: number;

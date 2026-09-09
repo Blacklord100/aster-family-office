@@ -183,7 +183,11 @@ function Navigation({
         <Separator />
         <div className="demo-label">
           <i />
-          {state.sampleData ? 'Sample workspace' : 'Private workspace'}
+          {'demo' in state && state.demo
+            ? 'Live demo workspace'
+            : state.sampleData
+              ? 'Sample workspace'
+              : 'Private workspace'}
         </div>
         <div className="profile-row">
           <span className="profile-avatar">
@@ -263,6 +267,7 @@ function Topbar({
 export function Shell(props: Props) {
   const { state, data } = useWorkspace();
   const latest = data.holdings
+    .filter((h) => h.valuationStatus !== 'unknown')
     .map((h) => h.valuationDate)
     .sort()
     .at(-1);
@@ -274,10 +279,16 @@ export function Shell(props: Props) {
         <main className="workspace-content">{props.children}</main>
         <footer className="workspace-footer">
           <span>
-            {state.sampleData ? 'Sample data' : 'Workspace records'}
+            {state.demo
+              ? 'Synthetic sources · demo FX assumptions'
+              : state.sampleData
+                ? 'Sample data'
+                : 'Workspace records'}
             {latest
               ? ' · Latest mark ' + latest
-              : ' · No portfolio records yet'}
+              : data.holdings.length
+                ? ' · Awaiting source valuations'
+                : ' · No portfolio records yet'}
           </span>
           <span>
             A clear view of what matters <ArrowUpRight />

@@ -3568,3 +3568,17 @@ a:focus-visible {
     display: none;
   }
 }
+
+/* Keep adjacent monetary values and allocation weights visually distinct. */
+.holdings-table .number + .number { padding-left: 16px; }
+
+@media (max-width: 700px) {
+  .investments-table-panel .holdings-table { min-width: 0; width: 100%; table-layout: fixed; }
+  .investments-table-panel .holdings-table .holding-secondary,
+  .investments-table-panel .holdings-table .holding-weight { display: none; }
+  .investments-table-panel .holdings-table th:last-of-type { display: none; }
+  .investments-table-panel .holdings-table .number { width: 84px; }
+  .investments-table-panel .holding-name { min-width: 0; max-width: 100%; }
+  .investments-table-panel .holding-name > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .investments-table-panel .holding-name small { white-space: normal; }
+}

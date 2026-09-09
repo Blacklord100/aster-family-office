@@ -26,7 +26,13 @@ import { activeEngine } from './engine-store';
 import { readWorkspaceInTransaction } from '../workspace-store';
 import { releasedDocumentIds, assertDocumentAccess } from './data-scope';
 import { encrypt } from './crypto';
-import { askIntelligence, requireUnscoped } from './intelligence-store';
+import {
+  askIntelligence,
+  requireUnscoped,
+  searchIntelligence,
+  INTELLIGENCE_DOCUMENT_LIMIT,
+  INTELLIGENCE_ENCRYPTED_BYTE_LIMIT,
+} from './intelligence-store';
 import {
   emptyIntelligence,
   type IndexedDocument,
@@ -350,7 +356,7 @@ it('withholds all coverage metadata when an uncited indexed source is revoked du
   query.mockImplementation(async (sql: string, args: unknown[]) => {
     if (sql.includes('processing_mode'))
       return { rows: [{ processing_mode: 'workflow' }] };
-    expect(args).toEqual([org, [docId, hiddenId]]);
+    expect(args).toEqual([org, [docId, hiddenId], 501, 500, 32 * 1024 * 1024]);
     return {
       rows: [docId, hiddenId].map((id) => ({
         document_id: id,
@@ -385,4 +391,162 @@ it('withholds all coverage metadata when an uncited indexed source is revoked du
     askIntelligence(ctx, { question: 'Recorded NAV?', familyId: 'all' }, send),
   ).rejects.toThrow('Source grant revoked');
   expect(send).toHaveBeenCalledTimes(1);
+});
+
+describe('full bounded-library retrieval before model context selection', () => {
+  function library(
+    count: number,
+    oldestText = 'Quartz Halcyon Memorandum: reported investment committee update.',
+  ) {
+    return Array.from({ length: count }, (_, index) => {
+      const id = randomUUID();
+      const doc: IndexedDocument = {
+        documentId: id,
+        filename:
+          index === count - 1
+            ? 'oldest-report.txt'
+            : 'recent-' + index + '.txt',
+        contentHash: 'c'.repeat(64),
+        indexedAt: new Date(Date.UTC(2026, 8, 10, 0, 0, -index)).toISOString(),
+        warnings: [],
+        pages: [
+          {
+            number: 1,
+            source: 'document',
+            text:
+              index === count - 1
+                ? oldestText
+                : 'Ordinary newer quarterly statement with no matching project.',
+          },
+        ],
+      };
+      return {
+        document_id: id,
+        page_count: 1,
+        payload: encrypt(
+          JSON.stringify(doc),
+          'intelligence-index:' + org + ':' + id,
+        ),
+      };
+    });
+  }
+  it('retrieves a matching original older than the previous 40-source window', async () => {
+    const rows = library(95);
+    query.mockResolvedValue({ rows });
+    const result = await searchIntelligence(
+      { ...ctx, scope: null },
+      'Quartz Halcyon Memorandum',
+    );
+    expect(result.hits).toHaveLength(1);
+    expect(result.hits[0].documentId).toBe(rows[94].document_id);
+    expect(result.coverage).toMatchObject({
+      indexedDocuments: 95,
+      searchedDocuments: 95,
+      documentLimit: 500,
+      characterLimit: 8_000_000,
+      encryptedByteLimit: 32 * 1024 * 1024,
+      truncated: false,
+    });
+    expect(query.mock.calls[0][1]).toEqual([
+      org,
+      null,
+      501,
+      500,
+      32 * 1024 * 1024,
+    ]);
+  });
+  it('passes the older relevant original to Ask while keeping model evidence bounded', async () => {
+    const quote =
+      'Quartz Halcyon Memorandum: reported investment committee update.';
+    const rows = library(95, quote),
+      oldest = rows[94].document_id;
+    query.mockImplementation(async (sql: string) =>
+      sql.includes('processing_mode')
+        ? { rows: [{ processing_mode: 'workflow' }] }
+        : { rows },
+    );
+    const send = fetcher(
+      body({
+        quotes: [{ sourceId: oldest + ':1:0', quote }],
+        calculationIds: [],
+      }),
+    );
+    const result = await askIntelligence(
+      { ...ctx, scope: null },
+      { question: 'Quartz Halcyon Memorandum', familyId: 'all' },
+      send,
+    );
+    const outbound = JSON.parse(send.mock.calls[0][1]!.body as string);
+    expect(outbound.passages).toHaveLength(1);
+    expect(outbound.passages[0].id).toBe(oldest + ':1:0');
+    expect(result.citations[0].documentId).toBe(oldest);
+    expect(result.coverage.truncated).toBe(false);
+  });
+  it('ranks the whole allowed library then sends no more than twelve passages', async () => {
+    const rows = library(
+      95,
+      'Ordinary newer quarterly statement with no matching project.',
+    );
+    query.mockImplementation(async (sql: string) =>
+      sql.includes('processing_mode')
+        ? { rows: [{ processing_mode: 'workflow' }] }
+        : { rows },
+    );
+    const send = fetcher(body({ quotes: [], calculationIds: [] }));
+    await askIntelligence(
+      { ...ctx, scope: null },
+      { question: 'Ordinary quarterly statement', familyId: 'all' },
+      send,
+    );
+    const passages = JSON.parse(send.mock.calls[0][1]!.body as string).passages;
+    expect(passages).toHaveLength(12);
+    expect(
+      passages.every(
+        (passage: { text: string }) => passage.text.length <= 1800,
+      ),
+    ).toBe(true);
+  });
+  it('reports a real cap overflow without falsely marking an exactly full library truncated', async () => {
+    const rows = library(INTELLIGENCE_DOCUMENT_LIMIT + 1);
+    query.mockResolvedValue({
+      rows: rows.slice(0, INTELLIGENCE_DOCUMENT_LIMIT),
+    });
+    expect(
+      (await searchIntelligence({ ...ctx, scope: null }, 'Ordinary')).coverage
+        .truncated,
+    ).toBe(false);
+    query.mockResolvedValue({ rows });
+    const capped = await searchIntelligence(
+      { ...ctx, scope: null },
+      'Ordinary',
+    );
+    expect(capped.coverage).toMatchObject({
+      searchedDocuments: 500,
+      indexedDocuments: 500,
+      truncated: true,
+    });
+    expect(capped.coverage.warnings.join(' ')).toContain(
+      '500 accessible indexed documents',
+    );
+  });
+  it('honors the SQL encrypted-byte bound and reports omitted source coverage', async () => {
+    const rows = library(2);
+    query.mockResolvedValue({ rows: [rows[0], { ...rows[1], payload: null }] });
+    const result = await searchIntelligence(
+      { ...ctx, scope: null },
+      'Ordinary',
+    );
+    expect(result.coverage).toMatchObject({
+      indexedDocuments: 2,
+      searchedDocuments: 1,
+      indexedPages: 2,
+      searchedPages: 1,
+      encryptedByteLimit: INTELLIGENCE_ENCRYPTED_BYTE_LIMIT,
+      scannedEncryptedBytes: rows[0].payload.length,
+      truncated: true,
+    });
+    expect(query.mock.calls[0][0]).toContain(
+      'CASE WHEN b.ordinal<=$4 AND b.running_bytes<=$5 THEN i.payload ELSE NULL END',
+    );
+  });
 });

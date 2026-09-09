@@ -13,6 +13,13 @@ import { aggregateRecordedMarks } from '@/lib/recorded-marks';
 import type { Holding } from '@/data';
 import { Button } from '@/components/ui/button';
 import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from '@/components/ui/empty';
+import {
   Table,
   TableHeader,
   TableBody,
@@ -61,12 +68,16 @@ export function HoldingsTable({
       <TableHeader>
         <TableRow>
           <TableHead>Investment</TableHead>
-          <TableHead className={compact ? 'compact-asset-class' : undefined}>
+          <TableHead
+            className={compact ? 'compact-asset-class' : 'holding-secondary'}
+          >
             Asset class
           </TableHead>
-          {!compact ? <TableHead>Family</TableHead> : null}
+          {!compact ? (
+            <TableHead className="holding-secondary">Family</TableHead>
+          ) : null}
           <TableHead className="number">Value</TableHead>
-          <TableHead className="number">Weight</TableHead>
+          <TableHead className="number holding-weight">Weight</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -102,23 +113,32 @@ export function HoldingsTable({
                 </span>
               </button>
             </TableCell>
-            <TableCell className={compact ? 'compact-asset-class' : undefined}>
+            <TableCell
+              className={compact ? 'compact-asset-class' : 'holding-secondary'}
+            >
               <span className="class-label">
                 {!compact ? (
                   <i style={{ background: classColors[h.assetClass] }} />
                 ) : null}
                 {h.assetClass}
+                {h.assetClassStatus === 'inferred' ? ' · Inferred' : ''}
               </span>
             </TableCell>
             {!compact ? (
-              <TableCell className="muted">
+              <TableCell className="muted holding-secondary">
                 {data.families.find((f) => f.id === h.familyId)?.name ??
                   'Unassigned'}
               </TableCell>
             ) : null}
-            <TableCell className="number strong">{money(h.valueEUR)}</TableCell>
-            <TableCell className="number muted">
-              {percent(h.valueEUR / total)}
+            <TableCell className="number strong">
+              {h.valuationStatus === 'unknown'
+                ? 'Not reported'
+                : money(h.valueEUR)}
+            </TableCell>
+            <TableCell className="number muted holding-weight">
+              {h.valuationStatus === 'unknown'
+                ? '—'
+                : percent(h.valueEUR / total)}
             </TableCell>
           </TableRow>
         ))}
@@ -153,11 +173,35 @@ export function Overview({
       data.holdings.filter((h) => family === 'all' || h.familyId === family),
     [family, data.holdings],
   );
-  const total = holdings.reduce((s, h) => s + h.valueEUR, 0),
+  const missingValues = holdings.filter(
+    (h) => h.valuationStatus === 'unknown',
+  ).length;
+  const missingCosts = holdings.filter(
+    (h) => h.costBasisStatus === 'unknown',
+  ).length;
+  const missingUnfunded = holdings.filter(
+    (h) => h.unfundedStatus === 'unknown',
+  ).length;
+  const missingLiquidity = holdings.filter(
+    (h) => h.liquidityStatus === 'unknown',
+  ).length;
+  const inferredClasses = holdings.filter(
+    (h) => h.assetClassStatus === 'inferred',
+  ).length;
+  const liquidityUnavailable = missingLiquidity > 0 || missingValues > 0;
+  const total = holdings.reduce(
+      (s, h) => s + (h.valuationStatus === 'unknown' ? 0 : h.valueEUR),
+      0,
+    ),
     cost = holdings.reduce((s, h) => s + h.costBasisEUR, 0),
     unfunded = holdings.reduce((s, h) => s + h.unfundedCommitmentEUR, 0),
     liquid = holdings
-      .filter((h) => ['Daily', 'Within 30 days'].includes(h.liquidityBucket))
+      .filter(
+        (h) =>
+          h.liquidityStatus !== 'unknown' &&
+          h.valuationStatus !== 'unknown' &&
+          ['Daily', 'Within 30 days'].includes(h.liquidityBucket),
+      )
       .reduce((s, h) => s + h.valueEUR, 0);
   const start = rangeStartDate(
     performanceAvailable ? '2026-09-07' : new Date().toISOString().slice(0, 10),
@@ -169,7 +213,9 @@ export function Overview({
         ? makeHistory(data.history, new Set(holdings.map((h) => h.id)), start)
         : aggregateRecordedMarks(
             data.history,
-            holdings.map((h) => h.id),
+            holdings
+              .filter((h) => h.valuationStatus !== 'unknown')
+              .map((h) => h.id),
             start,
           ),
     [holdings, start, data.history, performanceAvailable],
@@ -191,7 +237,12 @@ export function Overview({
     (name) => ({
       name,
       value: holdings
-        .filter((h) => h.liquidityBucket === name)
+        .filter(
+          (h) =>
+            h.liquidityStatus !== 'unknown' &&
+            h.valuationStatus !== 'unknown' &&
+            h.liquidityBucket === name,
+        )
         .reduce((s, h) => s + h.valueEUR, 0),
     }),
   );
@@ -200,15 +251,18 @@ export function Overview({
       <PageHeading
         title="Overview"
         subtitle={
-          holdings.length
-            ? 'Latest recorded valuations · ' +
-              dateLabel(
-                holdings
-                  .map((h) => h.valuationDate)
-                  .sort()
-                  .at(-1)!,
-              )
-            : 'Your workspace starts with your records'
+          holdings.length && missingValues === holdings.length
+            ? 'Awaiting the first source valuation'
+            : holdings.length
+              ? 'Latest recorded valuations · ' +
+                dateLabel(
+                  holdings
+                    .filter((h) => h.valuationStatus !== 'unknown')
+                    .map((h) => h.valuationDate)
+                    .sort()
+                    .at(-1)!,
+                )
+              : 'Your workspace starts with your records'
         }
       >
         <FamilyPicker value={family} onChange={onFamily} />
@@ -230,39 +284,65 @@ export function Overview({
       ) : null}
       <div className="metrics-row">
         <Metric
-          label="Total portfolio"
-          value={money(total)}
+          label={missingValues ? 'Reported portfolio value' : 'Total portfolio'}
+          value={
+            holdings.length && missingValues === holdings.length
+              ? 'Not reported'
+              : money(total)
+          }
           note={
-            twr === null
-              ? 'Return unavailable'
-              : (twr >= 0 ? '+' : '') +
-                percent(twr) +
-                ' ' +
-                range.toUpperCase() +
-                ' return'
+            missingValues
+              ? `${missingValues} ${missingValues === 1 ? 'holding awaits' : 'holdings await'} a valuation`
+              : twr === null
+                ? 'Return unavailable'
+                : (twr >= 0 ? '+' : '') +
+                  percent(twr) +
+                  ' ' +
+                  range.toUpperCase() +
+                  ' return'
           }
           positive={twr !== null && twr >= 0}
           help="Sum of accepted position values in EUR. Private assets use their latest reported NAV; unfunded commitments are excluded."
         />
         <Metric
           label="Investment gain"
-          value={(total - cost >= 0 ? '+' : '') + money(total - cost)}
-          note="Unrealized · versus cost basis"
+          value={
+            missingCosts || missingValues
+              ? 'Unavailable'
+              : (total - cost >= 0 ? '+' : '') + money(total - cost)
+          }
+          note={
+            missingCosts || missingValues
+              ? 'Complete valuations and cost basis required'
+              : 'Unrealized · versus cost basis'
+          }
           help="Current value minus remaining cost basis. This is an unrealized gain, not a total or annualized investment return."
         />
         <Metric
           label="Available liquidity"
-          value={money(liquid)}
-          note={percent(liquid / total) + ' · within 30 days'}
+          value={liquidityUnavailable ? 'Unavailable' : money(liquid)}
+          note={
+            missingLiquidity
+              ? `${missingLiquidity} holdings have no reported liquidity terms`
+              : missingValues
+                ? 'Valuation coverage is incomplete'
+                : percent(liquid / total) + ' · within 30 days'
+          }
           help="Illustrative liquid assets: daily-traded positions, cash and fixed income. Values are not a guarantee of sale proceeds."
         />
         <Metric
           label="Unfunded commitments"
-          value={money(unfunded)}
+          value={
+            holdings.length && missingUnfunded === holdings.length
+              ? 'Not reported'
+              : money(unfunded)
+          }
           note={
-            'Across ' +
-            holdings.filter((h) => h.unfundedCommitmentEUR > 0).length +
-            ' funds'
+            missingUnfunded
+              ? `${missingUnfunded} ${missingUnfunded === 1 ? 'holding has' : 'holdings have'} no reported commitment`
+              : 'Across ' +
+                holdings.filter((h) => h.unfundedCommitmentEUR > 0).length +
+                ' funds'
           }
           help="Future contractual commitments, kept separate from invested NAV. Capital-call notices do not establish settlement."
         />
@@ -273,7 +353,18 @@ export function Overview({
             title="Liquidity profile"
             subtitle="When assets could become available"
           >
-            <AllocationBars data={byLiquidity} horizontal />
+            {liquidityUnavailable ? (
+              <div className="empty-inline">
+                <Clock3 />
+                <h3>Liquidity profile unavailable</h3>
+                <p>
+                  Reported liquidity terms and valuations are required for every
+                  holding. Unreported terms are not treated as a lockup.
+                </p>
+              </div>
+            ) : (
+              <AllocationBars data={byLiquidity} horizontal />
+            )}
           </Panel>
           <Panel
             title="Commitments & cash"
@@ -282,25 +373,31 @@ export function Overview({
             <div className="liquidity-summary">
               <span>Cash on hand</span>
               <strong>
-                {money(
-                  holdings
-                    .filter((h) => h.assetClass === 'Cash')
-                    .reduce((s, h) => s + h.valueEUR, 0),
-                )}
+                {inferredClasses || missingValues
+                  ? 'Unavailable'
+                  : money(
+                      holdings
+                        .filter((h) => h.assetClass === 'Cash')
+                        .reduce((s, h) => s + h.valueEUR, 0),
+                    )}
               </strong>
               <span>Unfunded commitments</span>
-              <strong>{money(unfunded)}</strong>
+              <strong>
+                {missingUnfunded ? 'Incomplete coverage' : money(unfunded)}
+              </strong>
               <span>Liquid assets / unfunded</span>
               <strong>
-                {unfunded
-                  ? (liquid / unfunded).toFixed(2) + '×'
-                  : 'No commitments'}
+                {missingUnfunded || liquidityUnavailable
+                  ? 'Unavailable'
+                  : unfunded
+                    ? (liquid / unfunded).toFixed(2) + '×'
+                    : 'No commitments'}
               </strong>
             </div>
             <p className="method-note">
-              Liquidity buckets are illustrative. Expected calls and
-              distributions are tracked separately until settlement is
-              evidenced.
+              {inferredClasses ? 'Cash classification requires review. ' : ''}
+              Expected calls and distributions are tracked separately until
+              settlement is evidenced.
             </p>
           </Panel>
         </div>
@@ -317,7 +414,9 @@ export function Overview({
                 ? performanceAvailable
                   ? 'Time-weighted return · EUR · sample history'
                   : 'Return unavailable · complete cash-flow history required'
-                : 'Recorded portfolio value over time'
+                : missingValues
+                  ? `Reported marks · ${holdings.length - missingValues} of ${holdings.length} holdings valued`
+                  : 'Recorded portfolio value over time'
             }
             action={
               <ViewTabs
@@ -328,7 +427,7 @@ export function Overview({
               />
             }
           >
-            {history.length > 1 &&
+            {history.length > 0 &&
             (performanceAvailable || tab !== 'performance') ? (
               <>
                 <ValueChart
@@ -338,9 +437,14 @@ export function Overview({
                 />
                 {!performanceAvailable ? (
                   <p className="method-note">
-                    Latest known marks carried forward for current holdings.
-                    Changes can include cash movements; this is not an
-                    investment return.
+                    {history.length === 1
+                      ? 'One reported snapshot is available. '
+                      : 'Reported marks are carried forward only after every included holding has a source value. '}
+                    {missingValues
+                      ? `${missingValues} unvalued holdings are excluded. `
+                      : ''}
+                    Changes may include cash movements; no investment return is
+                    calculated.
                   </p>
                 ) : null}
               </>
@@ -370,6 +474,11 @@ export function Overview({
           </Panel>
           <Panel
             title="Asset allocation"
+            subtitle={
+              dimension === 'assetClass' && inferredClasses
+                ? `${inferredClasses} holdings use inferred asset classes · review required`
+                : undefined
+            }
             action={
               <Picker
                 value={dimension}
@@ -383,10 +492,26 @@ export function Overview({
               />
             }
           >
-            <AllocationChart
-              holdings={holdings}
-              dimension={dimension as 'assetClass' | 'geography' | 'currency'}
-            />
+            {holdings.length && missingValues === holdings.length ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <FileText />
+                  </EmptyMedia>
+                  <EmptyTitle>Awaiting reported values</EmptyTitle>
+                  <EmptyDescription>
+                    Allocation appears as source valuations are accepted.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <AllocationChart
+                holdings={holdings.filter(
+                  (h) => h.valuationStatus !== 'unknown',
+                )}
+                dimension={dimension as 'assetClass' | 'geography' | 'currency'}
+              />
+            )}
           </Panel>
         </div>
       )}
@@ -394,7 +519,11 @@ export function Overview({
         <div className="reporting-grid lower-grid">
           <Panel
             title="Performance by asset class"
-            subtitle={'Time-weighted return · ' + range.toUpperCase()}
+            subtitle={
+              'Time-weighted return · ' +
+              range.toUpperCase() +
+              (inferredClasses ? ' · Includes inferred asset classes' : '')
+            }
           >
             <div className="return-rows">
               {Object.entries(classColors).map(([name, color]) => {

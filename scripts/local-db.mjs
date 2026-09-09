@@ -71,7 +71,7 @@ const env =
     'PROCESSOR_URL=http://127.0.0.1:8000',
     'AUTH_REQUIRE_MFA=true',
     'OLLAMA_BASE_URL=http://127.0.0.1:11434',
-    'OLLAMA_MODEL=qwen3:1.7b',
+    'OLLAMA_MODEL=gemma4:e4b-m3',
     'ASTER_ALLOW_SAMPLE_DATA=true',
   ].join('\n') + '\n';
 try {

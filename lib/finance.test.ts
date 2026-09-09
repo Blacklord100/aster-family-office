@@ -55,7 +55,7 @@ describe('flow-aware time weighted returns', () => {
 
 describe('scope and consolidation', () => {
   it('totals €128m without counting unfunded commitments or property wrappers twice', () => {
-    const metrics = calculatePortfolioMetrics(holdings);
+    const metrics = calculatePortfolioMetrics(holdings, [], AS_OF_DATE);
     expect(metrics.totalValueEUR).toBe(128_000_000);
     expect(metrics.unfundedCommitmentEUR).toBe(14_000_000);
     expect(metrics.cashEUR).toBe(10_100_000);
@@ -153,7 +153,8 @@ describe('synthetic history and provenance', () => {
     ).toBe(800_000);
     expect(daily.at(-1)?.valueEUR).toBe(128_000_000);
     expect(
-      calculatePortfolioMetrics(holdings, valuationHistory).ytdReturn,
+      calculatePortfolioMetrics(holdings, valuationHistory, AS_OF_DATE)
+        .ytdReturn,
     ).not.toBeNull();
   });
   it('flags incomplete periods and rejects duplicates instead of double counting', () => {
@@ -187,5 +188,136 @@ describe('synthetic history and provenance', () => {
       )
         expect(event.financialEffect).toBe('None');
     }
+  });
+});
+
+describe('source-derived missing-value coverage', () => {
+  it('excludes even nonzero unknown placeholders and suppresses portfolio gains', () => {
+    const known = {
+      ...holdings[0],
+      id: 'known',
+      valueEUR: 100,
+      costBasisEUR: 60,
+      unfundedCommitmentEUR: 20,
+    };
+    const unknown = {
+      ...known,
+      id: 'unknown',
+      valueEUR: 9000,
+      costBasisEUR: 7000,
+      unfundedCommitmentEUR: 8000,
+      valuationStatus: 'unknown' as const,
+      costBasisStatus: 'unknown' as const,
+      unfundedStatus: 'unknown' as const,
+    };
+    const metrics = calculatePortfolioMetrics([known, unknown]);
+    expect(metrics).toMatchObject({
+      totalValueEUR: 100,
+      costBasisEUR: 60,
+      unfundedCommitmentEUR: 20,
+      unrealizedGainEUR: null,
+      unrealizedGainPercent: null,
+    });
+    expect(metrics.coverage.valuation).toEqual({
+      knownCount: 1,
+      unknownCount: 1,
+      totalCount: 2,
+      complete: false,
+    });
+    expect(metrics.asOfDate).toBe(new Date().toISOString().slice(0, 10));
+    const allocation = aggregateAllocation([known, unknown]);
+    expect(sumMoney(allocation.map((row) => row.valueEUR))).toBe(100);
+    expect(
+      allocation.reduce((sum, row) => sum + row.unknownValuationCount, 0),
+    ).toBe(1);
+    expect(
+      calculatePortfolioMetrics([
+        { ...known, costBasisEUR: 0, costBasisStatus: 'unknown' },
+      ]).unrealizedGainEUR,
+    ).toBeNull();
+  });
+  it('keeps unknown liquidity out of liquid values and reported lockup allocations', () => {
+    const known = {
+      ...holdings[0],
+      id: 'known',
+      valueEUR: 100,
+      liquidityBucket: 'Daily' as const,
+    };
+    const unknown = {
+      ...known,
+      id: 'unknown',
+      valueEUR: 900,
+      liquidityStatus: 'unknown' as const,
+    };
+    const metrics = calculatePortfolioMetrics([known, unknown]);
+    expect(metrics.liquidValueEUR).toBe(100);
+    expect(metrics.coverage.liquidity).toEqual({
+      knownCount: 1,
+      unknownCount: 1,
+      totalCount: 2,
+      complete: false,
+    });
+    const allocation = aggregateAllocation(
+      [known, { ...unknown, liquidityBucket: '3+ years' }],
+      'liquidityBucket',
+    );
+    expect(
+      allocation.find((row) => row.id === 'Unknown liquidity')?.valueEUR,
+    ).toBe(900);
+    expect(allocation.some((row) => row.id === '3+ years')).toBe(false);
+    const unreported = calculatePortfolioMetrics([unknown]);
+    expect(unreported.liquidValueEUR).toBe(0);
+    expect(unreported.coverage.liquidity.complete).toBe(false);
+    expect(unreported.basis).toContain('neither availability nor lockup');
+  });
+  it('does not manufacture TWR or investment gains from unknown zero cash-flow placeholders', () => {
+    const holding = { ...holdings[0], id: 'source', valueEUR: 110 };
+    const history = [
+      {
+        holdingId: 'source',
+        date: '2026-09-08',
+        valueEUR: 100,
+        netExternalFlowEUR: 0,
+        valuationBasis: 'Reported mark' as const,
+        flowCoverage: 'unknown' as const,
+      },
+      {
+        holdingId: 'source',
+        date: '2026-09-09',
+        valueEUR: 110,
+        netExternalFlowEUR: 0,
+        valuationBasis: 'Reported mark' as const,
+        flowCoverage: 'unknown' as const,
+      },
+    ];
+    expect(
+      aggregateValuationHistory(history, ['source'], 'daily').every(
+        (row) => row.twrIndex === null,
+      ),
+    ).toBe(true);
+    expect(
+      aggregateValuationHistory(
+        history.map((row) => ({
+          ...row,
+          flowCoverage: undefined,
+        })),
+        ['source'],
+        'daily',
+      ).every((row) => row.twrIndex === null),
+    ).toBe(true);
+    expect(
+      calculatePortfolioMetrics([holding], history, '2026-09-09'),
+    ).toMatchObject({
+      dayInvestmentGainEUR: null,
+      dayReturn: null,
+      ytdReturn: null,
+    });
+    expect(
+      calculatePortfolioMetrics(
+        [holding],
+        history.map((row) => ({ ...row, flowCoverage: 'reconciled' })),
+        '2026-09-09',
+      ).dayReturn,
+    ).toBeCloseTo(0.1);
   });
 });

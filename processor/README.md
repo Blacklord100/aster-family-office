@@ -11,7 +11,7 @@ python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.lock.txt
 export PROCESSOR_TOKEN="$(python3.12 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export OLLAMA_BASE_URL=http://127.0.0.1:11434
-export OLLAMA_MODEL=qwen3:1.7b
+export OLLAMA_MODEL=gemma4:e4b-m3
 export OLLAMA_TIMEOUT_SECONDS=120
 export OCR_ENABLED=true
 export MAX_AGENT_STEPS=32
@@ -157,9 +157,17 @@ The original 22-document realistic benchmark, later format-compatible diagnostic
 docker build -t aster-processor:local .
 ```
 
-The image runs as UID/GID 10001, installs English Tesseract and pinned PDFium/Pillow, and needs no persistent document mount. A private writable `/tmp` can be `noexec,nosuid,nodev`; executables remain outside it. The operations stack supplies read-only root filesystem, dropped capabilities, secrets, resource limits and an internal processor/Ollama network. Its separate mailbox worker's provider egress does not attach to this network.
+The image runs as UID/GID 10001 with CPython 3.12.13, locked Python wheels and English Tesseract. Its digest-pinned Distroless Debian 13 runtime contains no shell, package manager or Perl. The builder uses the same Debian release and Python ABI. Tesseract is a local rebuild of Debian source `5.5.0-1`, with its descriptor and archives SHA256-pinned after authenticated APT retrieval. Official CMake options disable archive/URL input, graphical debugging and training tools; local PNG-to-text OCR is preserved. No OCR language data is downloaded at runtime.
+
+This is an application runtime, not a general Python distribution: unused SQLite, curses/readline and native OS-UUID extensions are omitted; UUID4 retains Python's secure random implementation. The complete processor test suite and actual Linux OCR/HTTP subprocess probes must pass in the built image before release. Future dependencies needing an omitted module require a reviewed runtime change and new qualification, not an import-error fallback.
+
+The assembly retains every copied system package's exact version, source identity, copyright and file checksums in Distroless `dpkg/status.d` metadata. The custom OCR package is explicitly versioned `5.5.0-1+aster1`, with Debian source identity `tesseract (5.5.0-1)` and build options recorded in `/opt/aster/runtime-manifest.json`. Existing base packages are replaced as complete payloads when copied from the builder. CI verifies file hashes and independently requires Trivy to inventory every copied package and every Linux wheel in the lock; any HIGH/CRITICAL finding still blocks release. A clean base scan alone does not qualify the assembled image.
+
+No persistent document mount is required. A private writable `/tmp` can be `noexec,nosuid,nodev`; executables remain outside it. The operations stack supplies a bounded Python secret-file loader, read-only root filesystem, dropped capabilities, secrets, resource limits and an internal processor/Ollama network. Its separate mailbox worker's provider egress does not attach to this network.
 
 Docker is unavailable on the development host. Native Apple Vision evidence does not validate Linux Tesseract accuracy, container startup, sandbox behavior or egress enforcement. Build/boot and representative OCR checks on the target Linux host remain required.
+
+Runtime references: [official Python 3.12 Trixie build](https://github.com/docker-library/python/blob/master/3.12/slim-trixie/Dockerfile), [supported Distroless images](https://github.com/GoogleContainerTools/distroless#what-images-are-available), [Distroless package metadata](https://github.com/GoogleContainerTools/distroless/blob/main/PACKAGE_METADATA.md), [Debian Tesseract source](https://packages.debian.org/source/trixie/tesseract), and [Tesseract build options](https://github.com/tesseract-ocr/tesseract/blob/5.5.0/CMakeLists.txt).
 
 ## Interface references
 

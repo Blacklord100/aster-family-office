@@ -1,0 +1,7 @@
+# Copy this table to your host's Codex config.toml for a direct MCP connection.
+# Use this OR the plugin's bundled server to avoid duplicate tool namespaces.
+[mcp_servers.aster]
+url = "http://localhost:3000/api/mcp"
+bearer_token_env_var = "ASTER_MCP_TOKEN"
+startup_timeout_sec = 15
+tool_timeout_sec = 45

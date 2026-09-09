@@ -87,6 +87,7 @@ export function scopeWorkspace(
     portfolio,
     officeName: state.officeName,
     identity: state.identity,
+    demo: state.demo,
     taskStatus: Object.fromEntries(
       tasks.map((t) => [t.id, state.taskStatus[t.id] ?? t.status]),
     ),

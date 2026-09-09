@@ -91,7 +91,7 @@ try {
     process.env.BOOTSTRAP_DATABASE_URL = process.env.DATABASE_URL;
   }
   if (
-    !['mailbox', 'delivery', 'report-obligations'].includes(
+    !['mailbox', 'folder', 'delivery', 'report-obligations'].includes(
       process.env.ASTER_SERVICE,
     )
   ) {

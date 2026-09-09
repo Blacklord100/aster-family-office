@@ -1,0 +1,14 @@
+.root { min-width: 0; border: 1px solid var(--border); border-radius: 9px; padding: 16px; background: var(--card); display: flex; flex-direction: column; gap: 16px; }
+.heading { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.heading svg, .attachmentHeading svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--muted-foreground); }
+.headers { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px 14px; font-size: 11px; line-height: 1.6; }
+.headers dt { color: var(--muted-foreground); }
+.headers dd { overflow-wrap: anywhere; }
+.body { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 12px; line-height: 1.9; max-height: 380px; overflow-y: auto; border-block: 1px solid var(--border); padding: 16px 0; }
+.note { color: var(--muted-foreground); font-size: 10px; line-height: 1.7; overflow-wrap: anywhere; }
+.attachmentHeading { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.attachment { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 7px; padding: 12px; }
+.attachment > svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted-foreground); }
+.attachment > div { flex: 1; min-width: 130px; }
+.attachment strong { font-size: 12px; font-weight: 500; display: block; overflow-wrap: anywhere; }
+.attachment span, .attachment p { display: block; font-size: 10px; line-height: 1.6; color: var(--muted-foreground); margin-top: 5px; overflow-wrap: anywhere; }

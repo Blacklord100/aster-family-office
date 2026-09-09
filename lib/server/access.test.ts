@@ -18,6 +18,7 @@ vi.mock('./db', () => ({
 
 import {
   AccessError,
+  clearStaleWorkspaceCookie,
   assertSameOrigin,
   errorResponse,
   requireWorkspace,
@@ -87,7 +88,69 @@ describe('workspace boundary', () => {
       role: 'owner',
       scope: null,
     });
-    expect(mocked.query.mock.calls[0][0]).toContain('ORDER BY organization_id');
+    expect(mocked.query.mock.calls[0][0]).toContain(
+      'created_at, organization_id LIMIT 1',
+    );
+  });
+  it('selects a permitted cookie workspace and lets an explicit header take precedence', async () => {
+    await requireWorkspace(
+      request({ cookie: 'other=1; aster_workspace=' + OTHER }),
+    );
+    expect(mocked.query.mock.calls[0][1]).toEqual(['user-1', OTHER]);
+    mocked.query.mockClear();
+    await requireWorkspace(
+      request({
+        cookie: 'aster_workspace=' + OTHER,
+        'x-aster-organization': ORG,
+      }),
+    );
+    expect(mocked.query.mock.calls[0][1]).toEqual(['user-1', ORG]);
+  });
+  it('recovers read access after a revoked selection and clears the stale HttpOnly cookie', async () => {
+    mocked.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ organization_id: ORG, role: 'owner' }],
+      });
+    const context = await requireWorkspace(
+      request({ cookie: 'aster_workspace=' + OTHER }),
+    );
+    expect(context).toMatchObject({
+      organizationId: ORG,
+      staleWorkspaceSelection: true,
+    });
+    expect(mocked.query.mock.calls[1][1]).toEqual(['user-1']);
+    const response = clearStaleWorkspaceCookie(Response.json({}), context);
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
+    expect(response.headers.get('set-cookie')).toContain(
+      'HttpOnly; SameSite=Strict; Secure',
+    );
+  });
+  it('never redirects a write from a revoked cookie selection to another office', async () => {
+    mocked.query.mockResolvedValueOnce({ rows: [] });
+    await expect(
+      requireWorkspace(
+        new Request('https://aster.example.com/api/workspace', {
+          method: 'POST',
+          headers: {
+            origin: 'https://aster.example.com',
+            cookie: 'aster_workspace=' + OTHER,
+          },
+        }),
+        'write',
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'WORKSPACE_SELECTION_CHANGED',
+    });
+    expect(mocked.query).toHaveBeenCalledTimes(1);
+  });
+  it('recovers a malformed cookie on reads while retaining strict explicit-header validation', async () => {
+    const context = await requireWorkspace(
+      request({ cookie: 'aster_workspace=invalid' }),
+    );
+    expect(context.staleWorkspaceSelection).toBe(true);
+    expect(mocked.query.mock.calls[0][1]).toEqual(['user-1']);
   });
   it.each(['viewer', 'invalid', 'OWNER'])(
     'rejects write from %s',
@@ -155,6 +218,17 @@ describe('workspace boundary', () => {
     expect((await requireWorkspace(request())).scope).toEqual({
       familyIds: ['family-a'],
     });
+    for (const path of [
+      `/api/documents/${ORG}/email`,
+      `/api/documents/${ORG}/email/attachments/0`,
+    ])
+      expect(
+        (
+          await requireWorkspace(
+            new Request('https://aster.example.com' + path),
+          )
+        ).scope,
+      ).toEqual({ familyIds: ['family-a'] });
     await expect(
       requireWorkspace(new Request('https://aster.example.com/api/processing')),
     ).rejects.toMatchObject({ code: 'SCOPED_ACCESS' });

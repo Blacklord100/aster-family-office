@@ -70,12 +70,15 @@ services:
     build:
       context: ..
       dockerfile: operations/Dockerfile.app
-      args: {NODE_IMAGE: "${NODE_IMAGE:-node:24-bookworm-slim}"}
+      args:
+        NODE_IMAGE: "${NODE_IMAGE:-node:24-trixie-slim}"
+        NODE_RUNTIME_IMAGE: "${NODE_RUNTIME_IMAGE:-gcr.io/distroless/nodejs24-debian13:nonroot@sha256:774b7d020b24214835769e24c3544835526cd0288f0b094eae48e8b2c2429a79}"
     user: "1000:1000"
     environment:
       <<: *app-environment
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       EMAIL_DELIVERY_ENABLED: ${EMAIL_DELIVERY_ENABLED:-false}
+      ASTER_INTAKE_ROOT: /run/aster-intake
     secrets:
       - source: runtime_password
         target: db_password
@@ -88,6 +91,7 @@ services:
     volumes:
       - worker_health:/run/aster-health:ro
       - ./receipts:/run/aster-receipts:ro
+      - intake_data:/run/aster-intake:ro
     # Only loopback published. Use Caddy or your own TLS ingress for remote access.
     ports: ["127.0.0.1:${ASTER_LOCAL_PORT:-3000}:3000"]
     tmpfs:
@@ -111,7 +115,7 @@ services:
     user: "1000:1000"
     environment: *app-environment
     secrets: *app-secrets
-    command: ["npm", "run", "worker"]
+    command: ["node", "dist-worker/index.js"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=256m,uid=1000,gid=1000"]
     volumes: ["worker_health:/run/aster-health"]
     # Both networks are internal. Worker has no normal internet route.
@@ -165,6 +169,47 @@ services:
     stop_grace_period: 75s
     mem_limit: 512m
     pids_limit: 64
+  folder-worker:
+    <<: *hardening
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: folder
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      ASTER_INTAKE_ROOT: /run/aster-intake
+      FOLDER_HEARTBEAT_FILE: /run/aster-health/folder
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+    command: ["node", "dist-folder-worker/index.js"]
+    volumes:
+      - intake_data:/run/aster-intake:ro
+      - worker_health:/run/aster-health
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000"]
+    # Reads only the approved intake volume; no model or internet route is needed.
+    networks: [database]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "/opt/aster/worker-healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 75s
+    mem_limit: 512m
+    pids_limit: 64
   mailbox-worker:
     <<: *hardening
     image: ${ASTER_IMAGE:-aster-web:local}
@@ -188,7 +233,7 @@ services:
       - encryption_key
       - encryption_keyring
       - mailbox_providers
-    command: ["npm", "run", "mailbox:worker"]
+    command: ["node", "dist-mailbox-worker/index.js"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
     # Provider requests need internet; this service cannot reach the processor network.
     networks: [database, mail-egress]
@@ -228,7 +273,7 @@ services:
       - encryption_key
       - encryption_keyring
       - smtp_settings
-    command: ["npm", "run", "delivery:worker"]
+    command: ["node", "dist-delivery-worker/index.js"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000"]
     networks: [database, delivery-egress]
     depends_on:
@@ -259,7 +304,7 @@ services:
       - encryption_key
       - encryption_keyring
       - processor_token
-    command: ["npm", "run", "db:migrate"]
+    command: ["node", "dist-ops/migrate.js"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
     networks: [database]
     depends_on:
@@ -271,7 +316,7 @@ services:
     build: {context: ../processor, dockerfile: Dockerfile}
     image: ${PROCESSOR_IMAGE:-aster-processor:local}
     user: "10001:10001"
-    entrypoint: ["/bin/sh", "/opt/aster/processor-entrypoint.sh"]
+    entrypoint: ["python", "/opt/aster/processor-entrypoint.py"]
     # Explicit command is necessary: Compose entrypoint replacement ignores image CMD.
     command: ["uvicorn", "service.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--limit-concurrency", "8", "--timeout-keep-alive", "5"]
     environment:
@@ -291,7 +336,7 @@ services:
       MAX_EMAIL_ATTACHMENTS: ${MAX_EMAIL_ATTACHMENTS:-8}
       DOCUMENT_DECODE_TIMEOUT_SECONDS: ${DOCUMENT_DECODE_TIMEOUT_SECONDS:-75}
     secrets: [processor_token]
-    volumes: ["./scripts/processor-entrypoint.sh:/opt/aster/processor-entrypoint.sh:ro"]
+    volumes: ["./scripts/processor-entrypoint.py:/opt/aster/processor-entrypoint.py:ro"]
     tmpfs: ["/tmp:rw,noexec,nosuid,size=512m,uid=10001,gid=10001"]
     networks: [local-confidential]
     # NO host ports. Only authenticated web/worker requests.
@@ -377,6 +422,7 @@ networks:
   database: {internal: true}
   local-confidential: {internal: true}
 volumes:
+  intake_data: {}
   worker_health: {}
   postgres_data: {}
   caddy_data: {}

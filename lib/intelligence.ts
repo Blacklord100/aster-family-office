@@ -323,34 +323,76 @@ export function searchDocuments(
 }
 /** Uses recorded cents; model output never contributes amounts or selects hidden holdings. */
 export function recordedCalculations(holdings: Holding[]): Calculation[] {
-  const records: [string, string, Holding[], (h: Holding) => number][] = [
-    ['nav', 'Recorded portfolio value', holdings, (h) => h.valueEUR],
+  const records: [
+    string,
+    string,
+    Holding[],
+    (h: Holding) => number,
+    'valuationStatus' | 'unfundedStatus',
+  ][] = [
+    [
+      'nav',
+      'Recorded portfolio value',
+      holdings,
+      (h) => h.valueEUR,
+      'valuationStatus',
+    ],
     [
       'cash',
       'Recorded cash',
       holdings.filter((h) => h.assetClass === 'Cash'),
       (h) => h.valueEUR,
+      'valuationStatus',
     ],
     [
       'unfunded',
       'Recorded unfunded commitments',
-      holdings.filter((h) => h.unfundedCommitmentEUR > 0),
+      holdings,
       (h) => h.unfundedCommitmentEUR,
+      'unfundedStatus',
     ],
   ];
-  return records.map(([id, label, rows, value]) => ({
-    id,
-    label,
-    valueEUR:
-      rows.reduce((sum, h) => sum + Math.round(value(h) * 100), 0) / 100,
-    holdingIds: rows.map((h) => h.id),
-    basis:
-      'Sum of accessible current holding records in EUR. Marks may have different dates; cash transferability and settlement are not established.',
-    asOfDate: rows.length
-      ? (rows
-          .map((h) => h.valuationDate)
-          .sort()
-          .at(-1) ?? null)
-      : null,
-  }));
+  return records.flatMap(([id, label, rows, value, status]) => {
+    const known = rows.filter((h) => h[status] !== 'unknown');
+    if (!known.length) return []; // No records is unavailable, not verified zero cash/NAV/commitments.
+    const complete = known.length === rows.length;
+    const unknownLiquidity = rows.filter(
+      (h) => h.liquidityStatus === 'unknown',
+    );
+    const inferredAssetClasses = rows.filter(
+      (h) => h.assetClassStatus === 'inferred',
+    ).length;
+    return [
+      {
+        id,
+        label: complete
+          ? label
+          : `Known ${label.toLowerCase()} (${known.length}/${rows.length} holdings)`,
+        valueEUR:
+          known.reduce((sum, h) => sum + Math.round(value(h) * 100), 0) / 100,
+        holdingIds: known.map((h) => h.id),
+        basis: `${complete ? 'Complete recorded' : 'Partial known'} subtotal from ${known.length} of ${rows.length} accessible holding records. Missing values are excluded and are not confirmed zero. Marks may have different dates; cash transferability and settlement are not established.${unknownLiquidity.length ? ` Liquidity is unreported for ${unknownLiquidity.length} of ${rows.length} holdings; these balances establish neither available liquidity nor lockup.` : ''}${inferredAssetClasses ? ` ${inferredAssetClasses} asset classifications are inferred, not source-confirmed.` : ''}`,
+        liquidityCoverage: {
+          knownHoldingCount: rows.length - unknownLiquidity.length,
+          totalHoldingCount: rows.length,
+          complete: unknownLiquidity.length === 0,
+          unknownHoldingIds: unknownLiquidity.map((h) => h.id),
+        },
+        coverage: {
+          knownHoldingCount: known.length,
+          totalHoldingCount: rows.length,
+          complete,
+          unknownHoldingIds: rows
+            .filter((h) => h[status] === 'unknown')
+            .map((h) => h.id),
+        },
+        asOfDate:
+          known
+            .map((h) => h.valuationDate)
+            .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+            .sort()
+            .at(-1) ?? null,
+      },
+    ];
+  });
 }

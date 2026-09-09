@@ -1120,9 +1120,16 @@ export function LedgerView({
             />
             <Metric
               label="Unfunded commitments"
-              value={money(
-                holdings.reduce((sum, h) => sum + h.unfundedCommitmentEUR, 0),
-              )}
+              value={
+                holdings.some((h) => h.unfundedStatus === 'unknown')
+                  ? 'Incomplete'
+                  : money(
+                      holdings.reduce(
+                        (sum, h) => sum + h.unfundedCommitmentEUR,
+                        0,
+                      ),
+                    )
+              }
               note="Updated only by explicit posted movements"
             />
           </div>
@@ -1301,7 +1308,9 @@ export function LedgerView({
                             </small>
                           </TableCell>
                           <TableCell>
-                            {nativeMoney(h.originalValue, h.currency)}
+                            {h.valuationStatus === 'unknown'
+                              ? 'Not reported'
+                              : nativeMoney(h.originalValue, h.currency)}
                             <small>
                               {finance.holdings[h.id]?.fx
                                 ? `FX ${finance.holdings[h.id].fx!.rateToEUR} · ${dateLabel(finance.holdings[h.id].fx!.date)}`
@@ -1311,12 +1320,16 @@ export function LedgerView({
                             </small>
                           </TableCell>
                           <TableCell className={styles.number}>
-                            {money(h.valueEUR)}
+                            {h.valuationStatus === 'unknown'
+                              ? 'Not reported'
+                              : money(h.valueEUR)}
                           </TableCell>
                           <TableCell>
                             {h.valuationMethod}
                             <small>
-                              {dateLabel(h.valuationDate)}
+                              {h.valuationStatus === 'unknown'
+                                ? 'Valuation required'
+                                : dateLabel(h.valuationDate)}
                               {finance.holdings[h.id]?.pendingCapitalEUR
                                 ? ` · Capital bridge ${money(finance.holdings[h.id].pendingCapitalEUR)}`
                                 : ''}

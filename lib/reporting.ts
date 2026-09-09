@@ -125,6 +125,7 @@ export function sourcedMark(
   }
   const evidence = accepted(holding.sourceId);
   if (
+    holding.valuationStatus !== 'unknown' &&
     holding.valuationDate === date &&
     evidence &&
     !holding.valuationMethod.startsWith('Synthetic') &&
@@ -207,6 +208,7 @@ function liquidity(
         restrictedCashNative: 0,
         restrictionUnknownCashNative: 0,
         restrictionUnknownAccountCount: 0,
+        liquidityUnknownHoldingCount: 0,
         unavailableBalanceCount: 0,
         reviewedInflowsNative: 0,
         reviewedOutflowsNative: 0,
@@ -221,8 +223,14 @@ function liquidity(
   for (const cash of holdings.filter((h) => h.assetClass === 'Cash')) {
     const group = ensure(cash);
     if (!group) continue;
+    if (cash.liquidityStatus === 'unknown')
+      group.liquidityUnknownHoldingCount += 1;
     let amount: number | undefined, date: string | undefined;
-    if (cash.valuationDate <= query.liquidityAsOf) {
+    if (
+      cash.valuationStatus !== 'unknown' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(cash.valuationDate) &&
+      cash.valuationDate <= query.liquidityAsOf
+    ) {
       amount = cash.originalValue;
       date = cash.valuationDate;
     } else {
@@ -294,7 +302,11 @@ function liquidity(
       if (!group) continue;
       const restriction = finance.accounts[leg.holding.accountId];
       const key = group.entityId + ':' + group.currency;
-      if (restriction && !restriction.restricted)
+      if (
+        restriction &&
+        !restriction.restricted &&
+        leg.holding.liquidityStatus !== 'unknown'
+      )
         availableMovements.set(
           key,
           cents((availableMovements.get(key) ?? 0) + leg.amount),
@@ -328,6 +340,7 @@ function liquidity(
     cashAsOfDates: [...new Set(group.cashAsOfDates)].sort(),
     projectedAvailableNative:
       group.unavailableBalanceCount ||
+      group.liquidityUnknownHoldingCount !== 0 ||
       group.restrictionUnknownAccountCount !== 0 ||
       group.blockedObligationCount > 0
         ? null
@@ -541,7 +554,7 @@ export function evaluatePeriod(
       'The opening date is an end-of-day valuation. Flows after that date through the closing date are included and weighted as end-of-day flows. Returns are not annualized; this estimate is not exact TWR or a GIPS compliance claim.',
       'Reconciliation is a reviewer attestation against referenced statements, not a bank connection or independent verification. Native-currency cash residuals must be zero; FX remeasurement remains part of EUR performance.',
       'Liquidity uses recorded cash as of the chosen date and currently reviewed unsettled obligations, including overdue items. It does not reconstruct past knowledge of obligation status or forecast unrecorded calls, sales or income.',
-      'Cash is grouped only within a legal entity and currency. Restricted balances are excluded from projected availability; unknown restrictions or unavailable balances suppress that projection. Actual transfers between accounts are not modeled.',
+      'Cash is grouped only within a legal entity and currency. Restricted balances are excluded from projected availability; unknown liquidity classifications, unknown restrictions or unavailable balances suppress that projection. Actual transfers between accounts are not modeled.',
       'Reviewed obligations use their entered payment amounts and dates. No payment, conversion, funding guarantee, borrowing capacity or assumption that a future inflow will arrive is implied.',
     ],
   };

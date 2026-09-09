@@ -2,6 +2,9 @@
 # operator documents/secrets out of the build context.
 **
 !requirements.lock.txt
+!runtime/
+!runtime/*.py
+!runtime/*.sha256
 !service/
 !service/*.py
 !corpus/

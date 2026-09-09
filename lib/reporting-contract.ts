@@ -87,6 +87,7 @@ export type LiquidityGroup = {
   restrictedCashNative: number;
   restrictionUnknownCashNative: number;
   restrictionUnknownAccountCount: number;
+  liquidityUnknownHoldingCount: number;
   unavailableBalanceCount: number;
   reviewedInflowsNative: number;
   reviewedOutflowsNative: number;

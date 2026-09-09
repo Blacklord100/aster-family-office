@@ -100,7 +100,7 @@ export function deploymentEngine(): {
   const config = validateEngineConfig({
     name: 'Deployment default',
     provider: 'ollama',
-    model: process.env.OLLAMA_MODEL ?? 'qwen3:1.7b',
+    model: process.env.OLLAMA_MODEL ?? 'gemma4:e4b-m3',
   });
   return { config, snapshot: snapshotOf(config, null, 0) };
 }

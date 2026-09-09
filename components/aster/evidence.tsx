@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { EvidenceSource } from '@/data';
+import { useState } from 'react';
+import { EmailPreview } from './email-preview';
+import { PdfPreview } from './pdf-preview';
 import { useWorkspace } from './workspace-context';
 import { dateLabel, Status } from './primitives';
 export const REVIEW_IDS = [
@@ -26,6 +29,7 @@ export function EvidencePanel({
   embedded?: boolean;
 }) {
   const { state, data, mutate } = useWorkspace();
+  const [preview, setPreview] = useState(false);
   const source: EvidenceSource | undefined = data.evidence.find(
     (s) => s.id === sourceId,
   );
@@ -61,7 +65,11 @@ export function EvidencePanel({
         <FileText />
         <h2>Source document</h2>
         <Status tone={reviewed ? 'success' : 'warning'}>
-          {reviewed ? 'Reviewed' : 'Needs review'}
+          {reviewed
+            ? source.demoSource
+              ? 'Demo accepted'
+              : 'Reviewed'
+            : 'Needs review'}
         </Status>
       </div>
       {sourceId === 'source-demo-northstar-revision' &&
@@ -81,11 +89,13 @@ export function EvidencePanel({
       </p>
       <div className={isStatement ? 'document-paper' : 'email-paper'}>
         <div className="document-letterhead">
-          {source.synthetic
-            ? 'SAMPLE SOURCE'
-            : source.documentId
-              ? 'UPLOADED SOURCE'
-              : 'MANUAL RECORD'}
+          {source.demoSource
+            ? 'DEMO SOURCE FILE'
+            : source.synthetic
+              ? 'SAMPLE SOURCE'
+              : source.documentId
+                ? 'UPLOADED SOURCE'
+                : 'MANUAL RECORD'}
         </div>
         <div className="document-rule" />
         <h3>{source.filename}</h3>
@@ -93,21 +103,25 @@ export function EvidencePanel({
           {source.excerpt}
         </p>
         <span className="document-demo">
-          {source.synthetic
-            ? 'SYNTHETIC SOURCE · DEMONSTRATION ONLY'
-            : source.documentId
-              ? 'EXTRACTED PASSAGE · CHECK AGAINST THE ORIGINAL'
-              : 'MANUAL ENTRY · NOT INDEPENDENT SOURCE EVIDENCE'}
+          {source.demoSource
+            ? 'FICTIONAL DATA · RETAINED ORIGINAL'
+            : source.synthetic
+              ? 'SYNTHETIC SOURCE · DEMONSTRATION ONLY'
+              : source.documentId
+                ? 'EXTRACTED PASSAGE · CHECK AGAINST THE ORIGINAL'
+                : 'MANUAL ENTRY · NOT INDEPENDENT SOURCE EVIDENCE'}
         </span>
       </div>
       <div className="evidence-status">
         <span>
           <i />
-          {source.synthetic
-            ? 'Sample evidence'
-            : source.documentId
-              ? 'Source passage retained'
-              : 'Manually entered record'}
+          {source.demoSource
+            ? 'Extracted from the Demo mails folder'
+            : source.synthetic
+              ? 'Sample evidence'
+              : source.documentId
+                ? 'Source passage retained'
+                : 'Manually entered record'}
         </span>
         {source.documentId && !source.synthetic ? (
           <Button
@@ -127,6 +141,33 @@ export function EvidencePanel({
           Download excerpt
         </Button>
       </div>
+      {source.documentId &&
+      !source.synthetic &&
+      /\.(eml|pdf)$/i.test(source.filename) ? (
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setPreview((value) => !value)}
+          >
+            {preview ? 'Close original preview' : 'Read original & attachments'}
+          </Button>
+          {preview ? (
+            /\.eml$/i.test(source.filename) ? (
+              <EmailPreview
+                key={source.documentId}
+                documentId={source.documentId}
+                onOpened={() => {}}
+              />
+            ) : (
+              <PdfPreview
+                key={source.documentId}
+                documentId={source.documentId}
+                onOpened={() => {}}
+              />
+            )
+          ) : null}
+        </div>
+      ) : null}
       <details className="source-excerpt">
         <summary>Exact source passage</summary>
         <p>{source.excerpt}</p>
@@ -142,11 +183,13 @@ export function EvidencePanel({
         <span>Source mailbox</span>
         <strong>
           {data.mailboxes.find((m) => m.id === source.mailboxId)?.person ??
-            (source.mailboxId === 'upload'
-              ? 'Document upload'
-              : source.mailboxId === 'manual'
-                ? 'Manual entry'
-                : 'Unavailable')}
+            (source.demoSource
+              ? 'Demo mails folder'
+              : source.mailboxId === 'upload'
+                ? 'Document upload'
+                : source.mailboxId === 'manual'
+                  ? 'Manual entry'
+                  : 'Unavailable')}
         </strong>
       </div>
       {source.synthetic && sourceId === 'source-event-01' ? (

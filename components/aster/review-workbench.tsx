@@ -43,6 +43,7 @@ import { factAcceptanceIssue, suggestHoldings } from '@/lib/fact-review';
 import { useWorkspace } from './workspace-context';
 import styles from './review-workbench.module.css';
 import { PdfPreview } from './pdf-preview';
+import { EmailPreview } from './email-preview';
 
 type Props = {
   job: ProcessingJob;
@@ -308,6 +309,12 @@ export function ReviewWorkbench({
               documentId={job.documentId}
               onOpened={() => setOpened(true)}
             />
+          ) : preview && /\.eml$/i.test(job.filename) ? (
+            <EmailPreview
+              key={job.documentId}
+              documentId={job.documentId}
+              onOpened={() => setOpened(true)}
+            />
           ) : preview ? (
             <iframe
               title="Original document source"
@@ -323,10 +330,10 @@ export function ReviewWorkbench({
             </div>
           )}
           <p className={styles.hint}>
-            PDFs use a bounded visual reader. Email previews show raw source
-            text, including MIME boundaries; download the original to inspect
-            encoded bodies or attachments. No email HTML or external resources
-            are executed.
+            PDFs use a bounded visual reader. Email bodies are decoded as plain
+            text, with PDF attachments available inline. Other attachments
+            remain in the downloadable original. No email HTML or external
+            resources are executed.
           </p>
         </aside>
         <div className={styles.review}>

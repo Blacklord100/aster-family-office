@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { initialWorkspace, deriveWorkspace, scenario } from './workspace';
 import { completeDemoRun, startDemoRun, cancelDemoRun } from './demo-engine';
 describe('workspace integration', () => {
+  it('starts live workspaces without hidden illustrative engine balances or marks', () => {
+    const state = initialWorkspace(false);
+    expect(state.engine.cashBalances).toEqual([]);
+    expect(state.engine.valuationVersions).toEqual([]);
+    expect(state.engine.knownPositionIds).toEqual([]);
+    expect(deriveWorkspace(state).holdings).toEqual([]);
+  });
   it('restates the effective valuation period while preserving cash, commitments and prior dates', () => {
     const before = initialWorkspace(),
       base = deriveWorkspace(before);

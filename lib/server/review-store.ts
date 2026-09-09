@@ -141,7 +141,15 @@ export async function applyReview(
       "SELECT 1 FROM app_audit WHERE organization_id=$1 AND actor_id=$2 AND resource_id=$3 AND action IN ('document.downloaded','document.previewed') LIMIT 1",
       [ctx.organizationId, ctx.user.id, job.document_id],
     );
-    if (!opened.rows.length)
+    const automatedDemo =
+      !opened.rows.length &&
+      ctx.user.id === 'demo-agent:' + ctx.organizationId &&
+      ctx.sessionId === 'demo-system'
+        ? await (
+            await import('./demo-review-policy')
+          ).hasDemoSourceVerification(c, ctx, job.document_id)
+        : false;
+    if (!opened.rows.length && !automatedDemo)
       throw new AccessError(
         400,
         'ORIGINAL_REVIEW_REQUIRED',
