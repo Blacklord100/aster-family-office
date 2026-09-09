@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Pool } from 'pg';
+import { dropTestDatabase } from '../test-support/database-cleanup';
 import type { WorkspaceContext } from './access';
 vi.mock('server-only', () => ({}));
 vi.mock('./auth', () => ({
@@ -139,7 +140,7 @@ describe.skipIf(!enabled)(
       await target?.end();
       if (admin) {
         if (databaseName)
-          await admin.query('DROP DATABASE ' + databaseName + ' WITH (FORCE)');
+          await dropTestDatabase(admin, databaseName);
         await admin.end();
       }
       if (intake) await rm(intake, { recursive: true, force: true });

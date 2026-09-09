@@ -12,7 +12,7 @@ The seven-item expansion adds a sourced investment register and transaction ledg
 
 The [100-email mailroom demonstration](benchmark/mailroom-v1/README.md) supplies three fictional offices, nine inboxes, messy originals and a reproducible four-configuration local-model comparison. See [the collection harness](benchmark/mailroom-v1/HARNESS.md) for execution and preserved scoring, and [the offline LP packaging plan](operations/offline-lp-packaging.md) for the proposed disconnected appliance. The offline appliance is a delivery plan, not a deployed or certified installation.
 
-The [completed baseline](benchmark/mailroom-v1/RESULTS.md) records all 388 processing outcomes: each configuration recovered 60/90 expected facts with zero unsupported returned facts. Agentic processing added calls and latency without additional recovered facts on this synthetic corpus; the results identify shared extraction gaps before rollout.
+The preserved [original baseline](benchmark/mailroom-v1/RESULTS.md) records all 388 processing outcomes before the extraction fixes: each configuration recovered 60/90 expected facts. The latest [live Gemma folder run](VALIDATION-LIVE-DEMO.md) recovered 90/90 exact grounded facts, accepted 72 and deferred 18 for review. This is a synthetic combined rules/model evaluation, not an independent estimate of client-document accuracy.
 
 ## What is implemented
 
@@ -38,7 +38,7 @@ The new risk and engine panels, including actual Gemma runs in both modes, are c
 
 Use [operations/README.md](operations/README.md) for the single-repository Docker Compose setup, private processor/Ollama network, optional Caddy TLS, secret provisioning and backup procedures. Build context is this repository. No external deployment runs automatically.
 
-The [readiness record](operations/readiness.md) separates checks completed here from checks required on the target host. Docker is not installed on this development machine; container startup, Linux permissions, enforced egress restrictions and backup/restore drills remain to be exercised there.
+The [readiness record](operations/readiness.md) separates checks completed here from checks required on the target host. Docker is not installed on this development machine. GitHub CI has built and exercised the Linux application/processor images, non-root controls and network-disabled startup/OCR. The processor security gate and the complete target-host deployment, enforced egress restrictions and production backup/restore qualification remain open.
 
 ## Local development
 
@@ -90,7 +90,7 @@ npm audit
 
 Real PostgreSQL suites are explicit opt-ins. `AUTH_TEST_DATABASE_URL` and `APP_TEST_DATABASE_URL` must use the restricted runtime role on a migrated disposable database; cleanup of append-only audit fixtures additionally requires the explicitly configured test maintenance URL. Application-worker tests need the processor and worker running with matching encryption key and processor token. Test fixtures use generated IDs and example.invalid emails.
 
-See [VALIDATION-SEVEN-ITEMS.md](VALIDATION-SEVEN-ITEMS.md) for the current build, browser, database and local-inference evidence.
+See [VALIDATION-LIVE-DEMO.md](VALIDATION-LIVE-DEMO.md) for the current build, browser, database and local-inference evidence; earlier validation records retain their historical results.
 
 ## Boundaries before a live office rollout
 

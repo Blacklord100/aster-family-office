@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, it, expect, vi } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
+import { dropTestDatabase } from '../test-support/database-cleanup';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 vi.mock('server-only', () => ({}));
@@ -152,7 +153,7 @@ describe.skipIf(!enabled)(
       if (target) await target.end();
       if (admin) {
         if (dbName)
-          await admin.query('DROP DATABASE ' + dbName + ' WITH (FORCE)');
+          await dropTestDatabase(admin, dbName);
         await admin.end();
       }
     }, 30000);

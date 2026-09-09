@@ -16,7 +16,7 @@ This record covers the native, source-derived demo and its application changes. 
 
 | Check | Result |
 | --- | --- |
-| Application unit/component/route tests | 585 passed; 59 opt-in tests skipped in this command |
+| Application unit/component/route tests | 594 passed; 59 opt-in tests skipped in this command |
 | Python processor suite | 589 passed; two dependency deprecation warnings |
 | Production Next build and service bundles | Passed |
 | TypeScript and lint | Passed |
@@ -32,6 +32,8 @@ This record covers the native, source-derived demo and its application changes. 
 | Financial provenance browser checks | Seven passed, including liquidity, inferred allocation, print and CSV |
 
 Native suites use the restricted runtime database role and isolated/disposable fixtures. They are recorded separately from the default test command; skipped tests are not counted as passes. Browser checks used generated synthetic QA identities with normal MFA sessions. The retained source-derived demo is separate from the static UI fixtures.
+
+Linux run 34399925018 passed all 38 database test assertions but failed on a fixture shutdown race. The three affected fixture suites now use bounded, non-forced database cleanup: all 18 tests in those suites passed in isolated native databases, and nine cleanup regressions passed. Those disposable databases were removed; the live offices were untouched. The next Linux run must verify the complete database job after this fix.
 
 ## Recovery and encryption
 
@@ -69,6 +71,6 @@ Gmail/Microsoft adapters and their workers are implemented, but no real provider
 
 Docker is unavailable on this development host. The [release workflow](.github/workflows/verify.yml) qualifies Linux image builds, non-root/read-only controls, network-disabled startup and OCR, the processor regression suite, and high/critical vulnerability gates. The processor scan additionally checks that every retained native package and locked Python dependency is present in the scanner inventory. Exact commit results are available in [GitHub release checks](https://github.com/Blacklord100/aster-family-office/actions/workflows/verify.yml); a clean base-image scan is not a passing application-image result.
 
-The complete web image passed its high/critical scan in [run 34397825047](https://github.com/Blacklord100/aster-family-office/actions/runs/34397825047). The processor image retained three high-severity dependency findings, which intentionally block release. [The processor release-blocker record](operations/processor-release-blockers.md) identifies the affected versions, upstream fixes and outstanding scanner-coverage qualification. No finding has been suppressed or relabeled to obtain a passing release.
+In [run 34399925018](https://github.com/Blacklord100/aster-family-office/actions/runs/34399925018), both images built, their runtime probes passed, and all 589 processor tests passed inside the network-disabled image. The complete web image passed its high/critical scan. The processor image retained three high-severity dependency findings, which intentionally block release. [The processor release-blocker record](operations/processor-release-blockers.md) identifies the affected versions, upstream fixes and outstanding scanner-coverage qualification. No finding has been suppressed or relabeled to obtain a passing release.
 
 The complete LP deployment still requires target-host permission and egress checks, hardware capacity testing, public TLS and production streaming backup/restore qualification. The native source intake contains plaintext synthetic files before encrypted retention; host storage protections remain an operator responsibility. Use [the deployment readiness record](operations/readiness.md) and [offline LP packaging plan](operations/offline-lp-packaging.md) for the remaining installation work.
