@@ -122,7 +122,7 @@ describe('engine inspection contract and presentation', () => {
       createElement(EngineInspectionDetails, { inspection: fixture() }),
     );
     for (const text of [
-      'image support supported',
+      'image support as supported',
       'No image or generation request was made',
       'not pinned to jobs',
       '16,384 tokens requested',
