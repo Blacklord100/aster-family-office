@@ -11,7 +11,14 @@ import {
   processorEndpoint,
 } from '../lib/server/engine-store';
 import { retryDecision } from '../lib/server/worker-retry';
+import {
+  claimDocumentJob,
+  workerOrganizationScope,
+} from '../lib/server/worker-scope';
 const owner = randomUUID();
+const organizationScope = workerOrganizationScope(
+  process.env.WORKER_ORGANIZATION_IDS,
+);
 const endpoint = new URL(process.env.PROCESSOR_URL ?? 'http://processor:8000');
 if (
   !['http:', 'https:'].includes(endpoint.protocol) ||
@@ -43,16 +50,7 @@ const heartbeat = setInterval(
 );
 await writeFile(heartbeatFile, String(Date.now()));
 while (!stopping) {
-  const claimed = await pool.query<{
-    id: string;
-    organization_id: string;
-    attempts: number;
-    capacity_deferrals: number;
-  }>(
-    `UPDATE app_job_queue SET lease_owner=$1,lease_until=now()+interval '90 seconds',attempts=attempts+1 WHERE id=(SELECT id FROM app_job_queue WHERE available_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY available_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id,organization_id,attempts,capacity_deferrals`,
-    [owner],
-  );
-  const queue = claimed.rows[0];
+  const queue = await claimDocumentJob(pool, owner, organizationScope);
   if (!queue) {
     await new Promise((r) => setTimeout(r, 1000));
     continue;

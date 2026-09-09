@@ -1,6 +1,6 @@
 # Aster operations
 
-This is a portable single-host Docker Compose template. It has not been booted with Docker in this workspace because Docker is unavailable. Read architecture.md and readiness.md before using it with confidential data. Nothing here deploys externally.
+This is a portable single-host Docker Compose template. It has not been booted with Docker in this workspace because Docker is unavailable. Read architecture.md and readiness.md before using it with confidential data. Nothing here deploys externally. For a disconnected LP installation, use the [offline packaging plan](offline-lp-packaging.md); the current connected Compose template is not an offline release.
 
 ## Files and application contract
 

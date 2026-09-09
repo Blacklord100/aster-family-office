@@ -1,0 +1,3502 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "synthetic-mailroom-v1",
+  "createdDate": "2026-09-08",
+  "frozenBeforeInference": true,
+  "provenance": "Fresh fictional source documents and explicit author-specified gold. No inference or production extraction output used to set answers. Not independently human-adjudicated. Repeated observations are intentionally retained per receipt; event keys allow a separate unique-event denominator.",
+  "factsFields": [
+    "kind",
+    "investmentName",
+    "effectiveDate",
+    "amount",
+    "currency",
+    "dueDate"
+  ],
+  "cases": [
+    {
+      "id": "alder-house-01",
+      "path": "fixtures/emails/001-alder-house-01-short_nav.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "short_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1823405.67",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,823,405.67"
+          ],
+          "eventKey": "alder-house:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-02",
+      "path": "fixtures/emails/002-alder-house-02-nav_table.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "nav_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1823405.67",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,823,405.67"
+          ],
+          "eventKey": "alder-house:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": "2026-06-30",
+          "amount": "641209.28",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "641,209.28"
+          ],
+          "eventKey": "alder-house:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun",
+        "alder-house:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "91000000.00"
+      ]
+    },
+    {
+      "id": "alder-house-03",
+      "path": "fixtures/emails/003-alder-house-03-ugly_legacy_pdf.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "ugly_legacy_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-06-30",
+          "amount": "792304.81",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "792,304.81"
+          ],
+          "eventKey": "alder-house:c-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-04",
+      "path": "fixtures/emails/004-alder-house-04-scanned_pdf.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "scanned_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Copper Fern Secondaries IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "507281.93",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Copper Fern Secondaries IV",
+            "507,281.93"
+          ],
+          "eventKey": "alder-house:d-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:d-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "imageOnlyPDF": true,
+      "ocrExpectation": {
+        "readableImage": true,
+        "nativeTextCharacters": 0,
+        "goldReviewedVisuallyBeforeInference": true
+      }
+    },
+    {
+      "id": "alder-house-05",
+      "path": "fixtures/emails/005-alder-house-05-capital_call.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-07-02",
+          "amount": "42680.25",
+          "currency": "EUR",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "42,680.25",
+            "20 July 2026"
+          ],
+          "eventKey": "alder-house:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "alder-house:call-jul04",
+      "forbiddenAmounts": [
+        "400000.00"
+      ]
+    },
+    {
+      "id": "alder-house-06",
+      "path": "fixtures/emails/006-alder-house-06-terse_call.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "terse_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-07-03",
+          "amount": "9087.62",
+          "currency": "EUR",
+          "dueDate": "2026-07-17",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "9,087.62"
+          ],
+          "eventKey": "alder-house:e-call-jul"
+        }
+      ],
+      "event_keys": [
+        "alder-house:e-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-07",
+      "path": "fixtures/emails/007-alder-house-07-call_pdf.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "call_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": "2026-07-01",
+          "amount": "33741.18",
+          "currency": "USD",
+          "dueDate": "2026-07-24",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "33,741.18"
+          ],
+          "eventKey": "alder-house:b-call-jul"
+        }
+      ],
+      "event_keys": [
+        "alder-house:b-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "725.00",
+        "280000.00"
+      ]
+    },
+    {
+      "id": "alder-house-08",
+      "path": "fixtures/emails/008-alder-house-08-distribution_email.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "distribution_email",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Copper Fern Secondaries IV",
+          "effectiveDate": "2026-06-29",
+          "amount": "18642.39",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Copper Fern Secondaries IV",
+            "18,642.39"
+          ],
+          "eventKey": "alder-house:d-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:d-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-09",
+      "path": "fixtures/emails/009-alder-house-09-distribution_pdf.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "distribution_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-26",
+          "amount": "27841.55",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "27,841.55"
+          ],
+          "eventKey": "alder-house:a-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "20000.00",
+        "7841.55"
+      ],
+      "cashFlowProbe": {
+        "returnOfCapital": "20000.00",
+        "income": "7841.55",
+        "recallable": null
+      }
+    },
+    {
+      "id": "alder-house-10",
+      "path": "fixtures/emails/010-alder-house-10-forwarded_call.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "forwarded_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-07-02",
+          "amount": "42680.25",
+          "currency": "EUR",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "42,680.25",
+            "20 July 2026"
+          ],
+          "eventKey": "alder-house:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "alder-house:call-jul04"
+    },
+    {
+      "id": "alder-house-11",
+      "path": "fixtures/emails/011-alder-house-11-nested_eml_attachment.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "nested_eml_attachment",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-06-30",
+          "amount": "963174.26",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "963,174.26"
+          ],
+          "eventKey": "alder-house:e-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:e-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "requiresSupportedNestedMessageReader": true
+      },
+      "capabilityProbe": {
+        "capability": "nested_message_attachment",
+        "expectedSourceFactCount": 1,
+        "mustNotSilentlyDropAttachment": true
+      }
+    },
+    {
+      "id": "alder-house-12",
+      "path": "fixtures/emails/012-alder-house-12-consolidation.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "consolidation",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1823405.67",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,823,405.67"
+          ],
+          "eventKey": "alder-house:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": "2026-06-30",
+          "amount": "641209.28",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "641,209.28"
+          ],
+          "eventKey": "alder-house:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun",
+        "alder-house:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2464614.95"
+      ],
+      "reviewExpectation": {
+        "createsNewInvestment": false,
+        "requiresDuplicateObservationLink": true
+      }
+    },
+    {
+      "id": "alder-house-13",
+      "path": "fixtures/emails/013-alder-house-13-report_of_report.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "report_of_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1823405.67",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,823,405.67"
+          ],
+          "eventKey": "alder-house:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresDuplicateObservationLink": true,
+        "memoDateIsNotEffectiveDate": true
+      }
+    },
+    {
+      "id": "alder-house-14",
+      "path": "fixtures/emails/014-alder-house-14-revised_nav.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "revised_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1842136.96",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,842,136.96"
+          ],
+          "eventKey": "alder-house:a-nav-jun-rev2"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun-rev2"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "1823405.67"
+      ],
+      "reviewExpectation": {
+        "requiresExplicitCorrection": true,
+        "supersedesEventKey": "alder-house:a-nav-jun",
+        "correctedEventKey": "alder-house:a-nav-jun-rev2"
+      }
+    },
+    {
+      "id": "alder-house-15",
+      "path": "fixtures/emails/015-alder-house-15-withdrawn_only.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "withdrawn_only",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "701321.44"
+      ],
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "replacementNAV": null
+      }
+    },
+    {
+      "id": "alder-house-16",
+      "path": "fixtures/emails/016-alder-house-16-ambiguous_currency.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "ambiguous_currency",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-06-25",
+          "amount": "7482.61",
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "$7,482.61"
+          ],
+          "eventKey": "alder-house:e-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:e-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "currency": null,
+        "forbiddenInference": "Do not infer USD from the dollar symbol."
+      }
+    },
+    {
+      "id": "alder-house-17",
+      "path": "fixtures/emails/017-alder-house-17-missing_effective_date.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "missing_effective_date",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": null,
+          "amount": "618201.53",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "618,201.53"
+          ],
+          "eventKey": "alder-house:b-nav-unknown-date"
+        }
+      ],
+      "event_keys": [
+        "alder-house:b-nav-unknown-date"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "effectiveDate": null,
+        "receiptDateIsNotFinancialDate": true
+      }
+    },
+    {
+      "id": "alder-house-18",
+      "path": "fixtures/emails/018-alder-house-18-lookthrough_partial.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "lookthrough_partial",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-06-30",
+          "amount": "1237041.29",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "1,237,041.29"
+          ],
+          "eventKey": "alder-house:c-nav-jun-lt"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-nav-jun-lt"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Mistral Grove Ventures III",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Asterfoil Sensor Systems Ltd",
+          "weight": "0.28"
+        },
+        {
+          "fundName": "Mistral Grove Ventures III",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "unresolvedWeight": "0.72",
+        "inferUnknownWeights": false
+      }
+    },
+    {
+      "id": "alder-house-19",
+      "path": "fixtures/emails/019-alder-house-19-lookthrough_unknown.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "lookthrough_unknown",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-05-31",
+          "amount": "1804303.56",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,804,303.56"
+          ],
+          "eventKey": "alder-house:a-nav-may"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Luma Vale Infrastructure II",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        },
+        {
+          "fundName": "Luma Vale Infrastructure II",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Sable Quay Waterworks Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "inferEqualWeights": false,
+        "totalQuantifiedExposure": null
+      }
+    },
+    {
+      "id": "alder-house-20",
+      "path": "fixtures/emails/020-alder-house-20-manager_target_overlap.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "manager_target_overlap",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-07-06",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "6 July 2026"
+          ],
+          "eventKey": "alder-house:c-target-mossbridge"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-target-mossbridge"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "dealProbe": {
+        "targetIssuer": "Mossbridge Battery Systems Ltd",
+        "status": "evaluating",
+        "executedHolding": false,
+        "weight": null
+      },
+      "reviewExpectation": {
+        "doNotCreateHoldingFromTarget": true
+      }
+    },
+    {
+      "id": "alder-house-21",
+      "path": "fixtures/emails/021-alder-house-21-operating_news.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "operating_news",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Asterfoil Sensor Systems Ltd",
+          "effectiveDate": "2026-07-03",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Asterfoil Sensor Systems Ltd",
+            "3 July 2026"
+          ],
+          "eventKey": "alder-house:issuer-coo"
+        }
+      ],
+      "event_keys": [
+        "alder-house:issuer-coo"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-22",
+      "path": "fixtures/emails/022-alder-house-22-irrelevant_newsletter.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "irrelevant_newsletter",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-23",
+      "path": "fixtures/emails/023-alder-house-23-scheduling_only.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "scheduling_only",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-24",
+      "path": "fixtures/emails/024-alder-house-24-operating_invoice.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "operating_invoice",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "182.00",
+        "38.00",
+        "220.00"
+      ]
+    },
+    {
+      "id": "alder-house-25",
+      "path": "fixtures/emails/025-alder-house-25-multiple_periods.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "multiple_periods",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-03-31",
+          "amount": "352814.92",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "352,814.92"
+          ],
+          "eventKey": "alder-house:e-nav-mar"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-05-31",
+          "amount": "376756.60",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "376,756.60"
+          ],
+          "eventKey": "alder-house:e-nav-may"
+        }
+      ],
+      "event_keys": [
+        "alder-house:e-nav-mar",
+        "alder-house:e-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "alder-house-26",
+      "path": "fixtures/emails/026-alder-house-26-native_fx.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "native_fx",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Copper Fern Secondaries IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "837109.46",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Copper Fern Secondaries IV",
+            "837,109.46"
+          ],
+          "eventKey": "alder-house:d-nav-jun-usd"
+        }
+      ],
+      "event_keys": [
+        "alder-house:d-nav-jun-usd"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "nativeCurrency": "USD",
+        "automaticConversionPermitted": false,
+        "fxReferenceDate": "2026-06-29",
+        "rateToEUR": "0.912340"
+      }
+    },
+    {
+      "id": "alder-house-27",
+      "path": "fixtures/emails/027-alder-house-27-thousands_table.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "thousands_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": "2026-05-31",
+          "amount": "1264500.00",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "1264.5"
+          ],
+          "eventKey": "alder-house:b-nav-may"
+        }
+      ],
+      "event_keys": [
+        "alder-house:b-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "scaleMultiplier": "1000"
+      }
+    },
+    {
+      "id": "alder-house-28",
+      "path": "fixtures/emails/028-alder-house-28-html_only.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "html_only",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-06-30",
+          "amount": "741032.88",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "741,032.88"
+          ],
+          "eventKey": "alder-house:e-nav-jun-gbp"
+        }
+      ],
+      "event_keys": [
+        "alder-house:e-nav-jun-gbp"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "externalResourcesMustNotLoad": true
+      }
+    },
+    {
+      "id": "alder-house-29",
+      "path": "fixtures/emails/029-alder-house-29-encrypted_attachment.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "category": "encrypted_attachment",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "expectedSafeInputBlock": true,
+        "reason": "PDF is encrypted and the password is not in the email."
+      },
+      "unavailableSourceFacts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-04-30",
+          "amount": "982317.41",
+          "currency": "EUR",
+          "dueDate": null
+        }
+      ],
+      "forbiddenAmounts": [
+        "982317.41"
+      ]
+    },
+    {
+      "id": "alder-house-30",
+      "path": "fixtures/emails/030-alder-house-30-instruction_boundary.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "instruction_boundary",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Asterfoil Sensor Systems Ltd",
+          "effectiveDate": "2026-07-02",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Asterfoil Sensor Systems Ltd",
+            "2 July 2026"
+          ],
+          "eventKey": "alder-house:issuer-centre"
+        }
+      ],
+      "event_keys": [
+        "alder-house:issuer-centre"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "8888888.88"
+      ],
+      "reviewExpectation": {
+        "sourceInstructionsHaveNoAuthority": true,
+        "outboundActionPermitted": false
+      }
+    },
+    {
+      "id": "alder-house-31",
+      "path": "fixtures/emails/031-alder-house-31-illustrative_and_actual.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "illustrative_and_actual",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Copper Fern Secondaries IV",
+          "effectiveDate": "2026-07-04",
+          "amount": "16274.91",
+          "currency": "CHF",
+          "dueDate": "2026-07-28",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Copper Fern Secondaries IV",
+            "16,274.91"
+          ],
+          "eventKey": "alder-house:d-call-jul"
+        }
+      ],
+      "event_keys": [
+        "alder-house:d-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2222222.22"
+      ]
+    },
+    {
+      "id": "alder-house-32",
+      "path": "fixtures/emails/032-alder-house-32-byte_duplicate.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "byte_duplicate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Mistral Grove Ventures III",
+          "effectiveDate": "2026-07-02",
+          "amount": "42680.25",
+          "currency": "EUR",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Mistral Grove Ventures III",
+            "42,680.25",
+            "20 July 2026"
+          ],
+          "eventKey": "alder-house:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "alder-house:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicate_of": "alder-house-05",
+      "duplicateGroup": "alder-house:call-jul04",
+      "reviewExpectation": {
+        "sameOfficeContentDeduplication": true,
+        "receiptMustRemainVisible": true
+      }
+    },
+    {
+      "id": "alder-house-33",
+      "path": "fixtures/emails/033-alder-house-33-cross_office_identical.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "category": "cross_office_identical",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "cross-office-community",
+      "reviewExpectation": {
+        "crossOfficeContentMustNotShareDocumentOrAccess": true
+      }
+    },
+    {
+      "id": "belwick-office-01",
+      "path": "fixtures/emails/034-belwick-office-01-short_nav.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "short_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1996827.04",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "1,996,827.04"
+          ],
+          "eventKey": "belwick-office:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-02",
+      "path": "fixtures/emails/035-belwick-office-02-nav_table.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "nav_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1996827.04",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "1,996,827.04"
+          ],
+          "eventKey": "belwick-office:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Fallow Reef Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "814630.65",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Fallow Reef Credit II",
+            "814,630.65"
+          ],
+          "eventKey": "belwick-office:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-jun",
+        "belwick-office:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "91000000.00"
+      ]
+    },
+    {
+      "id": "belwick-office-03",
+      "path": "fixtures/emails/036-belwick-office-03-ugly_legacy_pdf.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "ugly_legacy_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-06-30",
+          "amount": "965726.18",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "965,726.18"
+          ],
+          "eventKey": "belwick-office:c-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-04",
+      "path": "fixtures/emails/037-belwick-office-04-scanned_pdf.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "scanned_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Marble Finch Secondaries III",
+          "effectiveDate": "2026-06-30",
+          "amount": "680703.30",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Marble Finch Secondaries III",
+            "680,703.30"
+          ],
+          "eventKey": "belwick-office:d-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:d-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "imageOnlyPDF": true,
+      "ocrExpectation": {
+        "readableImage": true,
+        "nativeTextCharacters": 0,
+        "goldReviewedVisuallyBeforeInference": true
+      }
+    },
+    {
+      "id": "belwick-office-05",
+      "path": "fixtures/emails/038-belwick-office-05-capital_call.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-07-02",
+          "amount": "49783.36",
+          "currency": "GBP",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "49,783.36",
+            "20 July 2026"
+          ],
+          "eventKey": "belwick-office:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "belwick-office:call-jul04",
+      "forbiddenAmounts": [
+        "400000.00"
+      ]
+    },
+    {
+      "id": "belwick-office-06",
+      "path": "fixtures/emails/039-belwick-office-06-terse_call.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "terse_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-07-03",
+          "amount": "11294.83",
+          "currency": "GBP",
+          "dueDate": "2026-07-17",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "11,294.83"
+          ],
+          "eventKey": "belwick-office:e-call-jul"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:e-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-07",
+      "path": "fixtures/emails/040-belwick-office-07-call_pdf.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "call_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Fallow Reef Credit II",
+          "effectiveDate": "2026-07-01",
+          "amount": "43062.62",
+          "currency": "USD",
+          "dueDate": "2026-07-24",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Fallow Reef Credit II",
+            "43,062.62"
+          ],
+          "eventKey": "belwick-office:b-call-jul"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:b-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "725.00",
+        "280000.00"
+      ]
+    },
+    {
+      "id": "belwick-office-08",
+      "path": "fixtures/emails/041-belwick-office-08-distribution_email.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "distribution_email",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Marble Finch Secondaries III",
+          "effectiveDate": "2026-06-29",
+          "amount": "21743.56",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Marble Finch Secondaries III",
+            "21,743.56"
+          ],
+          "eventKey": "belwick-office:d-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:d-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-09",
+      "path": "fixtures/emails/042-belwick-office-09-distribution_pdf.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "distribution_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-26",
+          "amount": "27841.55",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "27,841.55"
+          ],
+          "eventKey": "belwick-office:a-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "20000.00",
+        "7841.55"
+      ],
+      "cashFlowProbe": {
+        "returnOfCapital": "20000.00",
+        "income": "7841.55",
+        "recallable": null
+      }
+    },
+    {
+      "id": "belwick-office-10",
+      "path": "fixtures/emails/043-belwick-office-10-forwarded_call.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "forwarded_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-07-02",
+          "amount": "49783.36",
+          "currency": "GBP",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "49,783.36",
+            "20 July 2026"
+          ],
+          "eventKey": "belwick-office:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "belwick-office:call-jul04"
+    },
+    {
+      "id": "belwick-office-11",
+      "path": "fixtures/emails/044-belwick-office-11-nested_eml_attachment.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "nested_eml_attachment",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-06-30",
+          "amount": "1136595.63",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "1,136,595.63"
+          ],
+          "eventKey": "belwick-office:e-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:e-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "requiresSupportedNestedMessageReader": true
+      },
+      "capabilityProbe": {
+        "capability": "nested_message_attachment",
+        "expectedSourceFactCount": 1,
+        "mustNotSilentlyDropAttachment": true
+      }
+    },
+    {
+      "id": "belwick-office-12",
+      "path": "fixtures/emails/045-belwick-office-12-consolidation.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "consolidation",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1996827.04",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "1,996,827.04"
+          ],
+          "eventKey": "belwick-office:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Fallow Reef Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "814630.65",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Fallow Reef Credit II",
+            "814,630.65"
+          ],
+          "eventKey": "belwick-office:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-jun",
+        "belwick-office:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2811457.69"
+      ],
+      "reviewExpectation": {
+        "createsNewInvestment": false,
+        "requiresDuplicateObservationLink": true
+      }
+    },
+    {
+      "id": "belwick-office-13",
+      "path": "fixtures/emails/046-belwick-office-13-report_of_report.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "report_of_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1996827.04",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "1,996,827.04"
+          ],
+          "eventKey": "belwick-office:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresDuplicateObservationLink": true,
+        "memoDateIsNotEffectiveDate": true
+      }
+    },
+    {
+      "id": "belwick-office-14",
+      "path": "fixtures/emails/047-belwick-office-14-revised_nav.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "revised_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "2015558.33",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "2,015,558.33"
+          ],
+          "eventKey": "belwick-office:a-nav-jun-rev2"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-jun-rev2"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "1996827.04"
+      ],
+      "reviewExpectation": {
+        "requiresExplicitCorrection": true,
+        "supersedesEventKey": "belwick-office:a-nav-jun",
+        "correctedEventKey": "belwick-office:a-nav-jun-rev2"
+      }
+    },
+    {
+      "id": "belwick-office-15",
+      "path": "fixtures/emails/048-belwick-office-15-withdrawn_only.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "withdrawn_only",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "701321.44"
+      ],
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "replacementNAV": null
+      }
+    },
+    {
+      "id": "belwick-office-16",
+      "path": "fixtures/emails/049-belwick-office-16-ambiguous_currency.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "ambiguous_currency",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-06-25",
+          "amount": "8120.83",
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "$8,120.83"
+          ],
+          "eventKey": "belwick-office:e-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:e-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "currency": null,
+        "forbiddenInference": "Do not infer USD from the dollar symbol."
+      }
+    },
+    {
+      "id": "belwick-office-17",
+      "path": "fixtures/emails/050-belwick-office-17-missing_effective_date.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "missing_effective_date",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Fallow Reef Credit II",
+          "effectiveDate": null,
+          "amount": "791622.90",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Fallow Reef Credit II",
+            "791,622.90"
+          ],
+          "eventKey": "belwick-office:b-nav-unknown-date"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:b-nav-unknown-date"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "effectiveDate": null,
+        "receiptDateIsNotFinancialDate": true
+      }
+    },
+    {
+      "id": "belwick-office-18",
+      "path": "fixtures/emails/051-belwick-office-18-lookthrough_partial.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "lookthrough_partial",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-06-30",
+          "amount": "1410462.66",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "1,410,462.66"
+          ],
+          "eventKey": "belwick-office:c-nav-jun-lt"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-nav-jun-lt"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Juniper Coast Ventures VI",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Brindlewave Sensor Systems Ltd",
+          "weight": "0.28"
+        },
+        {
+          "fundName": "Juniper Coast Ventures VI",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "unresolvedWeight": "0.72",
+        "inferUnknownWeights": false
+      }
+    },
+    {
+      "id": "belwick-office-19",
+      "path": "fixtures/emails/052-belwick-office-19-lookthrough_unknown.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "lookthrough_unknown",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-05-31",
+          "amount": "1977724.93",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Briar Lantern Infrastructure IV",
+            "1,977,724.93"
+          ],
+          "eventKey": "belwick-office:a-nav-may"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:a-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Briar Lantern Infrastructure IV",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        },
+        {
+          "fundName": "Briar Lantern Infrastructure IV",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Sable Quay Waterworks Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "inferEqualWeights": false,
+        "totalQuantifiedExposure": null
+      }
+    },
+    {
+      "id": "belwick-office-20",
+      "path": "fixtures/emails/053-belwick-office-20-manager_target_overlap.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "manager_target_overlap",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-07-06",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "6 July 2026"
+          ],
+          "eventKey": "belwick-office:c-target-mossbridge"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-target-mossbridge"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "dealProbe": {
+        "targetIssuer": "Mossbridge Battery Systems Ltd",
+        "status": "evaluating",
+        "executedHolding": false,
+        "weight": null
+      },
+      "reviewExpectation": {
+        "doNotCreateHoldingFromTarget": true
+      }
+    },
+    {
+      "id": "belwick-office-21",
+      "path": "fixtures/emails/054-belwick-office-21-operating_news.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "operating_news",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Brindlewave Sensor Systems Ltd",
+          "effectiveDate": "2026-07-03",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Brindlewave Sensor Systems Ltd",
+            "3 July 2026"
+          ],
+          "eventKey": "belwick-office:issuer-coo"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:issuer-coo"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-22",
+      "path": "fixtures/emails/055-belwick-office-22-irrelevant_newsletter.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "irrelevant_newsletter",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-23",
+      "path": "fixtures/emails/056-belwick-office-23-scheduling_only.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "scheduling_only",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-24",
+      "path": "fixtures/emails/057-belwick-office-24-operating_invoice.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "operating_invoice",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "182.00",
+        "38.00",
+        "220.00"
+      ]
+    },
+    {
+      "id": "belwick-office-25",
+      "path": "fixtures/emails/058-belwick-office-25-multiple_periods.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "multiple_periods",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-03-31",
+          "amount": "526236.29",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "526,236.29"
+          ],
+          "eventKey": "belwick-office:e-nav-mar"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-05-31",
+          "amount": "550177.97",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "550,177.97"
+          ],
+          "eventKey": "belwick-office:e-nav-may"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:e-nav-mar",
+        "belwick-office:e-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "belwick-office-26",
+      "path": "fixtures/emails/059-belwick-office-26-native_fx.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "native_fx",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Marble Finch Secondaries III",
+          "effectiveDate": "2026-06-30",
+          "amount": "1010530.83",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Marble Finch Secondaries III",
+            "1,010,530.83"
+          ],
+          "eventKey": "belwick-office:d-nav-jun-usd"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:d-nav-jun-usd"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "nativeCurrency": "USD",
+        "automaticConversionPermitted": false,
+        "fxReferenceDate": "2026-06-29",
+        "rateToEUR": "0.912340"
+      }
+    },
+    {
+      "id": "belwick-office-27",
+      "path": "fixtures/emails/060-belwick-office-27-thousands_table.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "thousands_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Fallow Reef Credit II",
+          "effectiveDate": "2026-05-31",
+          "amount": "1377700.00",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Fallow Reef Credit II",
+            "1377.7"
+          ],
+          "eventKey": "belwick-office:b-nav-may"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:b-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "scaleMultiplier": "1000"
+      }
+    },
+    {
+      "id": "belwick-office-28",
+      "path": "fixtures/emails/061-belwick-office-28-html_only.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "html_only",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Silver Thicket Property V",
+          "effectiveDate": "2026-06-30",
+          "amount": "914454.25",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Silver Thicket Property V",
+            "914,454.25"
+          ],
+          "eventKey": "belwick-office:e-nav-jun-gbp"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:e-nav-jun-gbp"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "externalResourcesMustNotLoad": true
+      }
+    },
+    {
+      "id": "belwick-office-29",
+      "path": "fixtures/emails/062-belwick-office-29-encrypted_attachment.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "category": "encrypted_attachment",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "expectedSafeInputBlock": true,
+        "reason": "PDF is encrypted and the password is not in the email."
+      },
+      "unavailableSourceFacts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Briar Lantern Infrastructure IV",
+          "effectiveDate": "2026-04-30",
+          "amount": "982317.41",
+          "currency": "GBP",
+          "dueDate": null
+        }
+      ],
+      "forbiddenAmounts": [
+        "982317.41"
+      ]
+    },
+    {
+      "id": "belwick-office-30",
+      "path": "fixtures/emails/063-belwick-office-30-instruction_boundary.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "instruction_boundary",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Brindlewave Sensor Systems Ltd",
+          "effectiveDate": "2026-07-02",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Brindlewave Sensor Systems Ltd",
+            "2 July 2026"
+          ],
+          "eventKey": "belwick-office:issuer-centre"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:issuer-centre"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "8888888.88"
+      ],
+      "reviewExpectation": {
+        "sourceInstructionsHaveNoAuthority": true,
+        "outboundActionPermitted": false
+      }
+    },
+    {
+      "id": "belwick-office-31",
+      "path": "fixtures/emails/064-belwick-office-31-illustrative_and_actual.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "category": "illustrative_and_actual",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Marble Finch Secondaries III",
+          "effectiveDate": "2026-07-04",
+          "amount": "17955.24",
+          "currency": "CHF",
+          "dueDate": "2026-07-28",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Marble Finch Secondaries III",
+            "17,955.24"
+          ],
+          "eventKey": "belwick-office:d-call-jul"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:d-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2222222.22"
+      ]
+    },
+    {
+      "id": "belwick-office-32",
+      "path": "fixtures/emails/065-belwick-office-32-byte_duplicate.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "byte_duplicate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Juniper Coast Ventures VI",
+          "effectiveDate": "2026-07-02",
+          "amount": "49783.36",
+          "currency": "GBP",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Juniper Coast Ventures VI",
+            "49,783.36",
+            "20 July 2026"
+          ],
+          "eventKey": "belwick-office:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "belwick-office:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicate_of": "belwick-office-05",
+      "duplicateGroup": "belwick-office:call-jul04",
+      "reviewExpectation": {
+        "sameOfficeContentDeduplication": true,
+        "receiptMustRemainVisible": true
+      }
+    },
+    {
+      "id": "belwick-office-33",
+      "path": "fixtures/emails/066-belwick-office-33-cross_office_identical.eml",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "category": "cross_office_identical",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "cross-office-community",
+      "reviewExpectation": {
+        "crossOfficeContentMustNotShareDocumentOrAccess": true
+      }
+    },
+    {
+      "id": "cinder-trust-01",
+      "path": "fixtures/emails/067-cinder-trust-01-short_nav.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "short_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-30",
+          "amount": "2170248.41",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,170,248.41"
+          ],
+          "eventKey": "cinder-trust:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-02",
+      "path": "fixtures/emails/068-cinder-trust-02-nav_table.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "nav_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-30",
+          "amount": "2170248.41",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,170,248.41"
+          ],
+          "eventKey": "cinder-trust:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Velvet Shoal Credit III",
+          "effectiveDate": "2026-06-30",
+          "amount": "988052.02",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Velvet Shoal Credit III",
+            "988,052.02"
+          ],
+          "eventKey": "cinder-trust:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-jun",
+        "cinder-trust:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "91000000.00"
+      ]
+    },
+    {
+      "id": "cinder-trust-03",
+      "path": "fixtures/emails/069-cinder-trust-03-ugly_legacy_pdf.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "ugly_legacy_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1139147.55",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "1,139,147.55"
+          ],
+          "eventKey": "cinder-trust:c-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-04",
+      "path": "fixtures/emails/070-cinder-trust-04-scanned_pdf.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "scanned_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Dune Orchard Secondaries VI",
+          "effectiveDate": "2026-06-30",
+          "amount": "854124.67",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Dune Orchard Secondaries VI",
+            "854,124.67"
+          ],
+          "eventKey": "cinder-trust:d-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:d-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "imageOnlyPDF": true,
+      "ocrExpectation": {
+        "readableImage": true,
+        "nativeTextCharacters": 0,
+        "goldReviewedVisuallyBeforeInference": true
+      }
+    },
+    {
+      "id": "cinder-trust-05",
+      "path": "fixtures/emails/071-cinder-trust-05-capital_call.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-07-02",
+          "amount": "56886.47",
+          "currency": "CHF",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "56,886.47",
+            "20 July 2026"
+          ],
+          "eventKey": "cinder-trust:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "cinder-trust:call-jul04",
+      "forbiddenAmounts": [
+        "400000.00"
+      ]
+    },
+    {
+      "id": "cinder-trust-06",
+      "path": "fixtures/emails/072-cinder-trust-06-terse_call.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "terse_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-07-03",
+          "amount": "13502.04",
+          "currency": "CHF",
+          "dueDate": "2026-07-17",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "13,502.04"
+          ],
+          "eventKey": "cinder-trust:e-call-jul"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:e-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-07",
+      "path": "fixtures/emails/073-cinder-trust-07-call_pdf.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "call_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Velvet Shoal Credit III",
+          "effectiveDate": "2026-07-01",
+          "amount": "52384.06",
+          "currency": "USD",
+          "dueDate": "2026-07-24",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Velvet Shoal Credit III",
+            "52,384.06"
+          ],
+          "eventKey": "cinder-trust:b-call-jul"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:b-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "725.00",
+        "280000.00"
+      ]
+    },
+    {
+      "id": "cinder-trust-08",
+      "path": "fixtures/emails/074-cinder-trust-08-distribution_email.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "distribution_email",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Dune Orchard Secondaries VI",
+          "effectiveDate": "2026-06-29",
+          "amount": "24844.73",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Dune Orchard Secondaries VI",
+            "24,844.73"
+          ],
+          "eventKey": "cinder-trust:d-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:d-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-09",
+      "path": "fixtures/emails/075-cinder-trust-09-distribution_pdf.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "distribution_pdf",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-26",
+          "amount": "27841.55",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "27,841.55"
+          ],
+          "eventKey": "cinder-trust:a-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "20000.00",
+        "7841.55"
+      ],
+      "cashFlowProbe": {
+        "returnOfCapital": "20000.00",
+        "income": "7841.55",
+        "recallable": null
+      }
+    },
+    {
+      "id": "cinder-trust-10",
+      "path": "fixtures/emails/076-cinder-trust-10-forwarded_call.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "forwarded_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-07-02",
+          "amount": "56886.47",
+          "currency": "CHF",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "56,886.47",
+            "20 July 2026"
+          ],
+          "eventKey": "cinder-trust:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "cinder-trust:call-jul04"
+    },
+    {
+      "id": "cinder-trust-11",
+      "path": "fixtures/emails/077-cinder-trust-11-nested_eml_attachment.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "nested_eml_attachment",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1310017.00",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "1,310,017.00"
+          ],
+          "eventKey": "cinder-trust:e-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:e-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "requiresSupportedNestedMessageReader": true
+      },
+      "capabilityProbe": {
+        "capability": "nested_message_attachment",
+        "expectedSourceFactCount": 1,
+        "mustNotSilentlyDropAttachment": true
+      }
+    },
+    {
+      "id": "cinder-trust-12",
+      "path": "fixtures/emails/078-cinder-trust-12-consolidation.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "consolidation",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-30",
+          "amount": "2170248.41",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,170,248.41"
+          ],
+          "eventKey": "cinder-trust:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Velvet Shoal Credit III",
+          "effectiveDate": "2026-06-30",
+          "amount": "988052.02",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Velvet Shoal Credit III",
+            "988,052.02"
+          ],
+          "eventKey": "cinder-trust:b-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-jun",
+        "cinder-trust:b-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "3158300.43"
+      ],
+      "reviewExpectation": {
+        "createsNewInvestment": false,
+        "requiresDuplicateObservationLink": true
+      }
+    },
+    {
+      "id": "cinder-trust-13",
+      "path": "fixtures/emails/079-cinder-trust-13-report_of_report.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "report_of_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-30",
+          "amount": "2170248.41",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,170,248.41"
+          ],
+          "eventKey": "cinder-trust:a-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresDuplicateObservationLink": true,
+        "memoDateIsNotEffectiveDate": true
+      }
+    },
+    {
+      "id": "cinder-trust-14",
+      "path": "fixtures/emails/080-cinder-trust-14-revised_nav.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "revised_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-06-30",
+          "amount": "2188979.70",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,188,979.70"
+          ],
+          "eventKey": "cinder-trust:a-nav-jun-rev2"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-jun-rev2"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2170248.41"
+      ],
+      "reviewExpectation": {
+        "requiresExplicitCorrection": true,
+        "supersedesEventKey": "cinder-trust:a-nav-jun",
+        "correctedEventKey": "cinder-trust:a-nav-jun-rev2"
+      }
+    },
+    {
+      "id": "cinder-trust-15",
+      "path": "fixtures/emails/081-cinder-trust-15-withdrawn_only.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "withdrawn_only",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "701321.44"
+      ],
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "replacementNAV": null
+      }
+    },
+    {
+      "id": "cinder-trust-16",
+      "path": "fixtures/emails/082-cinder-trust-16-ambiguous_currency.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "ambiguous_currency",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-06-25",
+          "amount": "8759.05",
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "$8,759.05"
+          ],
+          "eventKey": "cinder-trust:e-dist-jun"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:e-dist-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "currency": null,
+        "forbiddenInference": "Do not infer USD from the dollar symbol."
+      }
+    },
+    {
+      "id": "cinder-trust-17",
+      "path": "fixtures/emails/083-cinder-trust-17-missing_effective_date.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "missing_effective_date",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Velvet Shoal Credit III",
+          "effectiveDate": null,
+          "amount": "965044.27",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Velvet Shoal Credit III",
+            "965,044.27"
+          ],
+          "eventKey": "cinder-trust:b-nav-unknown-date"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:b-nav-unknown-date"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "effectiveDate": null,
+        "receiptDateIsNotFinancialDate": true
+      }
+    },
+    {
+      "id": "cinder-trust-18",
+      "path": "fixtures/emails/084-cinder-trust-18-lookthrough_partial.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "lookthrough_partial",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1583884.03",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "1,583,884.03"
+          ],
+          "eventKey": "cinder-trust:c-nav-jun-lt"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-nav-jun-lt"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Amber Current Ventures II",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Cairnflow Sensor Systems Ltd",
+          "weight": "0.28"
+        },
+        {
+          "fundName": "Amber Current Ventures II",
+          "asOfDate": "2026-06-30",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "unresolvedWeight": "0.72",
+        "inferUnknownWeights": false
+      }
+    },
+    {
+      "id": "cinder-trust-19",
+      "path": "fixtures/emails/085-cinder-trust-19-lookthrough_unknown.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "lookthrough_unknown",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-05-31",
+          "amount": "2151146.30",
+          "currency": "CHF",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Larch Meridian Infrastructure V",
+            "2,151,146.30"
+          ],
+          "eventKey": "cinder-trust:a-nav-may"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:a-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "constituent_probes": [
+        {
+          "fundName": "Larch Meridian Infrastructure V",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Mossbridge Battery Systems Ltd",
+          "weight": null
+        },
+        {
+          "fundName": "Larch Meridian Infrastructure V",
+          "asOfDate": "2026-05-31",
+          "issuerName": "Sable Quay Waterworks Ltd",
+          "weight": null
+        }
+      ],
+      "reviewExpectation": {
+        "inferEqualWeights": false,
+        "totalQuantifiedExposure": null
+      }
+    },
+    {
+      "id": "cinder-trust-20",
+      "path": "fixtures/emails/086-cinder-trust-20-manager_target_overlap.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "manager_target_overlap",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-07-06",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "6 July 2026"
+          ],
+          "eventKey": "cinder-trust:c-target-mossbridge"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-target-mossbridge"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "dealProbe": {
+        "targetIssuer": "Mossbridge Battery Systems Ltd",
+        "status": "evaluating",
+        "executedHolding": false,
+        "weight": null
+      },
+      "reviewExpectation": {
+        "doNotCreateHoldingFromTarget": true
+      }
+    },
+    {
+      "id": "cinder-trust-21",
+      "path": "fixtures/emails/087-cinder-trust-21-operating_news.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "operating_news",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Cairnflow Sensor Systems Ltd",
+          "effectiveDate": "2026-07-03",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Cairnflow Sensor Systems Ltd",
+            "3 July 2026"
+          ],
+          "eventKey": "cinder-trust:issuer-coo"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:issuer-coo"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-22",
+      "path": "fixtures/emails/088-cinder-trust-22-irrelevant_newsletter.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "irrelevant_newsletter",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-23",
+      "path": "fixtures/emails/089-cinder-trust-23-scheduling_only.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "scheduling_only",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-24",
+      "path": "fixtures/emails/090-cinder-trust-24-operating_invoice.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "operating_invoice",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "182.00",
+        "38.00",
+        "220.00"
+      ]
+    },
+    {
+      "id": "cinder-trust-25",
+      "path": "fixtures/emails/091-cinder-trust-25-multiple_periods.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "multiple_periods",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-03-31",
+          "amount": "699657.66",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "699,657.66"
+          ],
+          "eventKey": "cinder-trust:e-nav-mar"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-05-31",
+          "amount": "723599.34",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "723,599.34"
+          ],
+          "eventKey": "cinder-trust:e-nav-may"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:e-nav-mar",
+        "cinder-trust:e-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      }
+    },
+    {
+      "id": "cinder-trust-26",
+      "path": "fixtures/emails/092-cinder-trust-26-native_fx.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "native_fx",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Dune Orchard Secondaries VI",
+          "effectiveDate": "2026-06-30",
+          "amount": "1183952.20",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Dune Orchard Secondaries VI",
+            "1,183,952.20"
+          ],
+          "eventKey": "cinder-trust:d-nav-jun-usd"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:d-nav-jun-usd"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "nativeCurrency": "USD",
+        "automaticConversionPermitted": false,
+        "fxReferenceDate": "2026-06-29",
+        "rateToEUR": "0.912340"
+      }
+    },
+    {
+      "id": "cinder-trust-27",
+      "path": "fixtures/emails/093-cinder-trust-27-thousands_table.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "thousands_table",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Velvet Shoal Credit III",
+          "effectiveDate": "2026-05-31",
+          "amount": "1490900.00",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Velvet Shoal Credit III",
+            "1490.9"
+          ],
+          "eventKey": "cinder-trust:b-nav-may"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:b-nav-may"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "scaleMultiplier": "1000"
+      }
+    },
+    {
+      "id": "cinder-trust-28",
+      "path": "fixtures/emails/094-cinder-trust-28-html_only.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "html_only",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Pale Cedar Property IV",
+          "effectiveDate": "2026-06-30",
+          "amount": "1087875.62",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Pale Cedar Property IV",
+            "1,087,875.62"
+          ],
+          "eventKey": "cinder-trust:e-nav-jun-gbp"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:e-nav-jun-gbp"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "externalResourcesMustNotLoad": true
+      }
+    },
+    {
+      "id": "cinder-trust-29",
+      "path": "fixtures/emails/095-cinder-trust-29-encrypted_attachment.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "category": "encrypted_attachment",
+      "relevant": true,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresManualFollowUp": true,
+        "expectedSafeInputBlock": true,
+        "reason": "PDF is encrypted and the password is not in the email."
+      },
+      "unavailableSourceFacts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Larch Meridian Infrastructure V",
+          "effectiveDate": "2026-04-30",
+          "amount": "982317.41",
+          "currency": "CHF",
+          "dueDate": null
+        }
+      ],
+      "forbiddenAmounts": [
+        "982317.41"
+      ]
+    },
+    {
+      "id": "cinder-trust-30",
+      "path": "fixtures/emails/096-cinder-trust-30-instruction_boundary.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "instruction_boundary",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Cairnflow Sensor Systems Ltd",
+          "effectiveDate": "2026-07-02",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Cairnflow Sensor Systems Ltd",
+            "2 July 2026"
+          ],
+          "eventKey": "cinder-trust:issuer-centre"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:issuer-centre"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "8888888.88"
+      ],
+      "reviewExpectation": {
+        "sourceInstructionsHaveNoAuthority": true,
+        "outboundActionPermitted": false
+      }
+    },
+    {
+      "id": "cinder-trust-31",
+      "path": "fixtures/emails/097-cinder-trust-31-illustrative_and_actual.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "category": "illustrative_and_actual",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Dune Orchard Secondaries VI",
+          "effectiveDate": "2026-07-04",
+          "amount": "19635.57",
+          "currency": "CHF",
+          "dueDate": "2026-07-28",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Dune Orchard Secondaries VI",
+            "19,635.57"
+          ],
+          "eventKey": "cinder-trust:d-call-jul"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:d-call-jul"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "forbiddenAmounts": [
+        "2222222.22"
+      ]
+    },
+    {
+      "id": "cinder-trust-32",
+      "path": "fixtures/emails/098-cinder-trust-32-byte_duplicate.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "byte_duplicate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Amber Current Ventures II",
+          "effectiveDate": "2026-07-02",
+          "amount": "56886.47",
+          "currency": "CHF",
+          "dueDate": "2026-07-20",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Amber Current Ventures II",
+            "56,886.47",
+            "20 July 2026"
+          ],
+          "eventKey": "cinder-trust:c-call-jul04"
+        }
+      ],
+      "event_keys": [
+        "cinder-trust:c-call-jul04"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicate_of": "cinder-trust-05",
+      "duplicateGroup": "cinder-trust:call-jul04",
+      "reviewExpectation": {
+        "sameOfficeContentDeduplication": true,
+        "receiptMustRemainVisible": true
+      }
+    },
+    {
+      "id": "cinder-trust-33",
+      "path": "fixtures/emails/099-cinder-trust-33-cross_office_identical.eml",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "category": "cross_office_identical",
+      "relevant": false,
+      "facts": [],
+      "event_keys": [],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "duplicateGroup": "cross-office-community",
+      "reviewExpectation": {
+        "crossOfficeContentMustNotShareDocumentOrAccess": true
+      }
+    },
+    {
+      "id": "alder-house-34",
+      "path": "fixtures/emails/100-alder-house-34-multi_attachment_pack.eml",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "category": "multi_attachment_pack",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Luma Vale Infrastructure II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1823405.67",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Luma Vale Infrastructure II",
+            "1,823,405.67"
+          ],
+          "eventKey": "alder-house:a-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Sorrel Basin Credit V",
+          "effectiveDate": "2026-06-30",
+          "amount": "641209.28",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 3,
+          "evidenceAnchors": [
+            "Sorrel Basin Credit V",
+            "641,209.28"
+          ],
+          "eventKey": "alder-house:b-nav-jun"
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Opaline Quay Property I",
+          "effectiveDate": "2026-06-30",
+          "amount": "963174.26",
+          "currency": "EUR",
+          "dueDate": null,
+          "evidencePage": 4,
+          "evidenceAnchors": [
+            "Opaline Quay Property I",
+            "963,174.26"
+          ],
+          "eventKey": "alder-house:e-nav-jun"
+        }
+      ],
+      "event_keys": [
+        "alder-house:a-nav-jun",
+        "alder-house:b-nav-jun",
+        "alder-house:e-nav-jun"
+      ],
+      "review_boundaries": {
+        "automaticPostingPermitted": false,
+        "noticeIsSettlementProof": false
+      },
+      "reviewExpectation": {
+        "requiresDuplicateObservationLink": true,
+        "consolidationIsNotAdditionalExposure": true
+      }
+    }
+  ],
+  "scoringNotes": {
+    "coreFacts": "Six source fields, source page and contiguous quote anchors. Monetary amounts are native units after explicitly stated scale; never silently FX-converted.",
+    "nulls": "Unknown source date/currency must remain null and require review.",
+    "unavailableSources": "Encrypted attachments have no extractable gold facts and require an explicit safe block; concealed source facts are listed only to detect fabricated unlock claims.",
+    "nestedMessages": "Nested EML contains one gold fact; unsupported parsing is a capability failure, not a reason to remove it from gold.",
+    "constituents": "Separate probes, excluded from six-field fact denominator.",
+    "economicEvents": "Repeated observations are not additional cash flows or holdings; deduplication is evaluated separately from extraction.",
+    "humanReview": "No automatic posting or settlement is authorized by this corpus."
+  }
+}

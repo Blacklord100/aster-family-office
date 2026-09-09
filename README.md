@@ -6,6 +6,10 @@ A portable family-office workspace with a Linear/Notion-inspired interface, Post
 
 The seven-item expansion adds a sourced investment register and transaction ledger, per-fact review history, document/manager intelligence, custom-period reconciliation and liquidity reporting, immutable stress-run inputs/results, real selected-engine document answers, a new synthetic model benchmark and operational access/recovery/retention controls. See [access and maintenance](operations/access-recovery-maintenance.md), [intelligence](operations/intelligence.md), and [the release validation record](VALIDATION-SEVEN-ITEMS.md). Earlier validation files remain historical evidence of their recorded versions.
 
+The [100-email mailroom demonstration](benchmark/mailroom-v1/README.md) supplies three fictional offices, nine inboxes, messy originals and a reproducible four-configuration local-model comparison. See [the collection harness](benchmark/mailroom-v1/HARNESS.md) for execution and preserved scoring, and [the offline LP packaging plan](operations/offline-lp-packaging.md) for the proposed disconnected appliance. The offline appliance is a delivery plan, not a deployed or certified installation.
+
+The [completed baseline](benchmark/mailroom-v1/RESULTS.md) records all 388 processing outcomes: each configuration recovered 60/90 expected facts with zero unsupported returned facts. Agentic processing added calls and latency without additional recovered facts on this synthetic corpus; the results identify shared extraction gaps before rollout.
+
 ## What is implemented
 
 - Organization membership and owner/admin/analyst/viewer permissions, enforced at APIs; PostgreSQL row-level security for workspace, documents, jobs, facts and audit records.

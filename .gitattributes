@@ -2,3 +2,5 @@
 *.pdf binary
 # Preserve frozen RFC email bytes and treat CRLF as intentional line endings.
 benchmark/**/fixtures/*.eml -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Multipart mailroom originals include binary attachment payloads and fixed CRLF.
+benchmark/mailroom-v1/fixtures/emails/*.eml binary

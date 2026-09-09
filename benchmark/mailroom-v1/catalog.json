@@ -1,0 +1,2208 @@
+{
+  "corpusVersion": "synthetic-mailroom-v1",
+  "offices": [
+    {
+      "id": "alder-house",
+      "name": "Alder House Family Office",
+      "currency": "EUR",
+      "names": [
+        "Luma Vale Infrastructure II",
+        "Sorrel Basin Credit V",
+        "Mistral Grove Ventures III",
+        "Copper Fern Secondaries IV",
+        "Opaline Quay Property I"
+      ]
+    },
+    {
+      "id": "belwick-office",
+      "name": "Belwick Family Office",
+      "currency": "GBP",
+      "names": [
+        "Briar Lantern Infrastructure IV",
+        "Fallow Reef Credit II",
+        "Juniper Coast Ventures VI",
+        "Marble Finch Secondaries III",
+        "Silver Thicket Property V"
+      ]
+    },
+    {
+      "id": "cinder-trust",
+      "name": "Cinder Family Trust Office",
+      "currency": "CHF",
+      "names": [
+        "Larch Meridian Infrastructure V",
+        "Velvet Shoal Credit III",
+        "Amber Current Ventures II",
+        "Dune Orchard Secondaries VI",
+        "Pale Cedar Property IV"
+      ]
+    }
+  ],
+  "mailboxes": [
+    {
+      "id": "alder-house-principal",
+      "office_id": "alder-house",
+      "address": "principal@alder-house.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "alder-house-controller",
+      "office_id": "alder-house",
+      "address": "controller@alder-house.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "alder-house-investment",
+      "office_id": "alder-house",
+      "address": "investment@alder-house.example.invalid",
+      "persona": "Investment team"
+    },
+    {
+      "id": "belwick-office-principal",
+      "office_id": "belwick-office",
+      "address": "principal@belwick-office.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "belwick-office-controller",
+      "office_id": "belwick-office",
+      "address": "controller@belwick-office.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "belwick-office-investment",
+      "office_id": "belwick-office",
+      "address": "investment@belwick-office.example.invalid",
+      "persona": "Investment team"
+    },
+    {
+      "id": "cinder-trust-principal",
+      "office_id": "cinder-trust",
+      "address": "principal@cinder-trust.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "cinder-trust-controller",
+      "office_id": "cinder-trust",
+      "address": "controller@cinder-trust.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "cinder-trust-investment",
+      "office_id": "cinder-trust",
+      "address": "investment@cinder-trust.example.invalid",
+      "persona": "Investment team"
+    }
+  ],
+  "documents": [
+    {
+      "id": "alder-house-01",
+      "filename": "fixtures/emails/001-alder-house-01-short_nav.eml",
+      "path": "fixtures/emails/001-alder-house-01-short_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-01@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-001",
+      "received_at": "2026-07-07T08:31:00+00:00",
+      "category": "short_nav",
+      "tags": [],
+      "subject": "Luma Vale Infrastructure II / June",
+      "sha256": "5523bc4ac38351e8691388c61f7985d2736517d4947e2c653288733b307ca4df",
+      "bytes": 446,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-02",
+      "filename": "fixtures/emails/002-alder-house-02-nav_table.eml",
+      "path": "fixtures/emails/002-alder-house-02-nav_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-02@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-002",
+      "received_at": "2026-07-07T08:32:00+00:00",
+      "category": "nav_table",
+      "tags": [],
+      "subject": "June positions enclosed",
+      "sha256": "cb51983e46a8fc2dc1866110ea201019964b777a23a59f0258e4e6ada0b4b5cb",
+      "bytes": 3944,
+      "attachments": [
+        {
+          "filename": "alder-house-02-positions.pdf",
+          "media_type": "application/pdf",
+          "sha256": "573d748b4db86ce47c2458131631254dd215f7c82a5947eb4e05e1ab4c9d417a",
+          "bytes": 2312
+        }
+      ]
+    },
+    {
+      "id": "alder-house-03",
+      "filename": "fixtures/emails/003-alder-house-03-ugly_legacy_pdf.eml",
+      "path": "fixtures/emails/003-alder-house-03-ugly_legacy_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-03@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-003",
+      "received_at": "2026-07-07T08:33:00+00:00",
+      "category": "ugly_legacy_pdf",
+      "tags": [
+        "ugly",
+        "few_words"
+      ],
+      "subject": "Re: final final",
+      "sha256": "05ebcee41109a297c47e018aa9a59c94d495d07a5121cc007bed8e7663ae837e",
+      "bytes": 3966,
+      "attachments": [
+        {
+          "filename": "alder-house-03-FINAL_final_v3.pdf",
+          "media_type": "application/pdf",
+          "sha256": "9ae97bbf954bde9d20d52a1bcd8d455f4e92fdee6c7ed0a6b0219e3cc327fa87",
+          "bytes": 2368
+        }
+      ]
+    },
+    {
+      "id": "alder-house-04",
+      "filename": "fixtures/emails/004-alder-house-04-scanned_pdf.eml",
+      "path": "fixtures/emails/004-alder-house-04-scanned_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-04@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-004",
+      "received_at": "2026-07-07T08:34:00+00:00",
+      "category": "scanned_pdf",
+      "tags": [],
+      "subject": "scan",
+      "sha256": "a423eae754d6379fc3b90aee741ff813d405276e3568c93856e60078e2fb34af",
+      "bytes": 105685,
+      "attachments": [
+        {
+          "filename": "alder-house-04-scan-003.pdf",
+          "media_type": "application/pdf",
+          "sha256": "c26dcdd0ac216935832e36ac5ea5269a19d0d0c05f851e5f5678472557e038ba",
+          "bytes": 76716
+        }
+      ]
+    },
+    {
+      "id": "alder-house-05",
+      "filename": "fixtures/emails/005-alder-house-05-capital_call.eml",
+      "path": "fixtures/emails/005-alder-house-05-capital_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-005",
+      "received_at": "2026-07-07T08:35:00+00:00",
+      "category": "capital_call",
+      "tags": [],
+      "subject": "Mistral Grove Ventures III - CALL-JUL-04",
+      "sha256": "7ab3db484c6b617beb4c699029924205967e955555e1d13a159b624c673263ed",
+      "bytes": 602,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-06",
+      "filename": "fixtures/emails/006-alder-house-06-terse_call.eml",
+      "path": "fixtures/emails/006-alder-house-06-terse_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-06@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-006",
+      "received_at": "2026-07-07T08:36:00+00:00",
+      "category": "terse_call",
+      "tags": [],
+      "subject": "Opaline Quay Property I: call / 3 July 2026",
+      "sha256": "8e5261d2b520e2020f29abec5d600f19ec2a2b263b35a23b9a7027287f9f4927",
+      "bytes": 478,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-07",
+      "filename": "fixtures/emails/007-alder-house-07-call_pdf.eml",
+      "path": "fixtures/emails/007-alder-house-07-call_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-07@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-007",
+      "received_at": "2026-07-07T08:37:00+00:00",
+      "category": "call_pdf",
+      "tags": [],
+      "subject": "Call attached",
+      "sha256": "3dfa95dbe1d3686986cf20f234e039321bc1cedbeaf860cfd755880a6ca0b609",
+      "bytes": 3548,
+      "attachments": [
+        {
+          "filename": "alder-house-07-call-notice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "306d0798e47f0da922caeb18287e502845538ed1e47b88c334eeea7426d2e666",
+          "bytes": 2053
+        }
+      ]
+    },
+    {
+      "id": "alder-house-08",
+      "filename": "fixtures/emails/008-alder-house-08-distribution_email.eml",
+      "path": "fixtures/emails/008-alder-house-08-distribution_email.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-08@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-008",
+      "received_at": "2026-07-07T08:38:00+00:00",
+      "category": "distribution_email",
+      "tags": [],
+      "subject": "Copper Fern Secondaries IV proceeds",
+      "sha256": "2c744c91c15a756547ec86f54d1eed918697e4596153e78d9fc78b8bb82f8901",
+      "bytes": 534,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-09",
+      "filename": "fixtures/emails/009-alder-house-09-distribution_pdf.eml",
+      "path": "fixtures/emails/009-alder-house-09-distribution_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-09@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-009",
+      "received_at": "2026-07-07T08:39:00+00:00",
+      "category": "distribution_pdf",
+      "tags": [],
+      "subject": "Cash advice",
+      "sha256": "03d4c3139ef7779c80524be4f7e7285d11323828c43e941a1071ea6466c4d158",
+      "bytes": 3542,
+      "attachments": [
+        {
+          "filename": "alder-house-09-distribution-advice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "18311a9c291528c5c835ea2d4de119b6fdb34d49446b81f6453d64b45ccb260b",
+          "bytes": 2050
+        }
+      ]
+    },
+    {
+      "id": "alder-house-10",
+      "filename": "fixtures/emails/010-alder-house-10-forwarded_call.eml",
+      "path": "fixtures/emails/010-alder-house-10-forwarded_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-10@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-010",
+      "received_at": "2026-07-07T08:40:00+00:00",
+      "category": "forwarded_call",
+      "tags": [],
+      "subject": "Fwd: call - seen?",
+      "sha256": "730e56e9a805347f88437734329a049fca91332f592bc3afcd4c6bddb0c512a0",
+      "bytes": 817,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-11",
+      "filename": "fixtures/emails/011-alder-house-11-nested_eml_attachment.eml",
+      "path": "fixtures/emails/011-alder-house-11-nested_eml_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-11@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-011",
+      "received_at": "2026-07-07T08:41:00+00:00",
+      "category": "nested_eml_attachment",
+      "tags": [],
+      "subject": "Fwd as attachment",
+      "sha256": "a60e0e91b8c70db338926959d3577fd89ee0b345bde95c1c0aa8b90dd405f39d",
+      "bytes": 4108,
+      "attachments": [
+        {
+          "filename": "original-manager-message.eml",
+          "media_type": "message/rfc822",
+          "sha256": "89b35cb9b32f36651d140d7d5b01af1a7766384bdb0b2377aa208f59008fdc05",
+          "bytes": 3355
+        }
+      ]
+    },
+    {
+      "id": "alder-house-12",
+      "filename": "fixtures/emails/012-alder-house-12-consolidation.eml",
+      "path": "fixtures/emails/012-alder-house-12-consolidation.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-12@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-012",
+      "received_at": "2026-07-07T08:42:00+00:00",
+      "category": "consolidation",
+      "tags": [],
+      "subject": "June consolidation v2",
+      "sha256": "4498c203c7a7279e55807e8052ca8519b4079f330c69fd298d35161b6d77b2c4",
+      "bytes": 4249,
+      "attachments": [
+        {
+          "filename": "alder-house-12-consolidation.pdf",
+          "media_type": "application/pdf",
+          "sha256": "155c4616c25fca5a402bd24ceb627490ffba2423ece4862ae8260f909a846c19",
+          "bytes": 2536
+        }
+      ]
+    },
+    {
+      "id": "alder-house-13",
+      "filename": "fixtures/emails/013-alder-house-13-report_of_report.eml",
+      "path": "fixtures/emails/013-alder-house-13-report_of_report.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-13@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-013",
+      "received_at": "2026-07-07T08:43:00+00:00",
+      "category": "report_of_report",
+      "tags": [],
+      "subject": "Our review of the June report",
+      "sha256": "ddcac131da93929c018e9b36f02e313d86d48a21dbf52afa04e53473559cb529",
+      "bytes": 3634,
+      "attachments": [
+        {
+          "filename": "alder-house-13-review-of-manager-report.pdf",
+          "media_type": "application/pdf",
+          "sha256": "9a169b2f2ad622f0ee8456cb1b6089930e31fd8976810671ebec104cc9f1253b",
+          "bytes": 2092
+        }
+      ]
+    },
+    {
+      "id": "alder-house-14",
+      "filename": "fixtures/emails/014-alder-house-14-revised_nav.eml",
+      "path": "fixtures/emails/014-alder-house-14-revised_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-14@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-014",
+      "received_at": "2026-07-07T08:44:00+00:00",
+      "category": "revised_nav",
+      "tags": [],
+      "subject": "CORRECTION - June mark",
+      "sha256": "d3603e411cb84905adb8d93c4427e8be6ba00ecb67b7f4778fe7eff137f3ed30",
+      "bytes": 3600,
+      "attachments": [
+        {
+          "filename": "alder-house-14-corrected-june-nav.pdf",
+          "media_type": "application/pdf",
+          "sha256": "6077015d43d87ef1a4806fc0b47bf427d2774b4eb429633be2497807928f6f51",
+          "bytes": 2057
+        }
+      ]
+    },
+    {
+      "id": "alder-house-15",
+      "filename": "fixtures/emails/015-alder-house-15-withdrawn_only.eml",
+      "path": "fixtures/emails/015-alder-house-15-withdrawn_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-15@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-015",
+      "received_at": "2026-07-07T08:45:00+00:00",
+      "category": "withdrawn_only",
+      "tags": [],
+      "subject": "Do not use June draft",
+      "sha256": "44e084fdeba2263df6d0cdaa549fb2fa92a37efdd3ab01526957be68b60d4906",
+      "bytes": 3532,
+      "attachments": [
+        {
+          "filename": "alder-house-15-withdrawal.pdf",
+          "media_type": "application/pdf",
+          "sha256": "dbcbe5de8a25917b790b31cfd5d490e42213d2f53b499f66fe98bd510d5c7685",
+          "bytes": 2010
+        }
+      ]
+    },
+    {
+      "id": "alder-house-16",
+      "filename": "fixtures/emails/016-alder-house-16-ambiguous_currency.eml",
+      "path": "fixtures/emails/016-alder-house-16-ambiguous_currency.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-16@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-016",
+      "received_at": "2026-07-07T08:46:00+00:00",
+      "category": "ambiguous_currency",
+      "tags": [],
+      "subject": "proceeds - currency missing",
+      "sha256": "1a9364d8fee010fe7583f3bf99326652e81566641ad4575dadb4961ffcdaedf3",
+      "bytes": 551,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-17",
+      "filename": "fixtures/emails/017-alder-house-17-missing_effective_date.eml",
+      "path": "fixtures/emails/017-alder-house-17-missing_effective_date.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-17@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-017",
+      "received_at": "2026-07-07T08:47:00+00:00",
+      "category": "missing_effective_date",
+      "tags": [],
+      "subject": "latest figure",
+      "sha256": "89f06df04d713d3510a8f698e2d8405ab03dae2d755424e9096a5a7a446eeea8",
+      "bytes": 481,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-18",
+      "filename": "fixtures/emails/018-alder-house-18-lookthrough_partial.eml",
+      "path": "fixtures/emails/018-alder-house-18-lookthrough_partial.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-18@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-018",
+      "received_at": "2026-07-07T08:48:00+00:00",
+      "category": "lookthrough_partial",
+      "tags": [],
+      "subject": "Holdings detail",
+      "sha256": "da98fa0465158449e3c362349eb8c263504d47b591d39e354fcad30c5b5c3193",
+      "bytes": 3984,
+      "attachments": [
+        {
+          "filename": "alder-house-18-holdings-disclosure.pdf",
+          "media_type": "application/pdf",
+          "sha256": "ee9ca6f8c8bf6db7f7a9f47c109473d8ef7da71a6041dc46f5612ec3bb8c6bad",
+          "bytes": 2354
+        }
+      ]
+    },
+    {
+      "id": "alder-house-19",
+      "filename": "fixtures/emails/019-alder-house-19-lookthrough_unknown.eml",
+      "path": "fixtures/emails/019-alder-house-19-lookthrough_unknown.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-19@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-019",
+      "received_at": "2026-07-07T08:49:00+00:00",
+      "category": "lookthrough_unknown",
+      "tags": [],
+      "subject": "Portfolio company names",
+      "sha256": "4c2f35ac2027ba11f92b5e95f6cf6190581e8b88a215b51d7a9827b1a7b7952e",
+      "bytes": 3830,
+      "attachments": [
+        {
+          "filename": "alder-house-19-underlying-names.pdf",
+          "media_type": "application/pdf",
+          "sha256": "a06c20b5aa8ac784408b95561ecddda747d9aff305cd28aeb31e0cd8816067b4",
+          "bytes": 2250
+        }
+      ]
+    },
+    {
+      "id": "alder-house-20",
+      "filename": "fixtures/emails/020-alder-house-20-manager_target_overlap.eml",
+      "path": "fixtures/emails/020-alder-house-20-manager_target_overlap.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-20@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-020",
+      "received_at": "2026-07-07T08:50:00+00:00",
+      "category": "manager_target_overlap",
+      "tags": [],
+      "subject": "Pipeline note",
+      "sha256": "4dadfe8a333020770a2f04df27dd17f8d83a19fe51e98f9baea56161700edfbd",
+      "bytes": 633,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-21",
+      "filename": "fixtures/emails/021-alder-house-21-operating_news.eml",
+      "path": "fixtures/emails/021-alder-house-21-operating_news.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-21@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-021",
+      "received_at": "2026-07-07T08:51:00+00:00",
+      "category": "operating_news",
+      "tags": [],
+      "subject": "Management update",
+      "sha256": "0bd5eeec323382518900fdf7eb5fb2ebf523d94df5f0e56b25e2bcaa51898eff",
+      "bytes": 553,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-22",
+      "filename": "fixtures/emails/022-alder-house-22-irrelevant_newsletter.eml",
+      "path": "fixtures/emails/022-alder-house-22-irrelevant_newsletter.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-22@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-022",
+      "received_at": "2026-07-07T08:52:00+00:00",
+      "category": "irrelevant_newsletter",
+      "tags": [],
+      "subject": "Community garden summer opening",
+      "sha256": "cfad56a337791f0614560411f59910d048453af025d8566d9828254a9ec7837a",
+      "bytes": 521,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-23",
+      "filename": "fixtures/emails/023-alder-house-23-scheduling_only.eml",
+      "path": "fixtures/emails/023-alder-house-23-scheduling_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-23@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-023",
+      "received_at": "2026-07-07T08:53:00+00:00",
+      "category": "scheduling_only",
+      "tags": [],
+      "subject": "Re: Tuesday",
+      "sha256": "63082116cd53da65eccb8c082dcb2c30aa9dee90456ab1709d1c38dbed8f681f",
+      "bytes": 412,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-24",
+      "filename": "fixtures/emails/024-alder-house-24-operating_invoice.eml",
+      "path": "fixtures/emails/024-alder-house-24-operating_invoice.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-24@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-024",
+      "received_at": "2026-07-07T08:54:00+00:00",
+      "category": "operating_invoice",
+      "tags": [],
+      "subject": "Coffee machine service invoice",
+      "sha256": "61fff1e42a3258adb5fd62e6debc9b65955535ba8a023ca763a797c943e436ea",
+      "bytes": 3877,
+      "attachments": [
+        {
+          "filename": "alder-house-24-coffee-service.pdf",
+          "media_type": "application/pdf",
+          "sha256": "5075648ffcced051d86d5df58fd8c7fd176ddd93394b3693a664a782fabf9c7f",
+          "bytes": 2252
+        }
+      ]
+    },
+    {
+      "id": "alder-house-25",
+      "filename": "fixtures/emails/025-alder-house-25-multiple_periods.eml",
+      "path": "fixtures/emails/025-alder-house-25-multiple_periods.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-25@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-025",
+      "received_at": "2026-07-07T08:55:00+00:00",
+      "category": "multiple_periods",
+      "tags": [],
+      "subject": "Historical marks requested",
+      "sha256": "f6f9ee861d6240d397be166633955004fda0e601cf74dd502e2de13cc35bf472",
+      "bytes": 4461,
+      "attachments": [
+        {
+          "filename": "alder-house-25-two-periods.pdf",
+          "media_type": "application/pdf",
+          "sha256": "26b738537eb5402994a23a67f1892c812f3ce43328f038f456fec3e23011f29d",
+          "bytes": 2703
+        }
+      ]
+    },
+    {
+      "id": "alder-house-26",
+      "filename": "fixtures/emails/026-alder-house-26-native_fx.eml",
+      "path": "fixtures/emails/026-alder-house-26-native_fx.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-26@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-026",
+      "received_at": "2026-07-07T08:56:00+00:00",
+      "category": "native_fx",
+      "tags": [],
+      "subject": "USD report + treasury note",
+      "sha256": "5924f962f2758ab8dce6134f5d5e5403ba234e1226d1ced9b761c0883053911e",
+      "bytes": 3624,
+      "attachments": [
+        {
+          "filename": "alder-house-26-native-and-fx.pdf",
+          "media_type": "application/pdf",
+          "sha256": "16b76d5b30baa14a06b64a71e9c01f65ca47a097ebd1162e6ea745400f076307",
+          "bytes": 2092
+        }
+      ]
+    },
+    {
+      "id": "alder-house-27",
+      "filename": "fixtures/emails/027-alder-house-27-thousands_table.eml",
+      "path": "fixtures/emails/027-alder-house-27-thousands_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-27@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-027",
+      "received_at": "2026-07-07T08:57:00+00:00",
+      "category": "thousands_table",
+      "tags": [],
+      "subject": "Account statement - amounts in thousands",
+      "sha256": "bba347481595a4d2978ed7066273428b9f6b28787884b30f3e495a40e3a8efb4",
+      "bytes": 3763,
+      "attachments": [
+        {
+          "filename": "alder-house-27-nav-usd-thousands.pdf",
+          "media_type": "application/pdf",
+          "sha256": "700acb1509d9777c91fb580742bae5dcf5b452e8acf10d7cd7af8740530989a6",
+          "bytes": 2176
+        }
+      ]
+    },
+    {
+      "id": "alder-house-28",
+      "filename": "fixtures/emails/028-alder-house-28-html_only.eml",
+      "path": "fixtures/emails/028-alder-house-28-html_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-28@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-028",
+      "received_at": "2026-07-07T08:58:00+00:00",
+      "category": "html_only",
+      "tags": [],
+      "subject": "Opaline Quay Property I account",
+      "sha256": "8499e8cf1dcdd5241e1bc95279a7f1bad4ebbe4f4d4e377e3fdc90943052e2cb",
+      "bytes": 634,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-29",
+      "filename": "fixtures/emails/029-alder-house-29-encrypted_attachment.eml",
+      "path": "fixtures/emails/029-alder-house-29-encrypted_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-controller",
+      "source_message_id": "<mailroom-v1-alder-house-29@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-029",
+      "received_at": "2026-07-07T08:59:00+00:00",
+      "category": "encrypted_attachment",
+      "tags": [],
+      "subject": "Password protected statement",
+      "sha256": "d5bd398d45b75f86263d864a8ae74f33a8bd4a38b86cb438dbdd90b8491ba422",
+      "bytes": 4131,
+      "attachments": [
+        {
+          "filename": "alder-house-29-locked-statement.pdf",
+          "media_type": "application/pdf",
+          "sha256": "6a6ba418090a2ed7dff2a7d288d0744dbc9d2ed9608bae6f71743f8e703254fb",
+          "bytes": 2411
+        }
+      ]
+    },
+    {
+      "id": "alder-house-30",
+      "filename": "fixtures/emails/030-alder-house-30-instruction_boundary.eml",
+      "path": "fixtures/emails/030-alder-house-30-instruction_boundary.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-30@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-030",
+      "received_at": "2026-07-07T09:00:00+00:00",
+      "category": "instruction_boundary",
+      "tags": [],
+      "subject": "Company update / quoted spam",
+      "sha256": "c50fffa039931c52e8b09859c57ffcb484c759c8e4903a0233fcfbd4575d00e9",
+      "bytes": 726,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-31",
+      "filename": "fixtures/emails/031-alder-house-31-illustrative_and_actual.eml",
+      "path": "fixtures/emails/031-alder-house-31-illustrative_and_actual.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-31@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-031",
+      "received_at": "2026-07-07T09:01:00+00:00",
+      "category": "illustrative_and_actual",
+      "tags": [],
+      "subject": "Call notice with worked example",
+      "sha256": "d66ec650ac2cc50d866626235c702f5fa8404c7f9e1b2107f11eef7f30e44871",
+      "bytes": 3719,
+      "attachments": [
+        {
+          "filename": "alder-house-31-example-and-call.pdf",
+          "media_type": "application/pdf",
+          "sha256": "c90f8d1c454d0dd6531d1d956ee10557c1054a721399a1bdc4049a24e6fd3338",
+          "bytes": 2154
+        }
+      ]
+    },
+    {
+      "id": "alder-house-32",
+      "filename": "fixtures/emails/032-alder-house-32-byte_duplicate.eml",
+      "path": "fixtures/emails/032-alder-house-32-byte_duplicate.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-alder-house-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-032",
+      "received_at": "2026-07-07T09:02:00+00:00",
+      "category": "byte_duplicate",
+      "tags": [],
+      "subject": "Mistral Grove Ventures III - CALL-JUL-04",
+      "sha256": "7ab3db484c6b617beb4c699029924205967e955555e1d13a159b624c673263ed",
+      "bytes": 602,
+      "attachments": [],
+      "duplicate_of": "alder-house-05"
+    },
+    {
+      "id": "alder-house-33",
+      "filename": "fixtures/emails/033-alder-house-33-cross_office_identical.eml",
+      "path": "fixtures/emails/033-alder-house-33-cross_office_identical.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-investment",
+      "source_message_id": "<mailroom-v1-shared-community@newsletter.example.invalid>",
+      "receipt_id": "mailroom-receipt-033",
+      "received_at": "2026-07-07T09:03:00+00:00",
+      "category": "cross_office_identical",
+      "tags": [],
+      "subject": "Town museum reopening",
+      "sha256": "46b14e7ce183ef2f14b16a1f9d71b3931f325158a79af7ca1bc5d60dda4f198a",
+      "bytes": 495,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-01",
+      "filename": "fixtures/emails/034-belwick-office-01-short_nav.eml",
+      "path": "fixtures/emails/034-belwick-office-01-short_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-01@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-034",
+      "received_at": "2026-07-07T09:04:00+00:00",
+      "category": "short_nav",
+      "tags": [],
+      "subject": "Briar Lantern Infrastructure IV / June",
+      "sha256": "de365158c247893a149fc41dff56597ce3ff37b82db763856417e6d413a3d8d9",
+      "bytes": 463,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-02",
+      "filename": "fixtures/emails/035-belwick-office-02-nav_table.eml",
+      "path": "fixtures/emails/035-belwick-office-02-nav_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-02@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-035",
+      "received_at": "2026-07-07T09:05:00+00:00",
+      "category": "nav_table",
+      "tags": [],
+      "subject": "June positions enclosed",
+      "sha256": "002d6ff70e0a07be26ead871c829fe3fd53f5c45e483c3b6a80171eed777db9b",
+      "bytes": 3970,
+      "attachments": [
+        {
+          "filename": "belwick-office-02-positions.pdf",
+          "media_type": "application/pdf",
+          "sha256": "91945f935801d8ef1b0e389316ce63508572dee8a2121a0175c11b63053331b3",
+          "bytes": 2313
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-03",
+      "filename": "fixtures/emails/036-belwick-office-03-ugly_legacy_pdf.eml",
+      "path": "fixtures/emails/036-belwick-office-03-ugly_legacy_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-03@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-036",
+      "received_at": "2026-07-07T09:06:00+00:00",
+      "category": "ugly_legacy_pdf",
+      "tags": [
+        "ugly",
+        "few_words"
+      ],
+      "subject": "Re: final final",
+      "sha256": "54ca7a3af855e18ea990fd945eb092e89b9c864b828adb5e6e8c8a6b18820b59",
+      "bytes": 3994,
+      "attachments": [
+        {
+          "filename": "belwick-office-03-FINAL_final_v3.pdf",
+          "media_type": "application/pdf",
+          "sha256": "2874688ab83746264b15a1b1555fc74d2f9d79e0d2d3f226089b03a6d3158849",
+          "bytes": 2368
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-04",
+      "filename": "fixtures/emails/037-belwick-office-04-scanned_pdf.eml",
+      "path": "fixtures/emails/037-belwick-office-04-scanned_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-04@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-037",
+      "received_at": "2026-07-07T09:07:00+00:00",
+      "category": "scanned_pdf",
+      "tags": [],
+      "subject": "scan",
+      "sha256": "913affc9dcf21506e567d2677ee49e7f9e0c97af48b9be613110ce70d9648bb0",
+      "bytes": 106011,
+      "attachments": [
+        {
+          "filename": "belwick-office-04-scan-003.pdf",
+          "media_type": "application/pdf",
+          "sha256": "b66dc40fdd7f30ef7cb10104e0b3253cb57c28d7a2ecdd3181717c66a5bf4fa1",
+          "bytes": 76934
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-05",
+      "filename": "fixtures/emails/038-belwick-office-05-capital_call.eml",
+      "path": "fixtures/emails/038-belwick-office-05-capital_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-038",
+      "received_at": "2026-07-07T09:08:00+00:00",
+      "category": "capital_call",
+      "tags": [],
+      "subject": "Juniper Coast Ventures VI - CALL-JUL-04",
+      "sha256": "487033692659c8df7cd6eb4241410d28816defa99cf4535e24d73e201cb78df6",
+      "bytes": 609,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-06",
+      "filename": "fixtures/emails/039-belwick-office-06-terse_call.eml",
+      "path": "fixtures/emails/039-belwick-office-06-terse_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-06@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-039",
+      "received_at": "2026-07-07T09:09:00+00:00",
+      "category": "terse_call",
+      "tags": [],
+      "subject": "Silver Thicket Property V: call / 3 July 2026",
+      "sha256": "187d35f5f2ce6041168d416e0946460cf16e177178db971bc753644f42114806",
+      "bytes": 492,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-07",
+      "filename": "fixtures/emails/040-belwick-office-07-call_pdf.eml",
+      "path": "fixtures/emails/040-belwick-office-07-call_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-07@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-040",
+      "received_at": "2026-07-07T09:10:00+00:00",
+      "category": "call_pdf",
+      "tags": [],
+      "subject": "Call attached",
+      "sha256": "af320be0fcc4591f58dff73fa2897278a0519ba4622f598b980abf3b402c38d8",
+      "bytes": 3568,
+      "attachments": [
+        {
+          "filename": "belwick-office-07-call-notice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "8bb5998f3ada69ff6423815c22447822ec865a2f7f581821f64addd8bddc29dd",
+          "bytes": 2050
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-08",
+      "filename": "fixtures/emails/041-belwick-office-08-distribution_email.eml",
+      "path": "fixtures/emails/041-belwick-office-08-distribution_email.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-08@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-041",
+      "received_at": "2026-07-07T09:11:00+00:00",
+      "category": "distribution_email",
+      "tags": [],
+      "subject": "Marble Finch Secondaries III proceeds",
+      "sha256": "d2eddedd8713be0de52a236040c867c907ffb38e2b7ca3c853acaae259d7aae1",
+      "bytes": 547,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-09",
+      "filename": "fixtures/emails/042-belwick-office-09-distribution_pdf.eml",
+      "path": "fixtures/emails/042-belwick-office-09-distribution_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-09@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-042",
+      "received_at": "2026-07-07T09:12:00+00:00",
+      "category": "distribution_pdf",
+      "tags": [],
+      "subject": "Cash advice",
+      "sha256": "8a35538642cff3cbd3edfb59e52a34b9e47a22f5351bfb7d24f6c374f869da0e",
+      "bytes": 3574,
+      "attachments": [
+        {
+          "filename": "belwick-office-09-distribution-advice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "66028c5cc019893fc02b4537d9b12264a9ece2e5e48c24ebe61be996699f9bed",
+          "bytes": 2054
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-10",
+      "filename": "fixtures/emails/043-belwick-office-10-forwarded_call.eml",
+      "path": "fixtures/emails/043-belwick-office-10-forwarded_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-10@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-043",
+      "received_at": "2026-07-07T09:13:00+00:00",
+      "category": "forwarded_call",
+      "tags": [],
+      "subject": "Fwd: call - seen?",
+      "sha256": "b032c19eb0c14661132fe899342807b7eba8d76dddc2efa1583a548e0b8bcd86",
+      "bytes": 827,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-11",
+      "filename": "fixtures/emails/044-belwick-office-11-nested_eml_attachment.eml",
+      "path": "fixtures/emails/044-belwick-office-11-nested_eml_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-11@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-044",
+      "received_at": "2026-07-07T09:14:00+00:00",
+      "category": "nested_eml_attachment",
+      "tags": [],
+      "subject": "Fwd as attachment",
+      "sha256": "3d26833e656e7cb11b0bac6e448dfe13d6acba54f71ceeed6e7baa5889d1cc27",
+      "bytes": 4168,
+      "attachments": [
+        {
+          "filename": "original-manager-message.eml",
+          "media_type": "message/rfc822",
+          "sha256": "8e29b394124832c5a330e2ce6df14a170aafdc82724e198106808735c3435e0c",
+          "bytes": 3385
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-12",
+      "filename": "fixtures/emails/045-belwick-office-12-consolidation.eml",
+      "path": "fixtures/emails/045-belwick-office-12-consolidation.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-12@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-045",
+      "received_at": "2026-07-07T09:15:00+00:00",
+      "category": "consolidation",
+      "tags": [],
+      "subject": "June consolidation v2",
+      "sha256": "efcdef6fc61e8ddd4f1a74d5c064514c04e2571eac12425b063b408ae774e2de",
+      "bytes": 4301,
+      "attachments": [
+        {
+          "filename": "belwick-office-12-consolidation.pdf",
+          "media_type": "application/pdf",
+          "sha256": "10cc15a15f1dfa3a8adc2edb3f74891a330df791fbf9ce0c95661bdb57cc8123",
+          "bytes": 2556
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-13",
+      "filename": "fixtures/emails/046-belwick-office-13-report_of_report.eml",
+      "path": "fixtures/emails/046-belwick-office-13-report_of_report.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-13@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-046",
+      "received_at": "2026-07-07T09:16:00+00:00",
+      "category": "report_of_report",
+      "tags": [],
+      "subject": "Our review of the June report",
+      "sha256": "18ad3b71811b1f1119fc5fa47ce58e382d8914e977a8e3a014c061e20c72c100",
+      "bytes": 3664,
+      "attachments": [
+        {
+          "filename": "belwick-office-13-review-of-manager-report.pdf",
+          "media_type": "application/pdf",
+          "sha256": "d1466c33102fff1b82f6c21f08217ac1072a581e3013452e40838980a26a70b5",
+          "bytes": 2095
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-14",
+      "filename": "fixtures/emails/047-belwick-office-14-revised_nav.eml",
+      "path": "fixtures/emails/047-belwick-office-14-revised_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-14@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-047",
+      "received_at": "2026-07-07T09:17:00+00:00",
+      "category": "revised_nav",
+      "tags": [],
+      "subject": "CORRECTION - June mark",
+      "sha256": "9cd11262a7e74c0d02e552b4e54bf0021c5eb7d11e42b4a49b19cff8c8cb4fc6",
+      "bytes": 3630,
+      "attachments": [
+        {
+          "filename": "belwick-office-14-corrected-june-nav.pdf",
+          "media_type": "application/pdf",
+          "sha256": "375186d3239b92de7a42c43f2dfbcb6fd68ad8f1631d50557295ce9b19e5cc58",
+          "bytes": 2061
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-15",
+      "filename": "fixtures/emails/048-belwick-office-15-withdrawn_only.eml",
+      "path": "fixtures/emails/048-belwick-office-15-withdrawn_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-15@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-048",
+      "received_at": "2026-07-07T09:18:00+00:00",
+      "category": "withdrawn_only",
+      "tags": [],
+      "subject": "Do not use June draft",
+      "sha256": "775eb18c8e3297e645bf0f638777c7db0b42c7d8ca5c0ff1255408af46efa80e",
+      "bytes": 3554,
+      "attachments": [
+        {
+          "filename": "belwick-office-15-withdrawal.pdf",
+          "media_type": "application/pdf",
+          "sha256": "40392fd415e104c705d5b9ab3d82a00e8228d67ea4c8e9c2da24109f727fbd1a",
+          "bytes": 2007
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-16",
+      "filename": "fixtures/emails/049-belwick-office-16-ambiguous_currency.eml",
+      "path": "fixtures/emails/049-belwick-office-16-ambiguous_currency.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-16@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-049",
+      "received_at": "2026-07-07T09:19:00+00:00",
+      "category": "ambiguous_currency",
+      "tags": [],
+      "subject": "proceeds - currency missing",
+      "sha256": "2e1b788426c4ae5c5d2c32c92ac2bd3c8201cb69d836f9096b2acd58b39a4c50",
+      "bytes": 562,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-17",
+      "filename": "fixtures/emails/050-belwick-office-17-missing_effective_date.eml",
+      "path": "fixtures/emails/050-belwick-office-17-missing_effective_date.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-17@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-050",
+      "received_at": "2026-07-07T09:20:00+00:00",
+      "category": "missing_effective_date",
+      "tags": [],
+      "subject": "latest figure",
+      "sha256": "8648c0ecf000fc3c6ed8fdb991c4c26afadead4df71319ea7a926ff3e2396821",
+      "bytes": 490,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-18",
+      "filename": "fixtures/emails/051-belwick-office-18-lookthrough_partial.eml",
+      "path": "fixtures/emails/051-belwick-office-18-lookthrough_partial.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-18@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-051",
+      "received_at": "2026-07-07T09:21:00+00:00",
+      "category": "lookthrough_partial",
+      "tags": [],
+      "subject": "Holdings detail",
+      "sha256": "f012a7fdfed3144457da9e9a4463ce8879ef17dec4c790f0416c03b56398de47",
+      "bytes": 4010,
+      "attachments": [
+        {
+          "filename": "belwick-office-18-holdings-disclosure.pdf",
+          "media_type": "application/pdf",
+          "sha256": "3c06ae368ec9f42a0c7f4ceeb67d1f8733d710b87e2d1750201c7cd52a84e475",
+          "bytes": 2354
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-19",
+      "filename": "fixtures/emails/052-belwick-office-19-lookthrough_unknown.eml",
+      "path": "fixtures/emails/052-belwick-office-19-lookthrough_unknown.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-19@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-052",
+      "received_at": "2026-07-07T09:22:00+00:00",
+      "category": "lookthrough_unknown",
+      "tags": [],
+      "subject": "Portfolio company names",
+      "sha256": "c28debe32d6cc7df52fab7ab1c254f700d6610bc93464d31e315a14079f45323",
+      "bytes": 3860,
+      "attachments": [
+        {
+          "filename": "belwick-office-19-underlying-names.pdf",
+          "media_type": "application/pdf",
+          "sha256": "ed52029f87da69c451173c6b59fa191cbe40b26a2fe3a9b9a18a462840ed141d",
+          "bytes": 2253
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-20",
+      "filename": "fixtures/emails/053-belwick-office-20-manager_target_overlap.eml",
+      "path": "fixtures/emails/053-belwick-office-20-manager_target_overlap.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-20@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-053",
+      "received_at": "2026-07-07T09:23:00+00:00",
+      "category": "manager_target_overlap",
+      "tags": [],
+      "subject": "Pipeline note",
+      "sha256": "56592a6e43f68895a8257e34e7bbc9cf223885693ef12ecfe95ac4aba8111769",
+      "bytes": 644,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-21",
+      "filename": "fixtures/emails/054-belwick-office-21-operating_news.eml",
+      "path": "fixtures/emails/054-belwick-office-21-operating_news.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-21@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-054",
+      "received_at": "2026-07-07T09:24:00+00:00",
+      "category": "operating_news",
+      "tags": [],
+      "subject": "Management update",
+      "sha256": "f63d740f493ba7ea40bc01a3a8d754be42bc28f15dd7df78cd2b2a538402090b",
+      "bytes": 564,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-22",
+      "filename": "fixtures/emails/055-belwick-office-22-irrelevant_newsletter.eml",
+      "path": "fixtures/emails/055-belwick-office-22-irrelevant_newsletter.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-22@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-055",
+      "received_at": "2026-07-07T09:25:00+00:00",
+      "category": "irrelevant_newsletter",
+      "tags": [],
+      "subject": "Community garden summer opening",
+      "sha256": "5ee64345a6215034f50840863a1ab3622c52b84646929ede8ece1fdcfda8fbd8",
+      "bytes": 530,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-23",
+      "filename": "fixtures/emails/056-belwick-office-23-scheduling_only.eml",
+      "path": "fixtures/emails/056-belwick-office-23-scheduling_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-23@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-056",
+      "received_at": "2026-07-07T09:26:00+00:00",
+      "category": "scheduling_only",
+      "tags": [],
+      "subject": "Re: Tuesday",
+      "sha256": "fe84807a9309996a4d89459bc93a1f39b8010354142cd6228687521a122334a8",
+      "bytes": 421,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-24",
+      "filename": "fixtures/emails/057-belwick-office-24-operating_invoice.eml",
+      "path": "fixtures/emails/057-belwick-office-24-operating_invoice.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-24@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-057",
+      "received_at": "2026-07-07T09:27:00+00:00",
+      "category": "operating_invoice",
+      "tags": [],
+      "subject": "Coffee machine service invoice",
+      "sha256": "1500614ffb3ffeb7cdaab559c2cc239afd5efd2cd9c555c793369d6962e55d15",
+      "bytes": 3905,
+      "attachments": [
+        {
+          "filename": "belwick-office-24-coffee-service.pdf",
+          "media_type": "application/pdf",
+          "sha256": "5075648ffcced051d86d5df58fd8c7fd176ddd93394b3693a664a782fabf9c7f",
+          "bytes": 2252
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-25",
+      "filename": "fixtures/emails/058-belwick-office-25-multiple_periods.eml",
+      "path": "fixtures/emails/058-belwick-office-25-multiple_periods.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-25@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-058",
+      "received_at": "2026-07-07T09:28:00+00:00",
+      "category": "multiple_periods",
+      "tags": [],
+      "subject": "Historical marks requested",
+      "sha256": "ea95f21b045c75488dbee96c4ff951ef1c6cdc9465ca0864f5b0d9bfdb907734",
+      "bytes": 4495,
+      "attachments": [
+        {
+          "filename": "belwick-office-25-two-periods.pdf",
+          "media_type": "application/pdf",
+          "sha256": "212f3597412fee751a4421bd3b3123beff5a5553fd17450efb6a5f42d887a506",
+          "bytes": 2709
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-26",
+      "filename": "fixtures/emails/059-belwick-office-26-native_fx.eml",
+      "path": "fixtures/emails/059-belwick-office-26-native_fx.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-26@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-059",
+      "received_at": "2026-07-07T09:29:00+00:00",
+      "category": "native_fx",
+      "tags": [],
+      "subject": "USD report + treasury note",
+      "sha256": "2f06e7cf026f7079e2bbfbaf8b44ca1db38f46e98f0e6b827bf510ec10ddc9cd",
+      "bytes": 3656,
+      "attachments": [
+        {
+          "filename": "belwick-office-26-native-and-fx.pdf",
+          "media_type": "application/pdf",
+          "sha256": "81779e56b6e6c9ba4a7b91c67f48e646d6a7337c24d898654ac5d4ecdecc1b9a",
+          "bytes": 2095
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-27",
+      "filename": "fixtures/emails/060-belwick-office-27-thousands_table.eml",
+      "path": "fixtures/emails/060-belwick-office-27-thousands_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-27@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-060",
+      "received_at": "2026-07-07T09:30:00+00:00",
+      "category": "thousands_table",
+      "tags": [],
+      "subject": "Account statement - amounts in thousands",
+      "sha256": "cb90350f34d807e5b0eacc960eab1bcae09a4082bbf5387802fb63c7cc633066",
+      "bytes": 3785,
+      "attachments": [
+        {
+          "filename": "belwick-office-27-nav-usd-thousands.pdf",
+          "media_type": "application/pdf",
+          "sha256": "d080c340735f222fc232856dbc27c574eb9fdbff783ac96a96623183f71451b4",
+          "bytes": 2174
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-28",
+      "filename": "fixtures/emails/061-belwick-office-28-html_only.eml",
+      "path": "fixtures/emails/061-belwick-office-28-html_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-28@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-061",
+      "received_at": "2026-07-07T09:31:00+00:00",
+      "category": "html_only",
+      "tags": [],
+      "subject": "Silver Thicket Property V account",
+      "sha256": "b5b3f7a9bc226d70e0467e31edf583637e316dbbd5ad5ff6b3a884e2b13548df",
+      "bytes": 647,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-29",
+      "filename": "fixtures/emails/062-belwick-office-29-encrypted_attachment.eml",
+      "path": "fixtures/emails/062-belwick-office-29-encrypted_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-controller",
+      "source_message_id": "<mailroom-v1-belwick-office-29@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-062",
+      "received_at": "2026-07-07T09:32:00+00:00",
+      "category": "encrypted_attachment",
+      "tags": [],
+      "subject": "Password protected statement",
+      "sha256": "8571114d8879737a5228b160926d562b5ab386ac24a54b2d8787840862764d08",
+      "bytes": 4157,
+      "attachments": [
+        {
+          "filename": "belwick-office-29-locked-statement.pdf",
+          "media_type": "application/pdf",
+          "sha256": "acb1560fb0a7675cf6d03b285b949e4b16175533ee691985d4721ee4fadbb6c3",
+          "bytes": 2412
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-30",
+      "filename": "fixtures/emails/063-belwick-office-30-instruction_boundary.eml",
+      "path": "fixtures/emails/063-belwick-office-30-instruction_boundary.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-30@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-063",
+      "received_at": "2026-07-07T09:33:00+00:00",
+      "category": "instruction_boundary",
+      "tags": [],
+      "subject": "Company update / quoted spam",
+      "sha256": "2f405be6f32d6c723ddc0fff5a42898740ad34d719ffa2f063504a1ca9125d24",
+      "bytes": 737,
+      "attachments": []
+    },
+    {
+      "id": "belwick-office-31",
+      "filename": "fixtures/emails/064-belwick-office-31-illustrative_and_actual.eml",
+      "path": "fixtures/emails/064-belwick-office-31-illustrative_and_actual.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-principal",
+      "source_message_id": "<mailroom-v1-belwick-office-31@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-064",
+      "received_at": "2026-07-07T09:34:00+00:00",
+      "category": "illustrative_and_actual",
+      "tags": [],
+      "subject": "Call notice with worked example",
+      "sha256": "e6cebdc3c760e2fbc6095d7c0845b09e53fbff720db251cd5cc881c683fa1f16",
+      "bytes": 3749,
+      "attachments": [
+        {
+          "filename": "belwick-office-31-example-and-call.pdf",
+          "media_type": "application/pdf",
+          "sha256": "8df87064c7e0e217251df29e7d2fd7e0f9cff0bdc141a1e0c6a909947f13a7f1",
+          "bytes": 2155
+        }
+      ]
+    },
+    {
+      "id": "belwick-office-32",
+      "filename": "fixtures/emails/065-belwick-office-32-byte_duplicate.eml",
+      "path": "fixtures/emails/065-belwick-office-32-byte_duplicate.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-belwick-office-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-065",
+      "received_at": "2026-07-07T09:35:00+00:00",
+      "category": "byte_duplicate",
+      "tags": [],
+      "subject": "Juniper Coast Ventures VI - CALL-JUL-04",
+      "sha256": "487033692659c8df7cd6eb4241410d28816defa99cf4535e24d73e201cb78df6",
+      "bytes": 609,
+      "attachments": [],
+      "duplicate_of": "belwick-office-05"
+    },
+    {
+      "id": "belwick-office-33",
+      "filename": "fixtures/emails/066-belwick-office-33-cross_office_identical.eml",
+      "path": "fixtures/emails/066-belwick-office-33-cross_office_identical.eml",
+      "media_type": "message/rfc822",
+      "office_id": "belwick-office",
+      "mailbox_id": "belwick-office-investment",
+      "source_message_id": "<mailroom-v1-shared-community@newsletter.example.invalid>",
+      "receipt_id": "mailroom-receipt-066",
+      "received_at": "2026-07-07T09:36:00+00:00",
+      "category": "cross_office_identical",
+      "tags": [],
+      "subject": "Town museum reopening",
+      "sha256": "46b14e7ce183ef2f14b16a1f9d71b3931f325158a79af7ca1bc5d60dda4f198a",
+      "bytes": 495,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-01",
+      "filename": "fixtures/emails/067-cinder-trust-01-short_nav.eml",
+      "path": "fixtures/emails/067-cinder-trust-01-short_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-01@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-067",
+      "received_at": "2026-07-07T09:37:00+00:00",
+      "category": "short_nav",
+      "tags": [],
+      "subject": "Larch Meridian Infrastructure V / June",
+      "sha256": "0a951c31e48e730380f32ce327436256edc9345a9a40e19f0bef21a2e957ebda",
+      "bytes": 457,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-02",
+      "filename": "fixtures/emails/068-cinder-trust-02-nav_table.eml",
+      "path": "fixtures/emails/068-cinder-trust-02-nav_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-02@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-068",
+      "received_at": "2026-07-07T09:38:00+00:00",
+      "category": "nav_table",
+      "tags": [],
+      "subject": "June positions enclosed",
+      "sha256": "a3921cfdc1445c309d45db652ed75dd8ea8b508ba540ac831d2a5ff140d74a27",
+      "bytes": 3962,
+      "attachments": [
+        {
+          "filename": "cinder-trust-02-positions.pdf",
+          "media_type": "application/pdf",
+          "sha256": "8e6c9fb9fa43e367ef4ef040e507d39830e889301e12b92a45a82ab7063b9b41",
+          "bytes": 2317
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-03",
+      "filename": "fixtures/emails/069-cinder-trust-03-ugly_legacy_pdf.eml",
+      "path": "fixtures/emails/069-cinder-trust-03-ugly_legacy_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-03@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-069",
+      "received_at": "2026-07-07T09:39:00+00:00",
+      "category": "ugly_legacy_pdf",
+      "tags": [
+        "ugly",
+        "few_words"
+      ],
+      "subject": "Re: final final",
+      "sha256": "5e24f81ca09aff9da3066cad91d8ac5048c2c7dc64e0c2b3425d7d0181e34060",
+      "bytes": 3972,
+      "attachments": [
+        {
+          "filename": "cinder-trust-03-FINAL_final_v3.pdf",
+          "media_type": "application/pdf",
+          "sha256": "04ff8d708cb0fac54fd7f5b7277cbfb7ef1681cd81067a4357af6a694bfad76d",
+          "bytes": 2365
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-04",
+      "filename": "fixtures/emails/070-cinder-trust-04-scanned_pdf.eml",
+      "path": "fixtures/emails/070-cinder-trust-04-scanned_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-04@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-070",
+      "received_at": "2026-07-07T09:40:00+00:00",
+      "category": "scanned_pdf",
+      "tags": [],
+      "subject": "scan",
+      "sha256": "ca123c35a612a9773413e35a9ae8b4c65acb8a04ebab350e341141de426bafd2",
+      "bytes": 106237,
+      "attachments": [
+        {
+          "filename": "cinder-trust-04-scan-003.pdf",
+          "media_type": "application/pdf",
+          "sha256": "0c01288fef3d7ac54d58030800567feb29cd728e651ae38263ae3766a85b2a02",
+          "bytes": 77110
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-05",
+      "filename": "fixtures/emails/071-cinder-trust-05-capital_call.eml",
+      "path": "fixtures/emails/071-cinder-trust-05-capital_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-071",
+      "received_at": "2026-07-07T09:41:00+00:00",
+      "category": "capital_call",
+      "tags": [],
+      "subject": "Amber Current Ventures II - CALL-JUL-04",
+      "sha256": "ff550a0f145f69df87d6d95b3b91206900be90fc88905f34287dc0d0ad0a7af8",
+      "bytes": 603,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-06",
+      "filename": "fixtures/emails/072-cinder-trust-06-terse_call.eml",
+      "path": "fixtures/emails/072-cinder-trust-06-terse_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-06@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-072",
+      "received_at": "2026-07-07T09:42:00+00:00",
+      "category": "terse_call",
+      "tags": [],
+      "subject": "Pale Cedar Property IV: call / 3 July 2026",
+      "sha256": "7445b4a6ee6b400a1b4f8000aee4724b81a851addc87ec8e98581cd448bfcecb",
+      "bytes": 480,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-07",
+      "filename": "fixtures/emails/073-cinder-trust-07-call_pdf.eml",
+      "path": "fixtures/emails/073-cinder-trust-07-call_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-07@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-073",
+      "received_at": "2026-07-07T09:43:00+00:00",
+      "category": "call_pdf",
+      "tags": [],
+      "subject": "Call attached",
+      "sha256": "cfb123d54e5061dc08347cebed4d8bd4c11eb2c669dc993c0e48350e24eca4d6",
+      "bytes": 3586,
+      "attachments": [
+        {
+          "filename": "cinder-trust-07-call-notice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "4b388cf2a821a5f5c463952a0affe6e760a9992e55679e41830bdefd82b11cf7",
+          "bytes": 2075
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-08",
+      "filename": "fixtures/emails/074-cinder-trust-08-distribution_email.eml",
+      "path": "fixtures/emails/074-cinder-trust-08-distribution_email.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-08@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-074",
+      "received_at": "2026-07-07T09:44:00+00:00",
+      "category": "distribution_email",
+      "tags": [],
+      "subject": "Dune Orchard Secondaries VI proceeds",
+      "sha256": "dcec703f82eef9cea675a420d376907be8bd09b8ba6d74aa192ebf9e4ae5c12f",
+      "bytes": 539,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-09",
+      "filename": "fixtures/emails/075-cinder-trust-09-distribution_pdf.eml",
+      "path": "fixtures/emails/075-cinder-trust-09-distribution_pdf.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-09@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-075",
+      "received_at": "2026-07-07T09:45:00+00:00",
+      "category": "distribution_pdf",
+      "tags": [],
+      "subject": "Cash advice",
+      "sha256": "d3d1c7df4b7946b22e177a675958eac4a3a69fc930f56b974762b5a5ea13f2ac",
+      "bytes": 3558,
+      "attachments": [
+        {
+          "filename": "cinder-trust-09-distribution-advice.pdf",
+          "media_type": "application/pdf",
+          "sha256": "c396ef2a96a3a3d425293402d514a8314f718b7fac096fb5e946b0425d4e884f",
+          "bytes": 2054
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-10",
+      "filename": "fixtures/emails/076-cinder-trust-10-forwarded_call.eml",
+      "path": "fixtures/emails/076-cinder-trust-10-forwarded_call.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-10@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-076",
+      "received_at": "2026-07-07T09:46:00+00:00",
+      "category": "forwarded_call",
+      "tags": [],
+      "subject": "Fwd: call - seen?",
+      "sha256": "192ccee9f55e1fe7dc54da36bcd7ab5ee557ca5fdd3fcfa2bcc57854d4824f8a",
+      "bytes": 819,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-11",
+      "filename": "fixtures/emails/077-cinder-trust-11-nested_eml_attachment.eml",
+      "path": "fixtures/emails/077-cinder-trust-11-nested_eml_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-11@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-077",
+      "received_at": "2026-07-07T09:47:00+00:00",
+      "category": "nested_eml_attachment",
+      "tags": [],
+      "subject": "Fwd as attachment",
+      "sha256": "c13c2aa4d93713698c42ba7d0a00d57c84bf5e6ac4215f1a128d3b9088c79a67",
+      "bytes": 4124,
+      "attachments": [
+        {
+          "filename": "original-manager-message.eml",
+          "media_type": "message/rfc822",
+          "sha256": "a6b5c6a5ffbe4fb7caf7c1c4a0d35cb06c1381797e7f465199fc21a75bc8833d",
+          "bytes": 3359
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-12",
+      "filename": "fixtures/emails/078-cinder-trust-12-consolidation.eml",
+      "path": "fixtures/emails/078-cinder-trust-12-consolidation.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-12@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-078",
+      "received_at": "2026-07-07T09:48:00+00:00",
+      "category": "consolidation",
+      "tags": [],
+      "subject": "June consolidation v2",
+      "sha256": "d7be5af6ffe1c31e4cc4462be8cf5b517135648aecdd2528f8ba8caf04e6b3b9",
+      "bytes": 4267,
+      "attachments": [
+        {
+          "filename": "cinder-trust-12-consolidation.pdf",
+          "media_type": "application/pdf",
+          "sha256": "fa3fbb44ed5b398d731fa42e8825ef90ec39a89bc998bac4eabc2ce17fc64e88",
+          "bytes": 2543
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-13",
+      "filename": "fixtures/emails/079-cinder-trust-13-report_of_report.eml",
+      "path": "fixtures/emails/079-cinder-trust-13-report_of_report.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-13@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-079",
+      "received_at": "2026-07-07T09:49:00+00:00",
+      "category": "report_of_report",
+      "tags": [],
+      "subject": "Our review of the June report",
+      "sha256": "759a2b3a623cf71984f7a3149ee356c57c64fdd4cac4950b88cf02e565f4ab56",
+      "bytes": 3648,
+      "attachments": [
+        {
+          "filename": "cinder-trust-13-review-of-manager-report.pdf",
+          "media_type": "application/pdf",
+          "sha256": "ccb1854960d6ce28bcb77d6c1887fb172acfa9776683d81a8f55dc05e63454fd",
+          "bytes": 2095
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-14",
+      "filename": "fixtures/emails/080-cinder-trust-14-revised_nav.eml",
+      "path": "fixtures/emails/080-cinder-trust-14-revised_nav.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-14@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-080",
+      "received_at": "2026-07-07T09:50:00+00:00",
+      "category": "revised_nav",
+      "tags": [],
+      "subject": "CORRECTION - June mark",
+      "sha256": "e5c3dd65e8d6a6f09c866da8bb67a064ae5678c805862ff56a93eae500bc0d47",
+      "bytes": 3614,
+      "attachments": [
+        {
+          "filename": "cinder-trust-14-corrected-june-nav.pdf",
+          "media_type": "application/pdf",
+          "sha256": "437d3e2ac825b4771bf6af26901df001e52ba77c72df4238ab03e6d03d3861f5",
+          "bytes": 2059
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-15",
+      "filename": "fixtures/emails/081-cinder-trust-15-withdrawn_only.eml",
+      "path": "fixtures/emails/081-cinder-trust-15-withdrawn_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-15@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-081",
+      "received_at": "2026-07-07T09:51:00+00:00",
+      "category": "withdrawn_only",
+      "tags": [],
+      "subject": "Do not use June draft",
+      "sha256": "4dcffba0ac399333451503e24ed73fef9f785c1d2e4e3f2eabdac400e6cd89b1",
+      "bytes": 3538,
+      "attachments": [
+        {
+          "filename": "cinder-trust-15-withdrawal.pdf",
+          "media_type": "application/pdf",
+          "sha256": "30a5941d1232c2db34585ddf2228ab96b1c53e2ee2651387f11b3cf96efe49b3",
+          "bytes": 2007
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-16",
+      "filename": "fixtures/emails/082-cinder-trust-16-ambiguous_currency.eml",
+      "path": "fixtures/emails/082-cinder-trust-16-ambiguous_currency.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-16@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-082",
+      "received_at": "2026-07-07T09:52:00+00:00",
+      "category": "ambiguous_currency",
+      "tags": [],
+      "subject": "proceeds - currency missing",
+      "sha256": "23b7f0a7651cb2be7b00f369e909a490bf51f3b29166c469fdbf8b175604ea80",
+      "bytes": 553,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-17",
+      "filename": "fixtures/emails/083-cinder-trust-17-missing_effective_date.eml",
+      "path": "fixtures/emails/083-cinder-trust-17-missing_effective_date.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-17@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-083",
+      "received_at": "2026-07-07T09:53:00+00:00",
+      "category": "missing_effective_date",
+      "tags": [],
+      "subject": "latest figure",
+      "sha256": "8ac272b2bef4fc21f58e488ab671d6b68db37b5bdde31a7acc835b80a7522b52",
+      "bytes": 486,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-18",
+      "filename": "fixtures/emails/084-cinder-trust-18-lookthrough_partial.eml",
+      "path": "fixtures/emails/084-cinder-trust-18-lookthrough_partial.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-18@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-084",
+      "received_at": "2026-07-07T09:54:00+00:00",
+      "category": "lookthrough_partial",
+      "tags": [],
+      "subject": "Holdings detail",
+      "sha256": "b7b6fb8c2b59b749c0431f74774fc18e9e74b13857535930f6686788ebbb53a3",
+      "bytes": 3990,
+      "attachments": [
+        {
+          "filename": "cinder-trust-18-holdings-disclosure.pdf",
+          "media_type": "application/pdf",
+          "sha256": "3695ebae01fba9584172e8f0a04c92f5884722ad88e41861919bc0f2ae9fab79",
+          "bytes": 2350
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-19",
+      "filename": "fixtures/emails/085-cinder-trust-19-lookthrough_unknown.eml",
+      "path": "fixtures/emails/085-cinder-trust-19-lookthrough_unknown.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-19@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-085",
+      "received_at": "2026-07-07T09:55:00+00:00",
+      "category": "lookthrough_unknown",
+      "tags": [],
+      "subject": "Portfolio company names",
+      "sha256": "f558c3231bd6930551d43e7f8eea745dfe4010b02d4c3ec1780a60f202e91765",
+      "bytes": 3848,
+      "attachments": [
+        {
+          "filename": "cinder-trust-19-underlying-names.pdf",
+          "media_type": "application/pdf",
+          "sha256": "84c864746cd8ebc76ae2a08911736c46f53ff3f85733c4599741bd9c2b6ad798",
+          "bytes": 2255
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-20",
+      "filename": "fixtures/emails/086-cinder-trust-20-manager_target_overlap.eml",
+      "path": "fixtures/emails/086-cinder-trust-20-manager_target_overlap.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-20@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-086",
+      "received_at": "2026-07-07T09:56:00+00:00",
+      "category": "manager_target_overlap",
+      "tags": [],
+      "subject": "Pipeline note",
+      "sha256": "0536f50325321fb7a55a082dc6e99d5440487132addaac8f5c79963f6518f96a",
+      "bytes": 636,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-21",
+      "filename": "fixtures/emails/087-cinder-trust-21-operating_news.eml",
+      "path": "fixtures/emails/087-cinder-trust-21-operating_news.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-21@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-087",
+      "received_at": "2026-07-07T09:57:00+00:00",
+      "category": "operating_news",
+      "tags": [],
+      "subject": "Management update",
+      "sha256": "80350503fd7462006445ecdb3c7a192161a493b0d878f6b21e3cfb43bd431c05",
+      "bytes": 556,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-22",
+      "filename": "fixtures/emails/088-cinder-trust-22-irrelevant_newsletter.eml",
+      "path": "fixtures/emails/088-cinder-trust-22-irrelevant_newsletter.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-22@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-088",
+      "received_at": "2026-07-07T09:58:00+00:00",
+      "category": "irrelevant_newsletter",
+      "tags": [],
+      "subject": "Community garden summer opening",
+      "sha256": "cd6793617d7512d0e48e9c1a8c8a721dff8528d55c9604c163e5c5e10074e77e",
+      "bytes": 524,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-23",
+      "filename": "fixtures/emails/089-cinder-trust-23-scheduling_only.eml",
+      "path": "fixtures/emails/089-cinder-trust-23-scheduling_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-23@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-089",
+      "received_at": "2026-07-07T09:59:00+00:00",
+      "category": "scheduling_only",
+      "tags": [],
+      "subject": "Re: Tuesday",
+      "sha256": "5087e0dfa0c6cf0d6df54314a74fcd0630886aaf225b1eb7876b9f417ff624b9",
+      "bytes": 415,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-24",
+      "filename": "fixtures/emails/090-cinder-trust-24-operating_invoice.eml",
+      "path": "fixtures/emails/090-cinder-trust-24-operating_invoice.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-24@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-090",
+      "received_at": "2026-07-07T10:00:00+00:00",
+      "category": "operating_invoice",
+      "tags": [],
+      "subject": "Coffee machine service invoice",
+      "sha256": "059be967300fd3d2577552ed3f619ba8437c8f9e1530d99e9759ace38ea2494b",
+      "bytes": 3887,
+      "attachments": [
+        {
+          "filename": "cinder-trust-24-coffee-service.pdf",
+          "media_type": "application/pdf",
+          "sha256": "5075648ffcced051d86d5df58fd8c7fd176ddd93394b3693a664a782fabf9c7f",
+          "bytes": 2252
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-25",
+      "filename": "fixtures/emails/091-cinder-trust-25-multiple_periods.eml",
+      "path": "fixtures/emails/091-cinder-trust-25-multiple_periods.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-25@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-091",
+      "received_at": "2026-07-07T10:01:00+00:00",
+      "category": "multiple_periods",
+      "tags": [],
+      "subject": "Historical marks requested",
+      "sha256": "961e580e0058af77dcadd78c8acc9836c5955275cbf67a6454ca3fc5e87e6f90",
+      "bytes": 4471,
+      "attachments": [
+        {
+          "filename": "cinder-trust-25-two-periods.pdf",
+          "media_type": "application/pdf",
+          "sha256": "a1a27c1cd112f3e82bc1ca81881b508bddf6d3d78da67de56a86d941d3caa3e9",
+          "bytes": 2703
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-26",
+      "filename": "fixtures/emails/092-cinder-trust-26-native_fx.eml",
+      "path": "fixtures/emails/092-cinder-trust-26-native_fx.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-26@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-092",
+      "received_at": "2026-07-07T10:02:00+00:00",
+      "category": "native_fx",
+      "tags": [],
+      "subject": "USD report + treasury note",
+      "sha256": "fefe78e2907828f6f1d7aa196fc8386a13564b4f42bc614c8a64a33abedd2809",
+      "bytes": 3634,
+      "attachments": [
+        {
+          "filename": "cinder-trust-26-native-and-fx.pdf",
+          "media_type": "application/pdf",
+          "sha256": "018ce953dc922ea01d753b723b948cda35e28afea3962c1d3885d59b38885a6e",
+          "bytes": 2092
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-27",
+      "filename": "fixtures/emails/093-cinder-trust-27-thousands_table.eml",
+      "path": "fixtures/emails/093-cinder-trust-27-thousands_table.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-27@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-093",
+      "received_at": "2026-07-07T10:03:00+00:00",
+      "category": "thousands_table",
+      "tags": [],
+      "subject": "Account statement - amounts in thousands",
+      "sha256": "a436113196c2a86e343b8f2d59c989cce577466494ef2eb9e678d4ef39108cec",
+      "bytes": 3773,
+      "attachments": [
+        {
+          "filename": "cinder-trust-27-nav-usd-thousands.pdf",
+          "media_type": "application/pdf",
+          "sha256": "49ffd495948d75dc7b92d81b4b53a576c4e9d4ffa2c48bacc7339381bd245cdc",
+          "bytes": 2178
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-28",
+      "filename": "fixtures/emails/094-cinder-trust-28-html_only.eml",
+      "path": "fixtures/emails/094-cinder-trust-28-html_only.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-28@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-094",
+      "received_at": "2026-07-07T10:04:00+00:00",
+      "category": "html_only",
+      "tags": [],
+      "subject": "Pale Cedar Property IV account",
+      "sha256": "f4ae08ed5d31f53d2a8c3060ee68e4dc1860fcb3516f6f08f049e535f8727b45",
+      "bytes": 637,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-29",
+      "filename": "fixtures/emails/095-cinder-trust-29-encrypted_attachment.eml",
+      "path": "fixtures/emails/095-cinder-trust-29-encrypted_attachment.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-controller",
+      "source_message_id": "<mailroom-v1-cinder-trust-29@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-095",
+      "received_at": "2026-07-07T10:05:00+00:00",
+      "category": "encrypted_attachment",
+      "tags": [],
+      "subject": "Password protected statement",
+      "sha256": "ef47f0ade7cec6e274b1744d0306f131f0f11b41765b19b3b3ceaa3be60678b9",
+      "bytes": 4145,
+      "attachments": [
+        {
+          "filename": "cinder-trust-29-locked-statement.pdf",
+          "media_type": "application/pdf",
+          "sha256": "e0af760e3a54d6667f46ce07b47f9514721bb748b41fee0b4f131e6fb2a91abf",
+          "bytes": 2413
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-30",
+      "filename": "fixtures/emails/096-cinder-trust-30-instruction_boundary.eml",
+      "path": "fixtures/emails/096-cinder-trust-30-instruction_boundary.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-30@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-096",
+      "received_at": "2026-07-07T10:06:00+00:00",
+      "category": "instruction_boundary",
+      "tags": [],
+      "subject": "Company update / quoted spam",
+      "sha256": "8c7c4b5218957f311d4dd525f0586308520bbffbec0930ccf466f937a4eb768b",
+      "bytes": 729,
+      "attachments": []
+    },
+    {
+      "id": "cinder-trust-31",
+      "filename": "fixtures/emails/097-cinder-trust-31-illustrative_and_actual.eml",
+      "path": "fixtures/emails/097-cinder-trust-31-illustrative_and_actual.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-principal",
+      "source_message_id": "<mailroom-v1-cinder-trust-31@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-097",
+      "received_at": "2026-07-07T10:07:00+00:00",
+      "category": "illustrative_and_actual",
+      "tags": [],
+      "subject": "Call notice with worked example",
+      "sha256": "f03b95bffc9f1fa9d962578a90efd6bca9cfd8cd77594ecddae04ddea5f17135",
+      "bytes": 3709,
+      "attachments": [
+        {
+          "filename": "cinder-trust-31-example-and-call.pdf",
+          "media_type": "application/pdf",
+          "sha256": "dabadafac1024cbb91b089b6a7b71ab5cfcfa4465b0d813f604dbb5cdaf92551",
+          "bytes": 2137
+        }
+      ]
+    },
+    {
+      "id": "cinder-trust-32",
+      "filename": "fixtures/emails/098-cinder-trust-32-byte_duplicate.eml",
+      "path": "fixtures/emails/098-cinder-trust-32-byte_duplicate.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-cinder-trust-05@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-098",
+      "received_at": "2026-07-07T10:08:00+00:00",
+      "category": "byte_duplicate",
+      "tags": [],
+      "subject": "Amber Current Ventures II - CALL-JUL-04",
+      "sha256": "ff550a0f145f69df87d6d95b3b91206900be90fc88905f34287dc0d0ad0a7af8",
+      "bytes": 603,
+      "attachments": [],
+      "duplicate_of": "cinder-trust-05"
+    },
+    {
+      "id": "cinder-trust-33",
+      "filename": "fixtures/emails/099-cinder-trust-33-cross_office_identical.eml",
+      "path": "fixtures/emails/099-cinder-trust-33-cross_office_identical.eml",
+      "media_type": "message/rfc822",
+      "office_id": "cinder-trust",
+      "mailbox_id": "cinder-trust-investment",
+      "source_message_id": "<mailroom-v1-shared-community@newsletter.example.invalid>",
+      "receipt_id": "mailroom-receipt-099",
+      "received_at": "2026-07-07T10:09:00+00:00",
+      "category": "cross_office_identical",
+      "tags": [],
+      "subject": "Town museum reopening",
+      "sha256": "46b14e7ce183ef2f14b16a1f9d71b3931f325158a79af7ca1bc5d60dda4f198a",
+      "bytes": 495,
+      "attachments": []
+    },
+    {
+      "id": "alder-house-34",
+      "filename": "fixtures/emails/100-alder-house-34-multi_attachment_pack.eml",
+      "path": "fixtures/emails/100-alder-house-34-multi_attachment_pack.eml",
+      "media_type": "message/rfc822",
+      "office_id": "alder-house",
+      "mailbox_id": "alder-house-principal",
+      "source_message_id": "<mailroom-v1-alder-house-34@manager.example.invalid>",
+      "receipt_id": "mailroom-receipt-100",
+      "received_at": "2026-07-07T10:10:00+00:00",
+      "category": "multi_attachment_pack",
+      "tags": [],
+      "subject": "Fwd: all June packs",
+      "sha256": "c3f2bb9de9c01b52117409cf9598e0bd13798adab5efbffcd82b84b1ab9caf2b",
+      "bytes": 9245,
+      "attachments": [
+        {
+          "filename": "alder-house-34-manager-1.pdf",
+          "media_type": "application/pdf",
+          "sha256": "2624383d33d83ff09ae32038e077be0b14cfad0eb55d81ed7e21fe8b17b9c0ed",
+          "bytes": 1955
+        },
+        {
+          "filename": "alder-house-34-manager-2.pdf",
+          "media_type": "application/pdf",
+          "sha256": "3c157ab742b458ba60ec325e97414afb5a1a625ad78452912e2d14a68fb624c6",
+          "bytes": 1944
+        },
+        {
+          "filename": "alder-house-34-manager-3.pdf",
+          "media_type": "application/pdf",
+          "sha256": "cc7d93dc9b592c49e9afe2dce4135809b34eb419745546830210a65b39ea2155",
+          "bytes": 1950
+        }
+      ]
+    }
+  ]
+}

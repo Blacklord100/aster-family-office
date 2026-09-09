@@ -1,0 +1,78 @@
+From: operations@manager-alder-house.example.invalid
+To: controller@alder-house.example.invalid
+Date: Tue, 07 Jul 2026 08:30:00 +0000
+Subject: Fwd as attachment
+Message-ID: <mailroom-v1-alder-house-11@manager.example.invalid>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="=_aster_mailroom_v1_alder-house-11_0"
+
+--=_aster_mailroom_v1_alder-house-11_0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Original email attached. Please retain its source.
+
+--=_aster_mailroom_v1_alder-house-11_0
+Content-Type: message/rfc822; boundary="=_aster_mailroom_v1_alder-house-11_2"
+Content-Transfer-Encoding: 8bit
+Content-Disposition: attachment; filename="original-manager-message.eml"
+MIME-Version: 1.0
+
+From: operations@manager-alder-house.example.invalid
+To: controller@alder-house.example.invalid
+Date: Tue, 07 Jul 2026 08:30:00 +0000
+Subject: Manager source enclosed
+Message-ID: <mailroom-v1-alder-house-nested-original@manager.example.invalid>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="=_aster_mailroom_v1_alder-house-11_3"
+
+--=_aster_mailroom_v1_alder-house-11_3
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+June statement enclosed.
+
+--=_aster_mailroom_v1_alder-house-11_3
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="alder-house-11-nested-manager-statement.pdf"
+MIME-Version: 1.0
+
+JVBERi0xLjQKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgaHR0cDovL3d3
+dy5yZXBvcnRsYWIuY29tCjEgMCBvYmoKPDwKL0YxIDIgMCBSIC9GMiAzIDAgUgo+PgplbmRvYmoK
+MiAwIG9iago8PAovQmFzZUZvbnQgL0hlbHZldGljYSAvRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGlu
+ZyAvTmFtZSAvRjEgL1N1YnR5cGUgL1R5cGUxIC9UeXBlIC9Gb250Cj4+CmVuZG9iagozIDAgb2Jq
+Cjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhLUJvbGQgL0VuY29kaW5nIC9XaW5BbnNpRW5jb2Rpbmcg
+L05hbWUgL0YyIC9TdWJ0eXBlIC9UeXBlMSAvVHlwZSAvRm9udAo+PgplbmRvYmoKNCAwIG9iago8
+PAovQ29udGVudHMgOCAwIFIgL01lZGlhQm94IFsgMCAwIDU5NS4yNzU2IDg0MS44ODk4IF0gL1Bh
+cmVudCA3IDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4
+dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAog
+IC9UeXBlIC9QYWdlCj4+CmVuZG9iago1IDAgb2JqCjw8Ci9QYWdlTW9kZSAvVXNlTm9uZSAvUGFn
+ZXMgNyAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0F1dGhvciAoQXN0
+ZXIgZmljdGlvbmFsIG1haWxyb29tIGNvcnB1cykgL0NyZWF0aW9uRGF0ZSAoRDoyMDAwMDEwMTAw
+MDAwMCswMCcwMCcpIC9DcmVhdG9yIChcKHVuc3BlY2lmaWVkXCkpIC9LZXl3b3JkcyAoKSAvTW9k
+RGF0ZSAoRDoyMDAwMDEwMTAwMDAwMCswMCcwMCcpIC9Qcm9kdWNlciAoUmVwb3J0TGFiIFBERiBM
+aWJyYXJ5IC0gd3d3LnJlcG9ydGxhYi5jb20pIAogIC9TdWJqZWN0IChcKHVuc3BlY2lmaWVkXCkp
+IC9UaXRsZSAoUHJvcGVydHkgaW52ZXN0b3IgbWFyaykgL1RyYXBwZWQgL0ZhbHNlCj4+CmVuZG9i
+ago3IDAgb2JqCjw8Ci9Db3VudCAxIC9LaWRzIFsgNCAwIFIgXSAvVHlwZSAvUGFnZXMKPj4KZW5k
+b2JqCjggMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9M
+ZW5ndGggMzc5Cj4+CnN0cmVhbQpHYXJXNT8jLjsyJ1NjKVQoJTd0PCcoYVgzaDQ8OjcqODldISMu
+azpBVjQyPSxYRmRZdV5VMlJRYWA5XkMzOVRCYy1SVD5QKWYqX2YhQmIsaDdndD5EMD5Tb3Jjaz9o
+MVZpPTJoPUlsNWQ2PWNgJ1lJdDlnJ1lwaGMvU2lPZSYzZCEiRkBZQD00XGgzVyJPRnUiTURVYEtp
+ITUqbWJLTGw6Wio6akdsNi5oVGZzXDBySVcqSChhTkRaS1ZDI1kzQ0NCTF4qVjpgT0lHPDUtJzhW
+SWtSJUooS1pjWzZoclUtMk87Qmd1ODsoPldHYEJIU1RXIyNeVTBrWzNTczFPKDBXJTdVNColXDdq
+Xm1jS2hCP2tCTTx1aW9hKFdMbC9PbHRVI2RcWElKZGpCKFhQIjFpPCNeWkUpTDZaWiMzXE47NUdO
+T0UzR2wyTWgtXEhXMS9hTyslaWFxO1xTR0s1Rz43QkNxJlZtKyQsIlsjTURBa3ErKFwjYiNRaX4+
+ZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgOQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwNzMg
+MDAwMDAgbiAKMDAwMDAwMDExNCAwMDAwMCBuIAowMDAwMDAwMjIxIDAwMDAwIG4gCjAwMDAwMDAz
+MzMgMDAwMDAgbiAKMDAwMDAwMDUzNiAwMDAwMCBuIAowMDAwMDAwNjA0IDAwMDAwIG4gCjAwMDAw
+MDA5MTQgMDAwMDAgbiAKMDAwMDAwMDk3MyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9JRCAKWzxmMTkx
+MTljNzNiYjkyMjY5NzIwMGI1MmM2MWFlMTQxOT48ZjE5MTE5YzczYmI5MjI2OTcyMDBiNTJjNjFh
+ZTE0MTk+XQolIFJlcG9ydExhYiBnZW5lcmF0ZWQgUERGIGRvY3VtZW50IC0tIGRpZ2VzdCAoaHR0
+cDovL3d3dy5yZXBvcnRsYWIuY29tKQoKL0luZm8gNiAwIFIKL1Jvb3QgNSAwIFIKL1NpemUgOQo+
+PgpzdGFydHhyZWYKMTQ0MgolJUVPRgo=
+
+--=_aster_mailroom_v1_alder-house-11_3--
+
+--=_aster_mailroom_v1_alder-house-11_0--
