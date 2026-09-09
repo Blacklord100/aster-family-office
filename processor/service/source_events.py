@@ -9,18 +9,18 @@ KIND_PATTERNS = {
     'valuation': r'\b(?:valuation|net asset value|NAV|carrying value|value of your interest|value attributable to your interest|your (?:closing|reported) value)\b',
     'capital_call': r'\b(?:capital call|drawdown(?: notice)?|capital requested|capital called|funding notice|calls? (?:an? )?additional|capital request)\b',
     'distribution': r'\b(?:distribution|distributed)\b|\breturned\b(?=[\s\S]{0,200}\bcash to your (?:partnership )?interest\b)',
-    'news': r'\b(?:portfolio update|investment update|company update|news update|business update|appointed|appointment|announced|launched|resigned|new director|joins? the board)\b',
+    'news': r'\b(?:portfolio update|investment update|company update|news update|business update|appointed|appointment|announced|launched|resigned|new director|joins? the board|opened|operating update)\b',
 }
 # Physical PDF wraps and HTML layout whitespace do not change an event phrase.
 # Keep source text/offsets untouched so evidence remains an exact source quote.
 KIND_PATTERNS = {kind: pattern.replace(' ', r'\s+') for kind, pattern in KIND_PATTERNS.items()}
 INCIDENTAL = re.compile(r'(?i)\b(?:commitment|contributions? (?:made|paid|before)|previously contributed|manager(?:-wide)?|assets under management|AUM|revenue|sales|enterprise value|total of|aggregate|previously issued|withdrawn|superseded|erroneous|replaces? (?:the )?(?:old|original|previous))\b')
-WITHDRAWN = re.compile(r'(?i)\b(?:withdrawn|superseded|previously issued|erroneous|must not be treated|no longer valid)\b')
+WITHDRAWN = re.compile(r'(?i)\b(?:withdrawn|superseded|previously issued|erroneous|must not be treated|no longer valid|cancelled|canceled|revoked|rescinded|invalidated|must not be used)\b')
 DATE_LABEL = re.compile(r'(?im)\b(?P<label>effective date|valuation date|reporting date|distribution date|notice date|as of|as at|payment due|due date|payment date|date)\s*:\s*')
 WORD = r"[A-ZÀ-ÖØ-Þ][\wÀ-ž&'’.-]*"
 NAME = WORD + r'(?:[ \t]+(?:' + WORD + r'|of|and|the|&)){0,11}'
 NAME = NAME.replace("[\\wÀ-ž&'’.-]*", "[\\wÀ-ž&'’-]*")
-NAME_VERB = r'(?:is issuing|issues|issued (?:this |a |the )?(?:capital call|drawdown)|will (?:make|pay) (?:a |the )?distribution|reports? (?:a |the )?(?:capital call|drawdown|distribution|(?:investor )?NAV|valuation|net asset value)|capital call|valuation|distribution|distributed|paid|returned|appointed|announced|company update|portfolio update|news update)\b'
+NAME_VERB = r'(?:is issuing|issues|issued (?:this |a |the )?(?:capital call|drawdown)|will (?:make|pay) (?:a |the )?distribution|reports? (?:a |the )?(?:capital call|drawdown|distribution|(?:investor )?NAV|valuation|net asset value)|capital call|valuation|distribution|distributed|paid|returned|appointed|announced|launched|opened|operating update|company update|portfolio update|news update)\b'
 NAME_VERB = NAME_VERB.replace(' ', r'\s+')
 
 
@@ -85,7 +85,9 @@ def _units(text, extra_boundaries=()):
         letters = ''.join(c for c in value if c.isalpha())
         heading = len(letters) >= 4 and letters.isupper()
         label = re.match(r'(?i)^(?:Investment|Fund|Company|Security|Portfolio investment|Effective date|Valuation date|Reporting date|Notice date|Distribution date|Due date|Payment due)\s*:',value)
-        if heading or label:
+        page_number = re.fullmatch(r'(?i)page\s+\d+(?:\s+(?:of|/)\s*\d+)?', value)
+        notice_title = re.fullmatch(r'(?i)(?:capital call notice|drawdown notice|valuation statement|distribution confirmation)(?:\s+(?:no[.]?\s*)?\d+)?', value)
+        if heading or label or page_number or notice_title:
             boundaries.update((line.start(),line.end()))
     boundaries = sorted(boundaries)
     return [(start, end, text[start:end]) for start, end in zip(boundaries, boundaries[1:]) if text[start:end].strip()]
@@ -100,13 +102,53 @@ def _clean_name(raw):
         return None
     if re.fullmatch(r'(?:illustrative|hypothetical|example|corrected|actual|approved|final|current|previous|reported|original|quarterly|monthly|annual|semiannual|interim)',value,re.I):
         return None
-    if re.match(r'(?i)^(?:Dear\b|SYNTHETIC\b|DIAGNOSTIC\b|Investor (?:Relations|Services|Administration|account)|Fund Administration|From\b|Subject\b|This\b|The\b|On\b|At\b|Please\b)', value):
+    if re.match(r'(?i)^(?:Dear\b|SYNTHETIC\b|DIAGNOSTIC\b|Investor (?:Relations|Services|Administration|account)|Fund Administration|From\b|Subject\b|This\b|The\b|On\b|At\b|Please\b|No\b|Not\b|Without\b)', value):
         return None
     return value
 
 
+def _ownership_mentions(text):
+    """Explicit topic/object owners also delimit unfamiliar lower-case names."""
+    patterns = [
+        r'(?im)(?:^|(?<=[;.!?])\s+)\s*(?:for|regarding|as regards|on behalf of|in respect of|concerning)\s+(?P<name>[^\n,:;]{2,200}?)\s*[,;:]',
+        r'(?i)\b(?:holding|interest|position)\s+in\s+(?P<name>[^\n,;:]{2,200}?)\s+(?:is|was|were|has|had|stood|amounted|at)\b',
+        r'(?i)\b(?:carrying amount|fair (?:market )?value|closing value|net asset value|NAV|valuation|capital call|distribution)\s+(?:of|for|attributable to)\s+(?P<name>[^\n,;:]{2,200}?)\s+(?:is|was|were|has|had|at|as of|as at|equals|stands)\b',
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern,text):
+            raw = normalize(match.group('name')).strip(' .;:')
+            if (re.match(r'(?i)^(?:your|our|their|its|the|an?|all|each|this|that|no|not)\b',raw)
+                    or re.fullmatch(r'(?i)(?:reference|comparison|administrative convenience|information|review|illustration|discussion|approval|(?:reporting|accounting|administrative|reconciliation|recordkeeping|review) purposes)\s*(?:only)?',raw)):
+                continue
+            if name := _clean_name(raw):
+                yield NameMention(name,match.start('name'),match.end('name'))
+
+
+def _amount_clause(unit, token):
+    separators = list(re.finditer(r'[;!?]|\bbut\b|\bhowever\b',unit,re.I))
+    start = max((match.end() for match in separators if match.end() <= token.start),default=0)
+    end = min((match.start() for match in separators if match.start() >= token.end),default=len(unit))
+    return unit[start:end]
+
+
+def _non_investor_amount_scope(unit, token):
+    before = re.split(r'[;!?]|\bbut\b|\bhowever\b',unit[:token.start],flags=re.I)[-1]
+    wide = list(re.finditer(r'(?i)\b(?:(?:whole|entire)\s+fund|fund[- ]wide|manager[- ]wide|all\s+investors(?:\s+(?:combined|together))?|fund\s+total)\b',before))
+    if not wide:
+        return False
+    # A subsequent explicit investor allocation can supersede the wide context;
+    # a bare NAV/valuation label cannot turn whole-fund figures into an LP value.
+    return not re.search(r'(?i)\b(?:your\s+(?:holding|interest|account|allocation)|investor[- ]specific|attributable\s+to\s+your)\b',before[wide[-1].end():])
+
+
+def _conditional_amount(unit, token):
+    prefix = re.split(r'[;!?]|\bbut\b|\bhowever\b',unit[:token.start],flags=re.I)[-1]
+    return bool(re.search(r'(?i)\b(?:would|could|might)\s+(?:be|equal|amount|stand|have)|\b(?:assuming|hypothetical|pro[- ]forma|conditional on|contingent upon)\b',prefix)
+                or re.search(r'(?i)\b(?:only if|conditional upon|contingent on)\b',_amount_clause(unit,token)))
+
+
 def name_mentions(text, hint=None):
-    candidates = []
+    candidates = list(_ownership_mentions(text))
     labelled = []
     for match in re.finditer(r'(?im)(?:^|(?<=[.!?])\s+)\s*>?\s*(?:Investment|Fund|Company|Security|Portfolio investment)\s*:\s*([^\n]+)', text):
         if name := _clean_name(match.group(1)):
@@ -127,7 +169,15 @@ def name_mentions(text, hint=None):
     # A title naming an investment may precede a prose notice with pronouns.
     for match in re.finditer(r'(?m)^\s*(?P<name>' + NAME + r')\s*$', text):
         name = _clean_name(match.group('name'))
-        if name and re.search(r'\b(?:Fund|Equity|Growth|Credit|Assets|Opportunities|SPV|Partnership|Ventures|Lending|Infrastructure|Partners|Robotics|Systems|Holdings)\b', name):
+        if name and re.search(r'\b(?:Fund|Equity|Growth|Credit|Assets|Opportunities|SPV|Partnership|Ventures|Lending|Infrastructure|Partners|Robotics|Systems|Holdings|Property|Real Estate|Strategies)\b', name):
+            candidates.append(NameMention(name, match.start('name'), match.end('name')))
+    # A name-only sentence directly introducing a notice is an explicit subject,
+    # including terse forwards. Restrict it to a whole proper-name sentence and
+    # an immediately following event, not an arbitrary nearby/signature name.
+    event_opening = r'(?:capital\s+call|drawdown|distribution|(?:investor\s+)?NAV|valuation)\b'
+    for match in re.finditer(r'(?m)(?:^|(?<=[.!?])[ \t]+)(?P<name>' + NAME + r')\.[ \t\n]*(?=' + event_opening + r')', text, re.I):
+        raw = match.group('name')
+        if re.fullmatch(NAME, raw) and len(raw.split()) >= 2 and (name := _clean_name(raw)):
             candidates.append(NameMention(name, match.start('name'), match.end('name')))
     # A model hint cannot create an entity. Only independently anchored names
     # participate in role attribution; keep the argument for caller compatibility.
@@ -170,7 +220,9 @@ def _date_role(text, mention):
         return 'due'
     if re.search(r'\b(?:funds|payment|remittance|called capital)\b[^.!?]{0,65}\b(?:reach|arrive|be received)\b[^.!?]{0,45}\b(?:by|no later than)\s*$',before):
         clause = re.split(r'[.;]|\bbut\b|\bhowever\b',before)[-1]
-        if not re.search(r'\b(?:no|not|never|without)\b',clause):
+        # "No later than" asserts a deadline; it does not negate the payment.
+        status = re.sub(r'\bno later than\b','',clause)
+        if not re.search(r'\b(?:no|not|never|without)\b',status):
             return 'due'
     if re.search(r'(?:valuation date|reporting date|as of|as at|as-of|quarter ended|books for)\s*:?\s*$', before):
         return 'valuation'
@@ -230,7 +282,10 @@ def _dates_for(text, unit_start, unit_end, kind, names, name, position):
 
 
 def _kind_for_amount(unit, token, fallback):
-    if re.search(r'(?i)\b(?:illustrative|hypothetical|example calculation|for illustration|not (?:an? )?actual)\b',unit):
+    if _non_investor_amount_scope(unit,token) or _conditional_amount(unit,token):
+        return None
+    clause = _amount_clause(unit,token)
+    if re.search(r'(?i)\b(?:illustrative|hypothetical|example calculation|for illustration|not (?:an? )?actual)\b',clause):
         return None
     positions = [(kind, match.start()) for kind in KIND_PATTERNS if kind != 'news'
                  for match in _positive_matches(unit, kind)]
@@ -240,7 +295,7 @@ def _kind_for_amount(unit, token, fallback):
         kind, pos = max(before, key=lambda item:item[1])
         if nearby_bad and max(nearby_bad) > pos:
             return None
-        if WITHDRAWN.search(unit) and not re.search(r'(?i)\bcorrected\b', unit[:token.start]):
+        if WITHDRAWN.search(clause) and not re.search(r'(?i)\bcorrected\b', unit[:token.start]):
             return None
         return kind
     if nearby_bad:
@@ -248,20 +303,37 @@ def _kind_for_amount(unit, token, fallback):
     after = [(kind,pos) for kind,pos in positions if 0 <= pos-token.end < 100]
     if len({kind for kind,_ in after}) == 1:
         return after[0][0]
-    if fallback and not WITHDRAWN.search(unit) and re.match(r'(?is)\s*(?:>\s*)?(?:Amount|NAV amount|Capital call amount|Distribution amount)\s*:', unit):
+    if fallback and not WITHDRAWN.search(clause) and re.match(r'(?is)\s*(?:>\s*)?(?:Amount|NAV amount|Capital call amount|Distribution amount)\s*:', unit):
         return fallback
     return None
 
 
 def _currency_context(text):
-    matches = re.findall(r'(?i)\b(?:reports? in|denominated in|currency\s*:|all amounts (?:are|in))\s*(' + CURRENCIES + r')\b', text)
-    codes = {value.upper() for value in matches}
+    pattern = (r'(?i)\b(?:reports? in|denominated in|currency\s*:|'
+               r'all (?:investment )?amounts (?:are(?: in)?|in))\s*(' + CURRENCIES + r')\b')
+    codes = set()
+    for match in re.finditer(pattern,text):
+        before = re.split(r'[.;!?\n]|\bbut\b|\bhowever\b',text[max(0,match.start()-160):match.start()],flags=re.I)[-1]
+        if re.search(r'(?i)\b(?:comparison|illustrative|example|hypothetical|translation|translated|converted|indicative|not|no)\b',before):
+            continue
+        codes.add(match.group(1).upper())
     return next(iter(codes)) if len(codes) == 1 else None
 
 
+def _table_amount_unit(value):
+    """Only explicit column-wide units; this is normalization, never FX conversion."""
+    match = re.fullmatch(r'(?i)(.*?)\s*\(\s*(' + CURRENCIES + r")(?:\s+(000|['’]000|000s|thousands?|millions?|billions?))?\s*\)", normalize(value))
+    if not match:
+        return normalize(value), None, Decimal(1)
+    unit = (match.group(3) or '').casefold()
+    power = 9 if unit.startswith('billion') else 6 if unit.startswith('million') else 3 if unit else 0
+    return match.group(1).strip(), match.group(2).upper(), Decimal(10) ** power
+
+
 def _table_header(value):
-    value = normalize(value).casefold().rstrip(':')
-    if value in {'investment','fund','security','portfolio investment'}:
+    value, _, _ = _table_amount_unit(value)
+    value = value.casefold().rstrip(':')
+    if value in {'investment','fund','security','portfolio investment','holding'}:
         return 'name',None
     if value in {'currency','ccy'}:
         return 'currency',None
@@ -270,14 +342,37 @@ def _table_header(value):
     if value in {'due date','payment due','payment due date'}:
         return 'due',None
     dates = {'distribution date':'distribution','valuation date':'valuation',
-             'reporting date':'valuation','notice date':'capital_call','effective date':None,'date':None}
+             'reporting date':'valuation','notice date':'capital_call','effective date':None,
+             'date':None,'as of':None,'as at':None}
     if value in dates:
         return 'effective',dates[value]
     amounts = {'cash distribution':'distribution','distribution amount':'distribution',
-               'distribution':'distribution','nav':'valuation','net asset value':'valuation',
+               'distribution':'distribution','nav':'valuation','investor nav':'valuation',
+               'net asset value':'valuation','investor net asset value':'valuation',
                'valuation amount':'valuation','capital call amount':'capital_call',
                'capital called':'capital_call','drawdown amount':'capital_call','amount':None}
     return ('amount',amounts[value]) if value in amounts else None
+
+
+def _table_owner(text, before):
+    # A table without an owner column may inherit one explicit nearby heading.
+    # Multiple competing headings are ambiguous, even if a model picks one.
+    window_start = max(0,before-1000)
+    candidates = [name for name in name_mentions(text[:before]) if name.start >= window_start]
+    unique = {normalize(name.name).casefold() for name in candidates}
+    return max(candidates,key=lambda name:name.start) if len(unique) == 1 else None
+
+
+def _table_first_cell(role, value):
+    if role == 'name':
+        return bool(_clean_name(value) and re.fullmatch(NAME,value))
+    if role in {'effective','due'}:
+        return bool(DATE_RE.fullmatch(value))
+    if role == 'currency':
+        return bool(re.fullmatch(CURRENCIES,value,re.I))
+    if role == 'status':
+        return bool(re.fullmatch(r'(?i)current|approved|final|withdrawn|superseded|cancelled|illustrative',value))
+    return bool(re.fullmatch(r"[-−]?\d[\d.,'’ \u00a0\u202f]*",value))
 
 
 def _table_cells(text):
@@ -306,11 +401,11 @@ def _table_cell_like(value):
 
 
 def _source_tables(text, warnings=None):
-    """Parse explicit row-major financial tables, with no model-created names.
+    """Validate row-major cell roles without repairing or shifting missing cells.
 
-    Every declared cell must remain aligned. Missing/extra flattened cells make
-    the region ambiguous and therefore abstain; the prose parser never reuses
-    those amounts. This deliberately does not guess column-major PDF layouts.
+    Explicit tabs/pipes preserve row boundaries. Flattened PDF cells must remain
+    aligned; trailing prose can end a complete row but cannot become another row.
+    Header currency/scale and a unique preceding owner heading are explicit roles.
     """
     cells = _table_cells(text)
     events,regions,names = [],[],[]
@@ -324,29 +419,33 @@ def _source_tables(text, warnings=None):
             cursor += 1
         roles = [role for role,_ in headers]
         kinds = {kind for _,kind in headers if kind}
-        required = {'name','effective','currency','amount'}
-        if not required.issubset(roles):
-            # An incomplete run cannot gain missing roles by rescanning each
-            # suffix. Consume it once to keep repeated-header inputs linear.
+        owner = _table_owner(text,cells[index][1]) if 'name' not in roles and {'effective','amount'}.issubset(roles) else None
+        amount_header = next((cells[index+i][0] for i,(role,_) in enumerate(headers) if role == 'amount'), '')
+        _, header_currency, multiplier = _table_amount_unit(amount_header)
+        recognized = {'effective','amount'}.issubset(roles) and ('name' in roles or 'currency' in roles or header_currency is not None)
+        if not recognized:
             index = cursor if cursor > index else index+1
             continue
-        valid_headers = len(roles) == len(set(roles)) and 4 <= len(roles) <= 6 and len(kinds) == 1
+        valid_headers = (len(roles) == len(set(roles)) and 2 <= len(roles) <= 6 and len(kinds) == 1
+                         and ('currency' in roles or header_currency is not None) and ('name' in roles or owner is not None))
         kind = next(iter(kinds)) if valid_headers else None
         body_start = cursor
+        width = len(roles)
         while cursor < len(cells) and _table_cell_like(cells[cursor][0]):
-            upcoming = [_table_header(cell[0]) for cell in cells[cursor:cursor+4]]
-            if len(upcoming) == 4 and all(upcoming) and required.issubset(role for role,_ in upcoming):
-                break
+            # A next header or prose after a complete row ends the row run.
+            # Protection still extends over unsupported trailing financial text.
+            if (cursor-body_start) % width == 0:
+                if _table_header(cells[cursor][0]) is not None:
+                    break
+                if re.fullmatch(r'(?i)(?:total|combined total|grand total)',cells[cursor][0]):
+                    break
+                if not _table_first_cell(roles[0],cells[cursor][0]):
+                    break
             cursor += 1
         body_end = cells[cursor-1][2] if cursor > body_start else cells[body_start-1][2]
-        # A malformed cell cannot end the protected table region and allow later
-        # row amounts to masquerade as prose facts. Only an explicit new labelled
-        # source section ends that protection; unsupported trailing narrative is
-        # reported for review instead of being guessed into a financial event.
         section = re.search(r'(?im)^\s*(?:Investment|Fund|Company|Security)\s*:',text[body_end:])
         protected_end = body_end+section.start() if section else len(text)
-        upcoming = [_table_header(cell[0]) for cell in cells[cursor:cursor+4]]
-        if len(upcoming) == 4 and all(upcoming) and required.issubset(role for role,_ in upcoming):
+        if cursor < len(cells) and _table_header(cells[cursor][0]) is not None:
             protected_end = min(protected_end,cells[cursor][1])
         regions.append((cells[index][1],body_end))
         if protected_end > body_end:
@@ -355,34 +454,43 @@ def _source_tables(text, warnings=None):
             warnings.append('Recognized financial table has unvalidated trailing content; its amounts were excluded from prose extraction and require manual review.')
         if not valid_headers:
             warnings.append('Recognized financial table has ambiguous, duplicate, or conflicting event headers; no facts were extracted from that table.')
-            index = cursor
-            continue
-        if cursor == body_start:
-            warnings.append('Recognized financial table has no validated rows; unsupported table content requires manual review.')
-            index = cursor
+            index = max(cursor,index+1)
             continue
         body = cells[body_start:cursor]
-        total_index = next((i for i,cell in enumerate(body) if re.fullmatch(r'(?i)(?:total|combined total|grand total)',cell[0])),len(body))
-        body = body[:total_index]
-        width = len(roles)
-        if len(body) % width:
+        if not body:
+            warnings.append('Recognized financial table has no validated rows; unsupported table content requires manual review.')
+            index = max(cursor,index+1)
+            continue
+        # A horizontal row's cells cannot spill into a neighbouring row. Pure
+        # one-cell-per-line extraction remains supported, without guessing wraps.
+        horizontal_lines = {}
+        for cell in body:
+            line_start = text.rfind('\n',0,cell[1])+1
+            horizontal_lines.setdefault(line_start,[]).append(cell)
+        explicit_rows = any('|' in text[start:text.find('\n',start) if '\n' in text[start:] else len(text)]
+                            or '\t' in text[start:text.find('\n',start) if '\n' in text[start:] else len(text)]
+                            for start in horizontal_lines)
+        bad_row_boundaries = explicit_rows and any(len(row) != width for row in horizontal_lines.values())
+        if len(body) % width or bad_row_boundaries:
             warnings.append('Recognized financial table has ambiguous missing, extra, or wrapped cells; no facts were extracted from that table.')
-            index = cursor
+            index = max(cursor,index+1)
             continue
         if len(body)//width > 100:
             warnings.append('Recognized financial table exceeds the 100-row extraction budget; no facts were extracted from that table.')
-            index = cursor
+            index = max(cursor,index+1)
             continue
         invalid_rows = 0
         for offset in range(0,len(body),width):
             row = body[offset:offset+width]
             fields = {role:cell for role,cell in zip(roles,row)}
-            name = _clean_name(fields['name'][0])
+            name = _clean_name(fields['name'][0]) if 'name' in fields else owner.name
             date = date_mentions(fields['effective'][0])
             due = date_mentions(fields['due'][0]) if 'due' in fields else []
+            currency = fields['currency'][0].upper() if 'currency' in fields else header_currency
             if (not name or not re.fullmatch(NAME,name) or len(date) != 1
                     or normalize(date[0].raw) != normalize(fields['effective'][0])
-                    or not re.fullmatch(CURRENCIES,fields['currency'][0],re.I)):
+                    or not re.fullmatch(CURRENCIES,currency or '',re.I)
+                    or (header_currency and currency != header_currency)):
                 invalid_rows += 1
                 continue
             if 'due' in fields and (kind != 'capital_call' or len(due) != 1 or normalize(due[0].raw) != normalize(fields['due'][0])):
@@ -391,17 +499,22 @@ def _source_tables(text, warnings=None):
             if 'status' in fields and not re.fullmatch(r'(?i)(?:current|approved|final)',fields['status'][0]):
                 invalid_rows += 1
                 continue
-            source_money = fields['currency'][0]+' '+fields['amount'][0]
+            source_money = currency+' '+fields['amount'][0]
             money = money_mentions(source_money)
             if len(money) != 1 or money[0].start != 0 or money[0].end != len(source_money):
                 invalid_rows += 1
                 continue
-            names.append(NameMention(name,fields['name'][1],fields['name'][2]))
-            events.append(SourceEvent(kind,name,date[0].value,money[0].amount,money[0].currency,
-                                      due[0].value if due else None,cells[index][1],row[-1][2]))
+            amount = format(Decimal(money[0].amount)*multiplier,'f')
+            if len(amount.lstrip('-').split('.')[0]) > 18:
+                invalid_rows += 1
+                continue
+            mention = NameMention(name,fields['name'][1],fields['name'][2]) if 'name' in fields else owner
+            names.append(mention)
+            events.append(SourceEvent(kind,name,date[0].value,amount,currency,
+                                      due[0].value if due else None,min(cells[index][1],mention.start),row[-1][2]))
         if invalid_rows:
             warnings.append('Recognized financial table contains unsupported, invalid, or non-current rows; those rows were excluded and require manual review.')
-        index = cursor
+        index = max(cursor,index+1)
     if any(event.end-event.start > 3000 for event in events):
         warnings.append('Some financial table rows cannot fit a contiguous 3000-character header-and-row evidence quote; those rows require manual review.')
     return events,regions,names
@@ -441,22 +554,40 @@ def _continued_call_kind(units, unit_index, token, names, name):
 
 
 def _entity_context(text,names,name,position):
-    same = [item for item in names if normalize(item.name).casefold() == normalize(name.name).casefold() and item.start <= position]
-    start = max((item.start for item in same),default=0)
-    others = [item for item in names if normalize(item.name).casefold() != normalize(name.name).casefold() and item.start > position]
-    end = min((item.start for item in others),default=len(text))
+    canonical = normalize(name.name).casefold()
+    others = [item for item in names if normalize(item.name).casefold() != canonical]
+    previous = max((item.end for item in others if item.start < position),default=0)
+    same = [item for item in names if normalize(item.name).casefold() == canonical and previous <= item.start <= position]
+    start = min((item.start for item in same),default=previous)
+    # A document-level currency header can scope its first investment, but a
+    # later owner's section never inherits a prior investment's currency.
+    if previous == 0:
+        start = 0
+    end = min((item.start for item in others if item.start > position),default=len(text))
     return text[start:end]
 
 
+def _retraction_subject(head):
+    # Event-first backward references take precedence over kind words that
+    # happen to occur in an investment's legal name.
+    base = r'(?:valuation|NAV|figure|amount|call|distribution|statement|notice)'
+    direct = re.match(r'(?is)\s*(?:The|This|That)\s+(?:(?:preceding|above|previous|stated|reported)\s+)?(?P<kind>'+base+r')\b',head)
+    if direct:
+        return direct.group('kind').casefold()
+    named = re.match(r'(?is)\s*(?:The|This|That)\s+[^.!?\n]{2,200}?\s+(?P<kind>'+base+r')\s+(?:above\s+|previously\s+)?(?:is|was|has|had|must|should)\b',head)
+    return named.group('kind').casefold() if named else None
+
+
 def _next_retracts(next_unit):
-    # A backward reference retracts the preceding event, including when the
-    # corrected amount follows later in the same sentence. A separate older
-    # numeric figure does not retract a preceding explicitly corrected value.
+    # A backward reference can revoke or condition a prior source figure even
+    # when the model crops that later sentence out of its evidence quote.
     money = money_mentions(next_unit)
     head = next_unit[:money[0].start] if money else next_unit
     if re.search(r'(?i)\b(?:this is an example calculation|not the value of your actual|illustration only)\b',head):
         return True
-    return bool(WITHDRAWN.search(head) and re.match(r'(?is)\s*(?:The|This|That)\s+(?:(?:preceding|above|previous|stated|reported)\s+)?(?:valuation|NAV|figure|amount|call|distribution)\b',head))
+    conditional = re.match(r'(?is)\s*(?:This|That|The (?:preceding |above )?(?:value|amount|figure))\b',head) and re.search(
+        r'(?i)\b(?:only if|conditional upon|contingent on|would apply)\b',head)
+    return bool(conditional or (WITHDRAWN.search(head) and _retraction_subject(head)))
 
 
 def _apply_retractions(events, units, names):
@@ -472,12 +603,9 @@ def _apply_retractions(events, units, names):
         if not _next_retracts(unit):
             continue
         head = unit[:money_mentions(unit)[0].start] if money_mentions(unit) else unit
-        subject = re.match(r'(?is)\s*(?:The|This|That)\s+(?:(?:preceding|above|previous|stated|reported)\s+)?(?P<kind>valuation|NAV|figure|amount|call|distribution)\b', head)
-        kind = None
-        if subject:
-            word = subject.group('kind').casefold()
-            kind = {'nav':'valuation', 'valuation':'valuation', 'call':'capital_call',
-                    'distribution':'distribution'}.get(word)
+        word = _retraction_subject(head)
+        kind = {'nav':'valuation','valuation':'valuation','call':'capital_call',
+                'distribution':'distribution'}.get(word)
         candidates = [(index, event) for index, event in enumerate(events)
                       if event.end <= start and event.kind != 'news'
                       and (kind is None or event.kind == kind)]
@@ -486,6 +614,14 @@ def _apply_retractions(events, units, names):
         if explicit_names:
             candidates = [(index,event) for index,event in candidates
                           if normalize(event.investmentName).casefold() in explicit_names]
+        status_marker = WITHDRAWN.search(head) or re.search(r'(?i)\b(?:would|conditional|contingent|only if)\b',head)
+        status_dates = [mention for mention in date_mentions(head) if status_marker and mention.end <= status_marker.start()]
+        if status_dates:
+            # An explicitly dated withdrawal targets that period/deadline,
+            # never an unrelated newer mark just because it appeared last.
+            candidates = [(index,event) for index,event in candidates if all(
+                (event.dueDate if _date_role(head,mention) == 'due' else event.effectiveDate) == mention.value
+                for mention in status_dates)]
         if not candidates:
             continue
         nearest_end = max(event.end for _, event in candidates)
@@ -508,7 +644,7 @@ def _positive_qualifier(unit, words):
     return False
 
 
-def _apply_illustration_scope(events, units, names, table_regions=()):
+def _apply_illustration_scope(events, units, names, table_regions=(), extra_patterns=None):
     """An explicit financial-illustration heading qualifies following source rows.
 
     Generic document metadata does not assert an event's status. A qualifier
@@ -516,11 +652,20 @@ def _apply_illustration_scope(events, units, names, table_regions=()):
     Its scope ends at a different named investment or an explicit actual/approved
     statement of the same financial kind, never simply at a paragraph boundary.
     """
+    extra_patterns = extra_patterns or {}
+    def semantic(unit,kind):
+        return bool(_positive_matches(unit,kind) or (kind in extra_patterns and re.search(extra_patterns[kind],unit,re.I)))
     markers = []
     for start,end,unit in units:
-        if not _positive_qualifier(unit,r'\b(?:illustrative|hypothetical|example|for illustration)\b'):
+        qualifier = _positive_qualifier(unit,r'\b(?:illustrative|hypothetical|example|for illustration)\b')
+        nonactual = bool(re.search(r'(?i)\bnot (?:an? )?actual\b',unit))
+        sample_statement = bool(re.fullmatch(r'(?i)\s*(?:sample|specimen) (?:financial )?(?:statement|notice|valuation)(?: only)?\s*',unit))
+        if not (qualifier or nonactual or sample_statement):
             continue
-        kinds = {kind for kind in KIND_PATTERNS if kind != 'news' and _positive_matches(unit,kind)}
+        generic_nonactual = nonactual and bool(re.search(r'(?i)\b(?:figures|amounts|values)\b',unit))
+        kinds = ({kind for kind in KIND_PATTERNS if kind != 'news'} if sample_statement or generic_nonactual else
+                 {kind for kind in KIND_PATTERNS if kind != 'news' and
+                  (re.search(KIND_PATTERNS[kind],unit,re.I) or (kind in extra_patterns and re.search(extra_patterns[kind],unit,re.I)) if nonactual else semantic(unit,kind))})
         if not kinds:
             continue
         name = _name_for(names,start,end,end-1)
@@ -542,7 +687,7 @@ def _apply_illustration_scope(events, units, names, table_regions=()):
                 continue
             if not in_table and any(end <= item.start < event.end and normalize(item.name).casefold() != name for item in names):
                 continue
-            reset = any(end <= unit_start < event.end and _positive_matches(unit,event.kind)
+            reset = any(end <= unit_start < event.end and semantic(unit,event.kind)
                         and _positive_qualifier(unit,r'\b(?:actual|approved|final)\b')
                         and not _positive_qualifier(unit,r'\b(?:illustrative|hypothetical|example|for illustration)\b')
                         for unit_start,_,unit in units)
@@ -599,11 +744,11 @@ def source_events(text: str, investment_hint: str | None = None) -> list[SourceE
         if 'news' in kinds:
             kinds = ['news'] if not (set(kinds)-{'news'}) or not tokens else kinds
         for kind in kinds:
-            if re.fullmatch(r'\s*(?:valuation statement|capital call notice|distribution confirmation)\s*',unit,re.I):
+            if re.fullmatch(r'\s*(?:valuation statement|capital call notice|distribution confirmation)(?:\s+(?:no[.]?\s*)?\d+)?\s*',unit,re.I):
                 continue
             if kind != 'news' and (tokens or not re.search(r'(?i)\b(?:pending|under .*review|not available|no approved value|unknown|valuation statement|capital call notice|distribution confirmation)\b', unit)):
                 continue
-            if kind == 'news' and not re.search(r'(?i)\b(?:appointed|announced|launched|resigned|new director|joins? the board|news update|company update|investment update|portfolio update)\b', unit):
+            if kind == 'news' and not re.search(r'(?i)\b(?:appointed|announced|launched|resigned|new director|joins? the board|news update|company update|investment update|portfolio update|opened|operating update)\b', unit):
                 continue
             name = _name_for(names,start,end,start+len(unit)//2)
             if not name:

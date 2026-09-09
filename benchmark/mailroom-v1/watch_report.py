@@ -129,6 +129,11 @@ def generation(run, decoded, corpus, results_bytes, timeout):
         atomic_bytes(stage / 'results.json', results_bytes)
         # The scorer only reads attempts. Large immutable originals are not copied.
         (stage / 'attempts').symlink_to(run / 'attempts', target_is_directory=True)
+        for name in ['model-attempts', 'model-images']:
+            if (run / name).is_dir():
+                (stage / name).symlink_to(run / name, target_is_directory=True)
+        if (run / 'model-recording-context.json').is_file():
+            atomic_bytes(stage / 'model-recording-context.json', bounded_bytes(run / 'model-recording-context.json'))
         commands = [
             [sys.executable, str(ROOT / 'score.py'), '--run', str(stage), '--decoded', str(decoded), '--corpus', str(corpus)],
             [sys.executable, str(ROOT / 'render_report.py'), '--run', str(stage), '--corpus', str(corpus)],

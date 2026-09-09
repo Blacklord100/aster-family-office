@@ -16,6 +16,69 @@ SPEC.loader.exec_module(score)
 
 
 class Controls(unittest.TestCase):
+    def test_tool_events_distinguish_availability_from_actual_return(self):
+        activity = score.tool_activity({'trace': [
+            {'stage': 'model_capabilities', 'status': 'ok', 'detail': 'image input available'},
+            {'stage': 'vision', 'status': 'skipped'},
+            {'stage': 'vision', 'status': 'ok'},
+            {'stage': 'vision_result', 'status': 'ok'},
+            {'stage': 'agent_search', 'status': 'ok'},
+            {'stage': 'agent_layout', 'status': 'ok'},
+            {'stage': 'workflow_retry', 'status': 'ok'},
+            {'stage': 'trace_limit', 'status': 'warning'},
+        ]})
+        self.assertEqual(activity['visionRequestTraceCount'], 1)
+        self.assertEqual(activity['visionResponseTraceCount'], 1)
+        self.assertEqual(activity['visionUnavailableTraceCount'], 1)
+        self.assertEqual(activity['agentSearches'], 1)
+        self.assertEqual(activity['agentLayoutInspections'], 1)
+        self.assertEqual(activity['workflowRevisits'], 1)
+        self.assertTrue(activity['traceTruncated'])
+
+    def test_model_recording_is_unknown_when_absent_and_bound_to_planned_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Path(temporary)
+            planned = {'id': 'job', 'documentId': 'document', 'sourceId': 'case', 'model': 'gemma4:e4b-m3', 'mode': 'workflow'}
+            self.assertIsNone(score.recorded_model_usage(run, planned)['chatRequests'])
+            directory = run / 'model-attempts/job/attempt'; directory.mkdir(parents=True)
+            self.assertFalse(score.recorded_model_usage(run, planned)['available'])
+            self.assertIsNone(score.recorded_model_usage(run, planned)['chatRequests'])
+            decoded = run / 'decoded'; decoded.mkdir()
+            recorder = score.recorder
+            recorder.write(run / 'preflight-plan.json', {'manifestSha256': 'same', 'work': [planned]})
+            recorder.write(decoded / 'decode-index.json', {'decoderUnchanged': True, 'manifestSha256': 'same',
+                           'rows': [{'caseId': 'case', 'sourceSha256': 'original', 'pageImages': []}]})
+            recorder.Registry(run, decoded, preflight=True)
+            request = json.dumps({'model': planned['model'], 'stream': False,
+                                  'messages': [{'role': 'user', 'content': 'Synthetic'}]}).encode()
+            (directory / 'request.template.bin').write_bytes(request)
+            response = b'{"done":true}'
+            (directory / 'response.bin').write_bytes(response)
+            metadata = {'jobId': 'job', **{key: planned[key] for key in ['documentId', 'sourceId', 'model', 'mode']},
+                        'path': '/api/chat', 'finishedAt': '2026-09-09T00:00:00Z', 'imageCount': 0, 'imageProvenance': [], 'imageReplacements': [],
+                        'requestBytes': len(request), 'requestSha256': recorder.digest(request),
+                        'templateSha256': recorder.digest(request), 'responseBytes': len(response),
+                        'responseSha256': recorder.digest(response)}
+            (directory / 'attempt.json').write_text(json.dumps(metadata))
+            usage = score.recorded_model_usage(run, planned)
+            self.assertEqual(usage['chatRequests'], 1)
+            self.assertEqual(usage['chatRequestsWithImages'], 0)
+            completed_at = metadata.pop('finishedAt')
+            (directory / 'attempt.json').write_text(json.dumps(metadata))
+            pending = score.recorded_model_usage(run, planned)
+            self.assertFalse(pending['available'])
+            self.assertEqual(pending['pendingRecords'], 1)
+            self.assertIsNone(pending['chatRequests'])
+            metadata['finishedAt'] = completed_at
+            metadata['imageCount'] = 4
+            (directory / 'attempt.json').write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, 'image metadata'):
+                score.recorded_model_usage(run, planned)
+            metadata['model'] = 'different-model'
+            (directory / 'attempt.json').write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, 'identity'):
+                score.recorded_model_usage(run, planned)
+
     def test_nearest_rank_p95_is_observed_not_interpolated(self):
         self.assertIsNone(score.nearest_rank_p95([None]))
         self.assertEqual(score.nearest_rank_p95([None, 8]), 8)

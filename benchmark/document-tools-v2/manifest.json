@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "expectedDocuments": 10,
+  "files": {
+    "sources/model-only-fair-value.txt": "30dec3b40c684b2193091d688ba4d616951215a8d3020f34d54bf8409f84435d",
+    "sources/model-only-requested-contribution.txt": "6235ce9e6c20ccafeea9f4459b9875b059d355d9c632e6f0deee53bc6c9def4e",
+    "sources/model-only-cash-payout.txt": "9306a3c38e1a655e5880cf2e16030f7a94dccaef38f612be53bf214341be5ee3",
+    "sources/model-only-commenced-operations.txt": "2a9143636d7b02d99eb05c315ab17b76252adbaed5db30eebdb746f69f8a6245",
+    "sources/model-only-ambiguous-dollar.txt": "6ca10469a7eb91e22e480aeb2315dfffb791f02af6822070330edac212f78350",
+    "sources/model-only-withdrawn-mark.txt": "108b298e1f4b623cc5056646bfca73e9ef738e3a58aa373d18ec3604e3a4a44e",
+    "sources/model-only-illustrative-mark.txt": "dca46b0eac414a98dd7cafd18ffaad2c01168d0496e499fba5381a0002566429",
+    "sources/model-only-negated-funding.txt": "babd55b0f1632d8d50d2a54203932d716e52d9b538f90cfc1705822124496923",
+    "sources/operating-invoice.txt": "f4dabbb536d88ce9c20a9a66fcd5efec41f6383af4c19c2a88f6535e30be5d3a",
+    "sources/model-only-instruction-boundary.txt": "ebfc7e41c4dece6a52d0cb2838285389671a9f0ab3892867c7275ed82ced6d27",
+    "holdout.json": "15f79a59041a8607538c64439f9a6cd0041a17d05921962b4e4e03c095c6b374"
+  }
+}

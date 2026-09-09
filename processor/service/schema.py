@@ -77,6 +77,23 @@ class ModelFacts(StrictModel):
     facts: list[Fact] = Field(max_length=30)
 
 
+class SourceReference(StrictModel):
+    page: int = Field(ge=1, le=60)
+    sourceId: str = Field(min_length=1, max_length=80)
+
+
+class ReferencedFact(Fact):
+    """Internal proposal; only the application can turn a source ID into evidence."""
+    evidence: SourceReference
+
+
+class ReferencedModelFacts(ModelFacts):
+    # Exact-quote legacy responses remain independently validated. The schema
+    # sent to new model calls requests source IDs, avoiding quote transcription.
+    facts: list[ReferencedFact | Fact] = Field(max_length=30)
+
+
 class AgentAction(StrictModel):
-    action: Literal['read_page', 'extract', 'finish']
+    action: Literal['read_page', 'search', 'inspect_layout', 'inspect_image', 'extract', 'review_coverage', 'finish']
     page: int | None
+    query: str | None = Field(default=None, min_length=1, max_length=160)

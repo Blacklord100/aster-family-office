@@ -142,6 +142,8 @@ async function fingerprint() {
     'processor/requirements.lock.txt',
     'processor/corpus/train.json',
     'benchmark/mailroom-v1/collect.ts',
+    'benchmark/mailroom-v1/decode_sources.py',
+    'benchmark/mailroom-v1/record_models.py',
   ];
   files.push(
     ...(await readdir(join(app, 'processor/service')))
@@ -1051,7 +1053,7 @@ async function run() {
         'Unmodified scripts/worker.ts, production lease/retry/persistence path',
       retainedEveryHttpAttempt: true,
       modelCalls:
-        'Actual production trace model_usage; raw processor request/result retained. Raw Ollama transport is not instrumented.',
+        'Actual production trace model_usage; exact processor requests/results retained. Optional raw model recording is preserved and independently audited by record_models.py.',
       noAutomaticAcceptance: true,
     });
   }

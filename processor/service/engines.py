@@ -6,8 +6,8 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .config import Settings
-from .schema import StrictModel, ModelFacts, Fact
-from .ollama import LocalOllama, LocalModelError, SYSTEM
+from .schema import StrictModel
+from .ollama import LocalOllama, LocalModelError, SYSTEM, fact_item_adapter
 
 
 class EngineSelection(StrictModel):
@@ -67,6 +67,10 @@ def cloud_schema(schema):
 
 
 class CloudModel:
+    # Image delivery requires a separately approved provider adapter; local
+    # document tools must never silently upload pages when cloud text is chosen.
+    supports_vision = False
+
     def __init__(self, settings: Settings, engine: EngineSelection):
         if not settings.allow_cloud_engines or engine.execution != 'cloud':
             raise LocalModelError('cloud_engine_disabled')
@@ -98,7 +102,10 @@ class CloudModel:
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             raise LocalModelError('provider_unavailable_or_invalid_json') from exc
 
-    def structured(self, schema: type[BaseModel], prompt: str, output_schema: dict | None = None):
+    def structured(self, schema: type[BaseModel], prompt: str, output_schema: dict | None = None,
+                   images: list[str] | None = None):
+        if images is not None and images != []:
+            raise LocalModelError('provider_vision_not_enabled')
         self.calls += 1
         required = cloud_schema(output_schema or schema.model_json_schema())
         prompt += '\nReturn the required JSON object with result containing the requested answer.'
@@ -144,14 +151,15 @@ class CloudModel:
             try:
                 return schema.model_validate(value)
             except (ValueError, TypeError):
-                if schema is ModelFacts and isinstance(value, dict) and set(value) == {'facts'} and isinstance(value['facts'], list) and len(value['facts']) <= 30:
+                item_adapter = fact_item_adapter(schema)
+                if item_adapter is not None and isinstance(value, dict) and set(value) == {'facts'} and isinstance(value['facts'], list) and len(value['facts']) <= 30:
                     valid = []
                     for item in value['facts']:
                         try:
-                            valid.append(Fact.model_validate(item))
+                            valid.append(item_adapter.validate_python(item, strict=True))
                         except (ValueError, TypeError):
                             self.rejected_candidates += 1
-                    return ModelFacts(facts=valid)
+                    return schema(facts=valid)
                 raise
         except (ValueError, TypeError) as exc:
             raise LocalModelError('model_schema_invalid') from exc

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "document-tools-v2-development",
+  "provenance": "Independently worded synthetic capability probes authored after source-parser repairs, before actual model runs. Developer-reviewed expected fields; not an unseen population accuracy holdout. Sources contain no expected answers or engine hints. Only the validation harness reads this gold file.",
+  "factsFields": [
+    "kind",
+    "investmentName",
+    "effectiveDate",
+    "amount",
+    "currency",
+    "dueDate"
+  ],
+  "cases": [
+    {
+      "id": "model-only-fair-value",
+      "path": "sources/model-only-fair-value.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "seabrook energy syndicate",
+          "effectiveDate": "2026-08-31",
+          "amount": "574926.38",
+          "currency": "USD",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "seabrook energy syndicate",
+            "574,926.38"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-only-requested-contribution",
+      "path": "sources/model-only-requested-contribution.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "tamarisk venture pool",
+          "effectiveDate": "2026-09-07",
+          "amount": "24168.73",
+          "currency": "EUR",
+          "dueDate": "2026-09-28",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "tamarisk venture pool",
+            "24,168.73"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-only-cash-payout",
+      "path": "sources/model-only-cash-payout.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "moss vale credit partnership",
+          "effectiveDate": "2026-09-06",
+          "amount": "38172.46",
+          "currency": "GBP",
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "moss vale credit partnership",
+            "38,172.46"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-only-commenced-operations",
+      "path": "sources/model-only-commenced-operations.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "orchid route systems",
+          "effectiveDate": "2026-09-08",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "orchid route systems"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-only-ambiguous-dollar",
+      "path": "sources/model-only-ambiguous-dollar.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "heather coast growth pool",
+          "effectiveDate": "2026-08-31",
+          "amount": "198375.42",
+          "currency": null,
+          "dueDate": null,
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "heather coast growth pool",
+            "198,375.42"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-only-withdrawn-mark",
+      "path": "sources/model-only-withdrawn-mark.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": []
+    },
+    {
+      "id": "model-only-illustrative-mark",
+      "path": "sources/model-only-illustrative-mark.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": []
+    },
+    {
+      "id": "model-only-negated-funding",
+      "path": "sources/model-only-negated-funding.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": []
+    },
+    {
+      "id": "operating-invoice",
+      "path": "sources/operating-invoice.txt",
+      "category": "candidate-grounding-development",
+      "relevant": false,
+      "facts": []
+    },
+    {
+      "id": "model-only-instruction-boundary",
+      "path": "sources/model-only-instruction-boundary.txt",
+      "category": "candidate-grounding-development",
+      "relevant": true,
+      "facts": []
+    }
+  ]
+}

@@ -1,10 +1,12 @@
 """Source-grounded candidate generation and validation shared by both execution modes."""
+from collections import Counter
 from decimal import Decimal
 import re
 from .documents import Page
 from .schema import Fact
 from .source_parsing import CURRENCIES, date_mentions, money_mentions, mask_instructions, normalize
 from .source_events import KIND_PATTERNS, source_events, has_candidate_financial_text, has_event_semantics
+from .candidate_grounding import candidate_source_events, candidate_has_semantics
 
 KINDS = KIND_PATTERNS
 # Kept as a compatibility name; structured callers should use money_mentions.
@@ -21,6 +23,22 @@ def _equal(key, a, b):
     return Decimal(a) == Decimal(b) if key == 'amount' and a is not None and b is not None else a == b
 
 
+def _layout_source_events(page):
+    layout = getattr(page,'layout_text',None)
+    if not layout:
+        return []
+    # A layout view can reorder the same source tokens, never add numeric text
+    # or omit a native withdrawal/instruction. Refuse a lossy alternate view.
+    tokenize = lambda value: Counter(re.findall(r'\w+|[^\w\s]',value))
+    if tokenize(layout) != tokenize(page.text):
+        return []
+    # Geometric PDF layout uses horizontal padding for cell gaps. Only this
+    # decoder-provided view may interpret those gaps; ordinary native prose is
+    # never globally split on multiple spaces or rewritten as a table.
+    table_view = re.sub(r'[ \t]{2,}','\t',layout)
+    return source_events(table_view)
+
+
 def verify_fact(fact: Fact, pages: list[Page]) -> tuple[Fact | None, str | None]:
     page = next((page for page in pages if page.number == fact.evidence.page and
                  normalize(fact.evidence.quote) in normalize(page.text)), None)
@@ -30,16 +48,30 @@ def verify_fact(fact: Fact, pages: list[Page]) -> tuple[Fact | None, str | None]
     if normalize(fact.investmentName).casefold() not in quote.casefold():
         return None, 'investment_not_in_quote'
     safe_quote = mask_instructions(fact.evidence.quote)
-    if not has_event_semantics(safe_quote,fact.kind):
+    if not (has_event_semantics(safe_quote,fact.kind) or candidate_has_semantics(safe_quote,fact.kind)):
         return None, 'event_kind_not_supported'
     # Validate roles against the full provided source, preventing a quote from hiding
     # a withdrawal/negation or borrowing another investment's amount/date.
     events = [event for event in source_events(page.text)
               if normalize(event.investmentName).casefold() == normalize(fact.investmentName).casefold()
               and event.kind == fact.kind]
+    # Candidate-directed roles are a separate verifier. A literal owner and
+    # local proposition can be supported even when enumeration missed the
+    # wording or one of several reporting periods for this same investment.
+    # Every witness still passes complete-source ownership/status checks.
+    events += candidate_source_events(page.text,fact)
+    quoted_events = source_events(safe_quote)+candidate_source_events(safe_quote,fact)
+    if getattr(page,'layout_text',None) and normalize(fact.evidence.quote) == normalize(page.text):
+        # Geometric layout is decoded from these same original page bytes. Only
+        # a complete native page quote can use reordered layout role evidence:
+        # cropped cross-view quotes require a future explicit span mapping.
+        layout_events = [event for event in _layout_source_events(page)
+                  if normalize(event.investmentName).casefold() == normalize(fact.investmentName).casefold()
+                  and event.kind == fact.kind]
+        events += layout_events
+        quoted_events += layout_events
     if not events:
-        return None, 'event_kind_not_supported'
-    quoted_events = source_events(safe_quote)
+        return None, 'source_candidate_roles_not_supported'
     quoted_amounts = money_mentions(safe_quote)
     if fact.amount is not None and not any(Decimal(value.amount) == Decimal(fact.amount) and
                                           (value.currency == fact.currency or value.currency is None)
@@ -160,7 +192,7 @@ def source_event_blocks(pages: list[Page]) -> list[dict]:
 
 def has_unresolved_financial_text(page: Page, facts: list[Fact]) -> bool:
     """Conservative coverage signal; a single good rule fact does not certify a page."""
-    if not has_candidate_financial_text(page.text):
+    if not (has_candidate_financial_text(page.text) or any(candidate_has_semantics(page.text,kind) for kind in KINDS)):
         return False
     events = source_events(page.text)
     if not events:

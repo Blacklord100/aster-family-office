@@ -286,5 +286,221 @@
     "synthetic": true,
     "relevant": false,
     "text": "Special offer on gym membership and personal training sessions."
+  },
+  {
+    "id": "train-ops-0-00",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Supplier invoice for reception cleaning at the investment office. Accounts payable should settle the service charge."
+  },
+  {
+    "id": "train-ops-0-01",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Payroll file for fund administration staff: salaries, employer contributions and pension deductions for the month."
+  },
+  {
+    "id": "train-ops-0-02",
+    "synthetic": true,
+    "relevant": false,
+    "text": "IT support bill covering laptop repairs for the investor relations team and renewal of the office firewall licence."
+  },
+  {
+    "id": "train-ops-0-03",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Building maintenance contractor requests payment for the family office air conditioning inspection."
+  },
+  {
+    "id": "train-ops-0-04",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Administrative supplies invoice: envelopes, printer paper and binders for the investment managers."
+  },
+  {
+    "id": "train-ops-0-05",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Office rent and utility charges payable by the holding company for its own premises."
+  },
+  {
+    "id": "train-ops-0-06",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Staff travel reimbursement: train fares, hotel receipts and parking for an investor conference."
+  },
+  {
+    "id": "train-ops-0-07",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Please approve the telephone service invoice charged to the fund administration office budget."
+  },
+  {
+    "id": "train-ops-0-08",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Fund operations team rota and payroll schedule. Please confirm holiday coverage and timesheets."
+  },
+  {
+    "id": "train-ops-0-09",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Catering supplier invoice for the investment committee lunch. Meal costs and sales tax are listed."
+  },
+  {
+    "id": "train-ops-0-10",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Cybersecurity maintenance bulletin for the portfolio reporting software. Scheduled password rotation this weekend."
+  },
+  {
+    "id": "train-ops-0-11",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The investment office subscription receipt covers video conferencing accounts for employees."
+  },
+  {
+    "id": "train-ops-0-12",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Cleaning service invoice. No investment report or capital distribution is enclosed; these are supplier charges."
+  },
+  {
+    "id": "train-ops-0-13",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Internal budget for fund administration stationery. No valuation is provided and no capital has been requested from investors."
+  },
+  {
+    "id": "train-ops-1-00",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Investment administrator correction: the previously published net asset value has been withdrawn; the replacement amount is not yet approved."
+  },
+  {
+    "id": "train-ops-1-01",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Investor funding notice: the contribution requested and payment deadline will follow after legal review."
+  },
+  {
+    "id": "train-ops-1-02",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The valuation of your holding remains pending. No approved amount is available for this reporting period."
+  },
+  {
+    "id": "train-ops-1-03",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Portfolio company operating update: the business commenced production at its new factory."
+  },
+  {
+    "id": "train-ops-1-04",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Your holding in the investment vehicle was carried at fair value at the reporting cut-off."
+  },
+  {
+    "id": "train-ops-1-05",
+    "synthetic": true,
+    "relevant": true,
+    "text": "An invested company secured regulatory approval and began operating its overseas subsidiary."
+  },
+  {
+    "id": "train-ops-1-06",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Please find an office service invoice and a separate investor distribution notice in the attached document pack."
+  },
+  {
+    "id": "train-ops-1-07",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The administrator invoice includes expenses; separately the fund reports your revised investor NAV and the effective valuation date."
+  },
+  {
+    "id": "train-ops-1-08",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Withdrawal of the previously issued capital call. Investors must disregard the original payment request until a corrected notice is sent."
+  },
+  {
+    "id": "train-ops-1-09",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Portfolio manager update: the underlying investment business completed a merger with a competitor."
+  },
+  {
+    "id": "train-ops-1-10",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The accountant reports cash proceeds remitted to your partnership interest and the return of invested capital."
+  },
+  {
+    "id": "train-ops-1-11",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Quarterly reconciliation: investor statement figures are disputed and require review against manager confirmations."
+  },
+  {
+    "id": "train-ops-1-12",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Capital call allocation includes management fees and operating expenses. The total requested from your investment interest is stated in the notice."
+  },
+  {
+    "id": "train-ops-1-13",
+    "synthetic": true,
+    "relevant": true,
+    "text": "This investor document contains no new valuation, but an older reported mark is superseded and must be reviewed."
+  },
+  {
+    "id": "train-context-00",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Dispatch notification: the delivery driver has delivered a retail purchase to the collection point."
+  },
+  {
+    "id": "train-context-01",
+    "synthetic": true,
+    "relevant": false,
+    "text": "A replacement household appliance is on its way from the retailer. Use the parcel tracking service for delivery updates."
+  },
+  {
+    "id": "train-context-02",
+    "synthetic": true,
+    "relevant": false,
+    "text": "Customer service confirms that the new clothing order has been packed for shipping."
+  },
+  {
+    "id": "train-context-03",
+    "synthetic": true,
+    "relevant": false,
+    "text": "The courier service requests updated delivery instructions for your personal shopping parcel."
+  },
+  {
+    "id": "train-context-04",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The investment manager is evaluating a potential acquisition for the fund; no agreement is signed and the allocation remains undisclosed."
+  },
+  {
+    "id": "train-context-05",
+    "synthetic": true,
+    "relevant": true,
+    "text": "A co-investment opportunity is under review by two portfolio managers. The relationship contact and target company are listed."
+  },
+  {
+    "id": "train-context-06",
+    "synthetic": true,
+    "relevant": true,
+    "text": "Deal screening update: the investment committee is considering a minority position in an operating business."
+  },
+  {
+    "id": "train-context-07",
+    "synthetic": true,
+    "relevant": true,
+    "text": "The venture partnership announced that it is assessing a prospective portfolio investment and introduced the transaction contact."
   }
 ]

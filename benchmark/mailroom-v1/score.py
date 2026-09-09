@@ -19,6 +19,9 @@ APP = ROOT.parent.parent
 SPEC = importlib.util.spec_from_file_location('strict_source_score', ROOT.parent / 'holdout-v1' / 'score.py')
 strict = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(strict)
+RECORD_SPEC = importlib.util.spec_from_file_location('strict_model_recordings', ROOT / 'record_models.py')
+recorder = importlib.util.module_from_spec(RECORD_SPEC)
+RECORD_SPEC.loader.exec_module(recorder)
 
 
 def write(path, data):
@@ -41,12 +44,80 @@ def calls(output):
     import re
     for step in (output or {}).get('trace', []):
         if step.get('stage') == 'model_usage':
-            match = re.match(r'(\d+) local structured model calls;', step.get('detail', ''))
+            match = re.match(r'(\d+) (?:local|cloud) structured model calls;', step.get('detail', ''))
             if match:
                 return int(match.group(1))
     if output and output.get('model') is None and any(step.get('stage') == 'coverage' for step in output.get('trace', [])):
         return 0
     return None
+
+
+def tool_activity(output):
+    traces = (output or {}).get('trace', [])
+    def count(stage, status='ok'):
+        return sum(step.get('stage') == stage and step.get('status') == status for step in traces)
+    return {'visionRequestTraceCount': count('vision'), 'visionResponseTraceCount': count('vision_result'),
+            'visionUnavailableTraceCount': count('vision', 'skipped'), 'layoutContextTraceCount': count('layout'),
+            'agentReads': count('agent_read'), 'agentSearches': count('agent_search'),
+            'agentLayoutInspections': count('agent_layout'), 'agentCoverageReviews': count('agent_coverage'),
+            'workflowRevisits': count('workflow_retry'),
+            'traceTruncated': any(step.get('stage') == 'trace_limit' for step in traces)}
+
+
+def recorded_model_usage(run, planned, registry=None):
+    root = run / 'model-attempts'
+    if not root.is_dir():
+        return {'available': False, 'chatRequests': None, 'chatRequestsWithImages': None}
+    records, pending = [], 0
+    for path in sorted((root / planned['id']).glob('*/attempt.json')):
+        row = json.loads(path.read_text())
+        if any(row.get(recorded) != planned.get(expected) for recorded, expected in
+               [('jobId', 'id'), ('documentId', 'documentId'), ('model', 'model'), ('mode', 'mode'), ('sourceId', 'sourceId')]):
+            raise ValueError('Recorded model request identity does not match planned source/model.')
+        if not row.get('finishedAt'):
+            pending += 1
+            continue
+        if registry is None:
+            registry = recorder.audit_registry(run)
+        records.append(recorder.verified_attempt(run, path, registry))
+    if not records:
+        return {'available': False, 'recorderDirectoryPresent': True,
+                'chatRequests': None, 'chatRequestsWithImages': None, 'pendingRecords': pending,
+                'reason': 'No model request records for this job; directory presence is not proof of zero calls.'}
+    return {'available': True, 'requestBytesAndSourceProvenanceVerified': True, 'pendingRecords': pending,
+            'showRequests': sum(row.get('path') == '/api/show' for row in records),
+            'chatRequests': sum(row.get('path') == '/api/chat' for row in records),
+            'chatRequestsWithImages': sum(row.get('path') == '/api/chat' and row.get('imageCount', 0) > 0 for row in records),
+            'imageSubmissions': sum(row.get('imageCount', 0) for row in records),
+            'transportErrors': sum(bool(row.get('errorCode')) for row in records)}
+
+
+def source_registry(directory, state, sources):
+    path = directory / 'decode-index.json'
+    if not path.exists():
+        return None
+    index = json.loads(path.read_text())
+    if index.get('manifestSha256') != state['manifestSha256'] or index.get('decoderUnchanged') is not True:
+        raise ValueError('Independent decode manifest or decoder identity is invalid.')
+    if any(state.get('processor', {}).get(name) != expected for name, expected in index['decoderBefore'].items()):
+        raise ValueError('Independent decoded sources do not match the frozen decoder.')
+    if len(index['rows']) != len(sources) or {row['caseId'] for row in index['rows']} != set(sources):
+        raise ValueError('Independent source registry must cover every frozen original.')
+    for source in index['rows']:
+        if source['caseId'] not in sources or sources[source['caseId']]['sha256'] != source['sourceSha256']:
+            raise ValueError('Independent source registry differs from frozen originals.')
+        artifact = directory / (source['caseId'] + '.json')
+        if sha256(artifact.read_bytes()).hexdigest() != source['artifactSha256']:
+            raise ValueError('Independent decoded source artifact changed.')
+        for page in source['pageImages']:
+            image = (directory / page['path']).resolve()
+            if not image.is_relative_to(directory.resolve()):
+                raise ValueError('Rendered image path escapes source registry.')
+            raw = image.read_bytes()
+            if len(raw) != page['bytes'] or sha256(raw).hexdigest() != page['sha256']:
+                raise ValueError('Rendered source image changed.')
+    return {key: index[key] for key in ['manifestSha256', 'goldSha256', 'decoderBefore', 'decoderUnchanged',
+                                      'documents', 'decoded', 'blocked', 'documentsWithAnchorIssues', 'ocrPages', 'renderedPageImages']}
 
 
 def nearest_rank_p95(values):
@@ -89,6 +160,11 @@ def summarize(rows, which):
         durations = [row['wallSeconds'] for row in evaluated if row['wallSeconds'] is not None]
         finished = sum(row['status'] in ['completed', 'failed'] for row in evaluated)
         summary.append({'cell': cell, 'model': model, 'mode': mode, 'planned': len(grouped), 'finished': finished, 'pending': len(grouped) - finished, 'complete': finished == len(grouped), 'validResults': sum(score['validOutputEnvelope'] for score in scores), 'factPerfectDocuments': sum(score['factPerfect'] for score in scores), 'classificationCorrect': sum(score['classificationCorrect'] for score in scores), 'goldFacts': expected, 'returnedFacts': returned, 'supportedExactFacts': exact, 'missedOrPendingFacts': expected - exact, 'unsupportedFacts': returned - exact, 'precision': exact / returned if returned else None, 'fullPlanRecall': exact / expected if expected else None, 'reviewCorrectionProxyUnits': sum(score['reviewCorrectionProxy']['totalUnits'] for score in scores), 'criticalBoundaryFailures': sum(len(score['criticalBoundaryFailures']) for score in scores), 'executionFailures': sum(row['status'] == 'failed' for row in evaluated), 'inferenceWarnings': sum(any(step.get('status') == 'error' for step in (row.get('output') or {}).get('trace', [])) for row in evaluated), 'attemptsWithActualModelCalls': sum((row['modelChatCalls'] or 0) > 0 for row in evaluated), 'structuredModelCalls': sum(row['modelChatCalls'] or 0 for row in evaluated), 'wallSecondsSum': sum(durations), 'wallSecondsMedian': median(durations) if durations else None, 'wallSecondsP95': nearest_rank_p95(durations), 'wallSecondsMax': max(durations) if durations else None})
+    for entry in summary:
+        grouped = [row for row in rows if (row['cell'], row['model'], row['mode']) ==
+                   (entry['cell'], entry['model'], entry['mode'])]
+        activity = [tool_activity(row[which].get('output')) for row in grouped]
+        entry['toolActivity'] = {key: sum(row[key] for row in activity) for key in activity[0]} if activity else {}
     return summary
 
 
@@ -110,8 +186,10 @@ def main():
     state = json.loads((args.run / 'state.json').read_text())
     if state['manifestSha256'] != sha256((corpus / 'manifest.json').read_bytes()).hexdigest():
         raise ValueError('Run manifest identity does not match this corpus.')
+    registry = source_registry(args.decoded, state, sources)
     results = {row['id']: row for row in json.loads((args.run / 'results.json').read_text())} if (args.run / 'results.json').exists() else {}
     collection = json.loads((args.run / 'collection.json').read_text()) if (args.run / 'collection.json').exists() else None
+    model_registry = recorder.audit_registry(args.run, args.decoded) if any((args.run / 'model-attempts').glob('*/*/attempt.json')) else None
     source_rows, receipt_rows = [], []
     for planned in state['work']:
         row = results.get(planned['id'], {**planned, 'status': 'unrun', 'output': None})
@@ -132,6 +210,9 @@ def main():
             final_status = 'completed' if final_output else 'failed' if row['status'] == 'failed' else 'pending' if row['status'] != 'unrun' else 'unrun'
             scored = {'caseId': source_id, 'officeId': source['office_id'], 'mailboxId': source['mailbox_id'], 'category': source.get('category'), 'tags': source.get('tags', []), 'filename': source['filename'], 'duplicateOf': source.get('duplicate_of'), 'sourceSha256': source['sha256'], 'jobId': planned['id'], 'documentId': planned['documentId'], 'cell': planned['cell'], 'model': planned['model'], 'mode': planned['mode'], 'status': row['status'], 'errorCode': row.get('errorCode'), 'sharedReceiptIds': planned['sourceIds'], 'collection': {'persistedOriginal': source_id in state['sources'], 'receiptCounted': True, 'originalPreserved': True}, 'decode': decode, 'expectedFacts': case['facts'], 'reviewBoundaries': case.get('review_boundaries', case.get('reviewBoundaries', [])), 'reviewExpectation': case.get('reviewExpectation', {}), 'constituentProbes': case.get('constituent_probes', case.get('constituentProbes')), 'expectedSafeInputBlock': (case.get('reviewExpectation') or {}).get('expectedSafeInputBlock', case.get('expectedSafeInputBlock')),  'unavailableSourceFacts': case.get('unavailableSourceFacts', []), 'firstAttempt': {'status': first_status, 'httpStatus': first.get('httpStatus') if first else None, 'wallSeconds': first.get('wallSeconds') if first else None, 'score': score_case(case, first_output, pages), 'modelChatCalls': calls(first_output), 'warnings': (first_output or {}).get('warnings', []), 'output': first_output}, 'final': {'status': final_status, 'wallSeconds': attempts[-1].get('wallSeconds') if attempts else None, 'score': score_case(case, final_output, pages), 'modelChatCalls': calls(final_output), 'warnings': (final_output or {}).get('warnings', []), 'output': final_output}, 'processingHttpAttempts': len(attempts), 'allAttemptWallSeconds': sum(attempt.get('wallSeconds', 0) for attempt in attempts), 'automaticAcceptance': False, 'reviewRevision': row.get('reviewRevision'), 'attempts': [{key: value for key, value in attempt.items() if key != 'output'} for attempt in attempts]}
             receipt_rows.append(scored)
+            scored['firstAttempt']['toolActivity'] = tool_activity(first_output)
+            scored['final']['toolActivity'] = tool_activity(final_output)
+            scored['recordedModelUsageAllAttempts'] = recorded_model_usage(args.run, planned, model_registry)
             if source_id == planned['sourceId']:
                 source_rows.append(scored)
     matrix = {'uniqueSourcesFirstAttempt': summarize(source_rows, 'firstAttempt'), 'uniqueSourcesStoredFinal': summarize(source_rows, 'final'), 'receiptsFirstAttempt': summarize(receipt_rows, 'firstAttempt'), 'receiptsStoredFinal': summarize(receipt_rows, 'final')}
@@ -152,6 +233,19 @@ def main():
                 disagreements.append({'model': model, 'caseId': case_id, 'workflowExact': left['final']['score']['supportedExactMatches'], 'agenticExact': right['final']['score']['supportedExactMatches'], 'workflowUnsupported': len(left['final']['score']['unsupportedFacts']), 'agenticUnsupported': len(right['final']['score']['unsupportedFacts'])})
     report = {'version': 1, 'generatedAt': datetime.now(timezone.utc).isoformat(), 'runId': state['runId'], 'manifestSha256': state['manifestSha256'], 'inventory': state['inventory'], 'collection': collection, 'matrix': matrix, 'categories': category_matrix, 'modeDisagreements': disagreements, 'rows': receipt_rows, 'uniqueSourceRows': source_rows, 'allPlannedReceiptEvaluationsPresent': len(receipt_rows) == 400, 'processingHttpAttempts': sum(row['processingHttpAttempts'] for row in source_rows), 'processingHttpWallSeconds': sum(row['allAttemptWallSeconds'] for row in source_rows), 'limitations': ['Synthetic diagnostic corpus authored and labeled together, not independently adjudicated production accuracy.', 'All 400 planned receipt evaluations retained; identical originals within an office share a production document/job. Primary metrics count unique tenant/source jobs.', 'First processor HTTP attempt and final worker-stored output are separate; all retries and failure attempts are retained.', 'Six financial fields plus contiguous evidence quote, correct page and mandatory gold anchors are scored. Summary wording is not scored.', 'Model usage comes from actual processor trace. Some workflow notices are fully handled by deterministic source rules and make zero model calls.', 'Gemma and Qwen differ in model size, quantization and CPU/GPU configuration; sequential warm-cache timing is observational, not hardware-normalized.', 'Both selected models receive decoded text, including prior local OCR for scans; direct multimodal image-reading capabilities are not compared.', 'No raw Ollama transport instrumentation; exact processor requests, responses and engine pins are retained.', 'No posting is auto-accepted. Extraction-quality comparison is separate from manual review, economic posting dedupe and look-through proposal acceptance.', 'Missing/unrun attempts remain visible; fullPlanRecall includes them as a lower bound until the complete flag is true.', 'Encrypted/nested/unsupported sources remain explicit decoding or capability boundaries, never silently described as complete.', 'Gmail delivery/OAuth/network were replaced with deterministic local provider responses; production connector pagination, incremental cursors, replay/dedup and encrypted storage were exercised. No real email provider was contacted.']}
     report['inputBoundaries'] = [{'caseId': row['caseId'], 'cell': row['cell'], 'model': row['model'], 'mode': row['mode'], 'expectedSafeInputBlock': bool(row['expectedSafeInputBlock']), 'decodeError': row['decode'].get('decodeError'), 'firstHttpStatus': row['firstAttempt']['httpStatus'], 'storedStatus': row['status'], 'storedErrorCode': row['errorCode'], 'returnedFacts': row['final']['score']['returnedFactCount'], 'attempts': row['processingHttpAttempts'], 'falseFactPerfectClaim': False} for row in source_rows if row['expectedSafeInputBlock'] or row['decode'].get('decodeError')]
+    report['sourceImageProvenance'] = registry
+    observed_image_traces = sum(row['final']['toolActivity']['visionRequestTraceCount'] for row in source_rows)
+    recorded = [row['recordedModelUsageAllAttempts'] for row in source_rows if row['recordedModelUsageAllAttempts']['available']]
+    report['modelTransport'] = {'recordingAvailable': bool(recorded),
+                              'chatRequestsAllAttempts': sum(row['chatRequests'] for row in recorded) if recorded else None,
+                              'chatRequestsWithImagesAllAttempts': sum(row['chatRequestsWithImages'] for row in recorded) if recorded else None,
+                              'storedOutputVisionRequestTraces': observed_image_traces,
+                              'countsSource': 'Reconstructed completed request bytes, planned identity and independent image provenance; run record_models.py --verify for the complete record-level audit.' if recorded else 'Processor traces only; raw model transport was not recorded.'}
+    report['limitations'] = [line for line in report['limitations'] if not line.startswith(('Both selected models receive decoded text', 'No raw Ollama transport instrumentation'))]
+    report['limitations'].extend([
+        f'Stored processor traces report {observed_image_traces} image-input events. Availability, skipped tools and returned image responses are separate; trace truncation can hide activity. This is not image accuracy by itself.',
+        f'Exact model request recording is {"available" if recorded else "unavailable"} for this run. Recorded requests with images across all attempts: {sum(row["chatRequestsWithImages"] for row in recorded) if recorded else "unknown"}. Model transport requires its separate integrity audit.',
+    ])
     report['timingDefinition'] = {'firstAttemptWallSeconds': 'First processor HTTP request only.', 'wallSecondsP95': 'Nearest-rank percentile: sorted observed durations at rank ceil(0.95 * n), 1-based, without interpolation. Missing durations are excluded; failed HTTP durations are retained. Each summary uses its first or last recorded request per job, not end-to-end latency.', 'finalWallSeconds': 'Last recorded processor HTTP request only; do not interpret as end-to-end latency.', 'allAttemptWallSeconds': 'Sum of every recorded processor request, including failed retries; excludes queue waiting and retry delay.', 'processingHttpWallSeconds': 'Sum of all actual unique-job processor attempts across the run; duplicate receipts do not add compute.'}
     write(args.run / 'scorecard.json', report)
     write(args.run / 'summary.json', {key: value for key, value in report.items() if key not in ['rows', 'uniqueSourceRows']})
