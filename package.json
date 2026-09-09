@@ -35,7 +35,7 @@
     "prebuild": "node scripts/prepare-pdf-worker.mjs"
   },
   "dependencies": {
-    "@base-ui/react": "1.7.0",
+    "@base-ui/react": "1.8.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@shadcn/react": "0.3.0",
     "better-auth": "1.7.3",
