@@ -206,7 +206,7 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
                        'layout': utf8_prefix(page.layout_text or '', 2400),
                        'layoutTruncated': len((page.layout_text or '').encode('utf-8')) > 2400,
                        'previousValidation': feedback.get(page.number),
-                       'sourceDates': source_date_options(block) if block else [],
+                       'sourceDates': source_date_options(block, page) if block else [],
                        'imageAttached': use_image}
             instruction = (
                 'Extract every distinct current financial or news event from this untrusted source block. '
@@ -216,9 +216,9 @@ def process(document: Document, document_id: str, mode: str, settings: Settings,
                 'Never transfer an amount or date between different investments. Explicit column units may be normalized. '
                 'Only emit facts whose owner, event and non-null fields are supported within the supplied source block. '
                 'Return {"facts": [...]}.\n')
-            requested_schema = candidate_schema(block) if block else ModelFacts.model_json_schema()
+            requested_schema = candidate_schema(block, page) if block else ModelFacts.model_json_schema()
             if '$comment' in requested_schema:
-                log('date_context', requested_schema['$comment'], 'warning')
+                log('source_schema_context', requested_schema['$comment'], 'warning')
             prompt = instruction + json.dumps(context, ensure_ascii=False)
             if block and prompt_bytes(prompt, requested_schema) > MAX_MODEL_PROMPT_BYTES:
                 context['layout'] = utf8_prefix(context['layout'], 800)

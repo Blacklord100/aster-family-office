@@ -11,7 +11,8 @@ from pydantic import Field
 from .documents import Document, Page
 from .schema import Fact, ReferencedFact, StrictModel
 from .source_parsing import CURRENCIES, date_mentions, mask_instructions, money_mentions
-from .source_events import _date_role, _table_cells, _table_header
+from .source_events import KIND_PATTERNS, has_event_semantics, _date_role, _table_cells, _table_header
+from .candidate_grounding import candidate_has_semantics
 
 
 @dataclass(frozen=True)
@@ -57,20 +58,30 @@ def source_blocks(page: Page) -> list[SourceBlock]:
 SOURCE_DATE_LIMIT = 32
 
 
-def _source_date_inventory(block: SourceBlock) -> list[dict[str,str]]:
+def _inventory_text(block: SourceBlock, page: Page | None = None) -> str:
+    # Match the existing short-page evidence expansion boundary. Source IDs
+    # remain bound to the original block, and any expanded proposal still has
+    # to pass the full independent page/owner/field-role verifier.
+    if (page is not None and page.number == block.page and block.text
+            and block.text in page.text and len(page.text.strip()) <= 3000):
+        return page.text.strip()
+    return block.text
+
+
+def _source_date_inventory(block: SourceBlock, page: Page | None = None) -> list[dict[str,str]]:
     # Only literal, valid calendar dates from the untrusted-data view. This is
     # format discovery, not effective/due role assignment or a model correction.
     unique = {}
-    for mention in date_mentions(mask_instructions(block.text)):
+    for mention in date_mentions(mask_instructions(_inventory_text(block,page))):
         unique.setdefault(mention.value,{'value':mention.value,'sourceText':mention.raw})
         if len(unique) > SOURCE_DATE_LIMIT:
             break
     return list(unique.values())
 
 
-def source_date_options(block: SourceBlock) -> list[dict[str,str]]:
+def source_date_options(block: SourceBlock, page: Page | None = None) -> list[dict[str,str]]:
     """At most 32 source-provided ISO spellings for model reading assistance."""
-    return _source_date_inventory(block)[:SOURCE_DATE_LIMIT]
+    return _source_date_inventory(block,page)[:SOURCE_DATE_LIMIT]
 
 
 def _deadline_options(text: str, all_values: list[str]) -> list[str]:
@@ -136,13 +147,22 @@ def _source_has_no_amount(text: str) -> bool:
     return True
 
 
-def candidate_schema(block: SourceBlock) -> dict:
+def candidate_schema(block: SourceBlock, page: Page | None = None) -> dict:
     schema = SourceCandidates.model_json_schema()
     properties = schema['$defs']['SourceReference']['properties']
     properties['sourceId']['enum'] = [block.source_id]
     properties['page']['enum'] = [block.page]
-    safe = mask_instructions(block.text)
+    safe = mask_instructions(_inventory_text(block,page))
     fields = schema['$defs']['ReferencedFact']['properties']
+    allowed_kinds = fields['kind']['enum']
+    if all(kind in KIND_PATTERNS for kind in allowed_kinds):
+        kinds = [kind for kind in allowed_kinds if has_event_semantics(safe,kind) or candidate_has_semantics(safe,kind)]
+        if kinds:
+            # This is the same necessary semantic gate used before any layout
+            # or candidate role evidence in verify_fact. It cannot grant owner,
+            # amount or date support, and it never rewrites a proposed fact.
+            fields['kind']['enum'] = kinds
+            fields['kind']['description'] = 'Source-supported event semantics only; every owner and financial field still requires independent verification.'
     if _source_has_no_amount(safe):
         fields['amount'] = {'title':fields['amount'].get('title','amount'),'type':'null',
                             'description':'No monetary or non-date numeric value is present in this source block. Use JSON null, never a quoted null string or an invented amount.'}
@@ -153,7 +173,7 @@ def candidate_schema(block: SourceBlock) -> dict:
             'Use a literal recognized source currency or null. A bare dollar symbol does not identify USD or another dollar currency; source owner and amount roles still require verification.')
     else:
         schema['$comment'] = 'Source currency inventory is uncertain; the original allowed currency enum is retained.'
-    dates = _source_date_inventory(block)
+    dates = _source_date_inventory(block,page)
     if len(dates) > SOURCE_DATE_LIMIT:
         # Never silently remove a valid 33rd/later source date. Keep the normal
         # strict ISO schema and explicitly report that the hint list is bounded.
