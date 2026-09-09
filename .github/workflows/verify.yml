@@ -97,16 +97,23 @@ jobs:
           chmod 700 "$aster_demo_intake"
           export ASTER_DEMO_INTAKE_DIR="$aster_demo_intake"
           docker compose -f compose.yaml -f compose.demo.yaml --profile delivery --profile maintenance --profile tls config --quiet
-      - name: Build without application secrets
-        id: build_images
-        run: |
-          docker build -f operations/Dockerfile.app -t aster-web:verify .
-          docker build -f processor/Dockerfile -t aster-processor:verify processor
-      - name: Verify image runtime identities and filesystem controls
+      - name: Build app without application secrets
+        id: build_web
+        run: docker build -f operations/Dockerfile.app -t aster-web:verify .
+      - name: Build processor without application secrets
+        id: build_processor
+        if: ${{ !cancelled() }}
+        run: docker build -f processor/Dockerfile -t aster-processor:verify processor
+      - name: Verify app runtime identity and filesystem controls
+        if: ${{ !cancelled() && steps.build_web.outcome == 'success' }}
         run: |
           docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint node aster-web:verify -e "if(process.getuid()===0)process.exit(1);try{require('fs').writeFileSync('/app/forbidden','x');process.exit(1)}catch(e){if(e.code!=='EROFS'&&e.code!=='EACCES')throw e}"
+      - name: Verify processor runtime identity
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
+        run: |
           docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint python aster-processor:verify -c "import os; assert os.getuid()!=0"
       - name: Verify minimal app runtime imports and startup without network
+        if: ${{ !cancelled() && steps.build_web.outcome == 'success' }}
         run: >-
           docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges
           --tmpfs /tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
@@ -114,7 +121,7 @@ jobs:
           --mount "type=bind,source=${{ github.workspace }}/operations/scripts/probe-app-image.mjs,target=/opt/aster/probe-app-image.mjs,readonly"
           --entrypoint node aster-web:verify /opt/aster/probe-app-image.mjs
       - name: Verify minimal processor runtime and authenticated OCR without network
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         run: >-
           docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges
           --tmpfs /tmp:rw,noexec,nosuid,size=256m,uid=10001,gid=10001
@@ -124,7 +131,7 @@ jobs:
           --mount "type=bind,source=${{ github.workspace }}/processor/corpus,target=/srv/processor/corpus,readonly"
           --entrypoint python aster-processor:verify /opt/aster/probe-processor-image.py
       - name: Run full processor regression suite in the built runtime without network
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         run: >-
           docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges
           --tmpfs /tmp:rw,noexec,nosuid,size=256m,uid=10001,gid=10001
@@ -132,14 +139,14 @@ jobs:
           --mount "type=bind,source=${{ github.workspace }}/processor/corpus,target=/srv/processor/corpus,readonly"
           --entrypoint python aster-processor:verify -m pytest -q -p no:cacheprovider tests
       - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_web.outcome == 'success' }}
         with:
           image-ref: aster-web:verify
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL
       - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         env:
           TRIVY_LIST_ALL_PKGS: 'true'
         with:
@@ -149,12 +156,12 @@ jobs:
           exit-code: '1'
           severity: HIGH,CRITICAL
       - name: Verify processor scan includes every retained native package
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         run: |
           docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges --entrypoint python aster-processor:verify -c "from pathlib import Path; print(Path('/opt/aster/runtime-manifest.json').read_text())" > processor-runtime-manifest.json
           python3 processor/runtime/verify-scan.py processor-runtime-manifest.json processor-image-scan.json
       - name: Retain processor image security inventory
-        if: ${{ !cancelled() && steps.build_images.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: processor-image-security

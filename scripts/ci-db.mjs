@@ -15,16 +15,16 @@ try {
   await pool.query(
     "CREATE ROLE aster_runtime LOGIN PASSWORD 'synthetic-ci-runtime-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS",
   );
-  await appendFile(
-    process.env.GITHUB_ENV,
-    'BETTER_AUTH_SECRET=' +
-      randomBytes(48).toString('base64url') +
-      '\nENCRYPTION_KEY=' +
-      randomBytes(32).toString('base64') +
-      '\nPROCESSOR_TOKEN=' +
-      randomBytes(48).toString('base64url') +
-      '\n',
-  );
+  const generated = {
+    BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+    ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+    PROCESSOR_TOKEN: randomBytes(48).toString('base64url'),
+  };
+  // Register generated fixture values before later step environment summaries.
+  for (const value of Object.values(generated))
+    process.stdout.write('::add-mask::' + value + '\n');
+  await appendFile(process.env.GITHUB_ENV,
+    Object.entries(generated).map(([key, value]) => key + '=' + value).join('\n') + '\n');
 } finally {
   await pool.end();
 }

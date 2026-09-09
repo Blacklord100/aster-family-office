@@ -16,7 +16,7 @@ import sys
 ROOT = Path('/runtime')
 BASE = Path('/runtime-base')
 STATUS = Path('/var/lib/dpkg/status')
-OMITTED_MODULES = ['sqlite3', '_sqlite3', 'curses', '_curses', 'readline', '_uuid']
+OMITTED_MODULES = ['sqlite3', '_sqlite3', 'curses', '_curses', 'readline', '_uuid', 'tkinter', '_tkinter', 'idlelib']
 # These are not needed by document decoding or inference. Fail closed if a
 # future native dependency unexpectedly reintroduces one of their packages.
 EXCLUDED_PACKAGES = {'perl-base', 'libsqlite3-0', 'libncursesw6', 'libtinfo6',
@@ -143,15 +143,15 @@ def main():
         copy_file(path, package_id)
 
     # Ship the same interpreter, standard library and locked wheel metadata.
-    # Optional terminal/SQLite/OS-UUID extensions are intentionally absent;
+    # Optional GUI/terminal/SQLite/OS-UUID extensions are intentionally absent;
     # uuid.py retains its secure os.urandom-backed UUID4 implementation.
     def omit(directory, names):
         ignored = {'__pycache__'} & set(names)
         if Path(directory) == Path('/usr/local/lib/python3.12'):
-            ignored.update({'sqlite3', 'curses'} & set(names))
+            ignored.update({'sqlite3', 'curses', 'tkinter', 'idlelib'} & set(names))
         if Path(directory).name == 'lib-dynload':
             ignored.update(name for name in names if name.split('.')[0] in
-                           {'_sqlite3', '_curses', '_curses_panel', 'readline', '_uuid'})
+                           {'_sqlite3', '_curses', '_curses_panel', 'readline', '_uuid', '_tkinter'})
         if Path(directory).name == 'site-packages':
             ignored.update(name for name in names if name == 'pip' or name.startswith('pip-') and name.endswith('.dist-info'))
         return ignored

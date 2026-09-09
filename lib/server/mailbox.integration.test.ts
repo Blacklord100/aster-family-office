@@ -322,10 +322,7 @@ describe.skipIf(!enabled)(
       );
       const output = execFileSync(
         process.execPath,
-        [
-          '--env-file=.env.local',
-          'operations/scripts/native-recovery-drill.mjs',
-        ],
+        ['operations/scripts/native-recovery-drill.mjs'],
         {
           env: { ...process.env, ASTER_NATIVE_RECOVERY_DRILL: '1' },
           encoding: 'utf8',
@@ -334,7 +331,7 @@ describe.skipIf(!enabled)(
       );
       const report = JSON.parse(output.trim());
       expect(report.result).toBe('passed');
-      expect(report.tables).toBe(30);
+      expect(report.tables).toBe(34);
       expect(report.decryptedRecords).toBeGreaterThanOrEqual(5);
       expect(
         report.decryptedFields['app_engine_revisions.payload'],

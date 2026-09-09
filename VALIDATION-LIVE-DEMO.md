@@ -24,6 +24,8 @@ This record covers the native, source-derived demo and its application changes. 
 | Native isolated folder/search database suites | Eight passed |
 | Native isolated demo lifecycle/publication suite | Six passed |
 | Native isolated MCP protocol/access suite | Six passed with the official SDK |
+| Native isolated mailbox/recovery suite | Six passed, including all 34 current tables |
+| Container inventory verifier regressions | Seven passed; missing packages or high/critical findings fail validation |
 | UI route audit | 14 routes at desktop and mobile sizes; no detected overflow or console errors |
 | Interaction audit | 17 primary interactions, demo start/leave/reopen, source counts, chart and report checks passed |
 | Email/PDF browser checks | Original rendering, attachment expansion, tracking canary and tenant/family-scope denial passed |
@@ -65,4 +67,6 @@ The run exercises combined deterministic source rules and actual local model cal
 
 Gmail/Microsoft adapters and their workers are implemented, but no real provider consent, tenant configuration or historical backfill was exercised here. The MCP package was validated and tested against the server; it was not activated in a real external client with a production token.
 
-Docker is unavailable on this host. Container build/boot, Linux permissions, enforced network isolation, target hardware capacity, public TLS and production backup/restore remain unverified. The native source intake contains plaintext synthetic files before encrypted retention; host storage protections remain an operator responsibility. Use [the deployment readiness record](operations/readiness.md) and [offline LP packaging plan](operations/offline-lp-packaging.md) for the remaining installation work.
+Docker is unavailable on this development host. The [release workflow](.github/workflows/verify.yml) qualifies Linux image builds, non-root/read-only controls, network-disabled startup and OCR, the processor regression suite, and high/critical vulnerability gates. The processor scan additionally checks that every retained native package and locked Python dependency is present in the scanner inventory. Exact commit results are available in [GitHub release checks](https://github.com/Blacklord100/aster-family-office/actions/workflows/verify.yml); a clean base-image scan is not a passing application-image result.
+
+The complete LP deployment still requires target-host permission and egress checks, hardware capacity testing, public TLS and production streaming backup/restore qualification. The native source intake contains plaintext synthetic files before encrypted retention; host storage protections remain an operator responsibility. Use [the deployment readiness record](operations/readiness.md) and [offline LP packaging plan](operations/offline-lp-packaging.md) for the remaining installation work.

@@ -13,8 +13,8 @@ for (const file of ['/bin/sh', '/usr/local/bin/npm', '/usr/local/lib/node_module
   await assert.rejects(access(file));
 await assert.rejects(writeFile('/app/forbidden', 'x'), (error) => ['EROFS', 'EACCES'].includes(error.code));
 const require = createRequire('/app/package.json');
-for (const module of ['pg', 'zod', 'better-auth', 'html-to-text', '@modelcontextprotocol/sdk/server/mcp.js'])
-  await import(require.resolve(module));
+for (const dependency of ['pg', 'zod', 'better-auth', 'html-to-text', '@modelcontextprotocol/sdk/server/mcp.js'])
+  await import(require.resolve(dependency));
 const { default: PostalMime } = await import(require.resolve('postal-mime'));
 const email = await PostalMime.parse('Subject: Synthetic runtime probe\r\n\r\nNo investment or personal data.');
 assert.equal(email.subject, 'Synthetic runtime probe');
