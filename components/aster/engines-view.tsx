@@ -41,11 +41,19 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EngineInputSchema } from '@/lib/engine-contract';
+import {
+  EngineInspectionSchema,
+  inspectionIdentity,
+  inspectionMatches,
+  type EngineInspection,
+} from '@/lib/engine-inspection';
+import { EngineInspectionDetails } from './engine-inspection';
 import type {
   EngineModel,
   EngineModelsResponse,
   EngineProfile,
   EngineProvider,
+  EngineSnapshot,
   EnginesResponse,
 } from '@/lib/engine-contract';
 import type {
@@ -78,11 +86,17 @@ const emptyDraft = (): Draft => ({
   apiKey: '',
   hasSecret: false,
 });
-async function api<T>(url: string, method = 'GET', body?: unknown): Promise<T> {
+async function api<T>(
+  url: string,
+  method = 'GET',
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(url, {
     method,
     cache: 'no-store',
     credentials: 'same-origin',
+    signal,
     ...(body === undefined
       ? {}
       : {
@@ -111,6 +125,8 @@ export function EnginesView() {
   const [remove, setRemove] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [inspection, setInspection] = useState<EngineInspection | null>(null);
+  const inspectionRequest = useRef<AbortController | null>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const load = useCallback(async () => {
     const [engines, processing] = await Promise.all([
@@ -118,6 +134,7 @@ export function EnginesView() {
       api<{ policy: ProcessingPolicy }>('/api/processing'),
     ]);
     setSnapshot(engines);
+    setInspection(null);
     setPolicy(processing.policy);
     setLoadedAt(
       new Date().toLocaleTimeString('en-GB', {
@@ -157,6 +174,7 @@ export function EnginesView() {
       });
     return () => {
       cancelled = true;
+      inspectionRequest.current?.abort();
     };
   }, []);
   useEffect(() => {
@@ -185,6 +203,36 @@ export function EnginesView() {
       setNotice(
         `Found ${result.models.length} installed models. No model was downloaded or activated.`,
       );
+    });
+  }
+  async function inspectRuntime(
+    engine: EngineSnapshot,
+    target: 'active' | 'profile',
+  ) {
+    await action('inspect:' + inspectionIdentity(engine), async () => {
+      setInspection(null);
+      const controller = new AbortController();
+      inspectionRequest.current = controller;
+      try {
+        const result = EngineInspectionSchema.parse(
+          await api(
+            '/api/engines/inspect',
+            'POST',
+            {
+              target,
+              profileId: engine.profileId,
+              revision: engine.revision,
+            },
+            controller.signal,
+          ),
+        );
+        if (result.target !== target || !inspectionMatches(result, engine))
+          throw new Error('Engine changed. Refresh and inspect again.');
+        setInspection(result);
+      } finally {
+        if (inspectionRequest.current === controller)
+          inspectionRequest.current = null;
+      }
     });
   }
   function edit(profile?: EngineProfile) {
@@ -316,6 +364,18 @@ export function EnginesView() {
     });
   }
   const active = snapshot?.active;
+  const inspectedEngine =
+    inspection?.target === 'active'
+      ? active
+      : snapshot?.profiles.find(
+          (profile) => profile.profileId === inspection?.profileId,
+        );
+  const visibleInspection =
+    inspection &&
+    inspectedEngine &&
+    inspectionMatches(inspection, inspectedEngine)
+      ? inspection
+      : null;
   const canManage = snapshot?.canManage ?? false;
   const latestDraftProfile = snapshot?.profiles.find(
     (profile) => profile.profileId === draft.id,
@@ -414,6 +474,54 @@ export function EnginesView() {
               </div>
             </dl>
           </section>
+          <Panel
+            title="Runtime capabilities & limits"
+            subtitle="An explicit metadata check for a selected engine revision."
+          >
+            <div className={styles.panelBody}>
+              <div className={styles.inspectionHeading}>
+                <p>
+                  Inspect local model metadata and effective processor limits.
+                  This check does not generate text, test images or contact a
+                  cloud model provider.
+                </p>
+                {canManage && (
+                  <Button
+                    variant="outline"
+                    disabled={!!busy}
+                    onClick={() => void inspectRuntime(active, 'active')}
+                  >
+                    <Cpu data-icon="inline-start" />
+                    {busy?.startsWith('inspect:')
+                      ? 'Inspecting…'
+                      : 'Inspect selected runtime'}
+                  </Button>
+                )}
+              </div>
+              {visibleInspection && inspectedEngine ? (
+                <div
+                  key={
+                    visibleInspection.target +
+                    inspectionIdentity(visibleInspection) +
+                    visibleInspection.checkedAt
+                  }
+                >
+                  <h3>
+                    {inspectedEngine.name} · revision{' '}
+                    {visibleInspection.revision}
+                  </h3>
+                  <p className={styles.digest}>{visibleInspection.model}</p>
+                  <EngineInspectionDetails inspection={visibleInspection} />
+                </div>
+              ) : (
+                <p>
+                  {canManage
+                    ? 'No current metadata inspection. Choose an engine to inspect.'
+                    : 'A workspace administrator can inspect runtime metadata.'}
+                </p>
+              )}
+            </div>
+          </Panel>
           <div className={styles.grid}>
             <Panel
               title="01 / Execution style"
@@ -488,7 +596,10 @@ export function EnginesView() {
                     {snapshot.cloudAllowed
                       ? 'Cloud execution is enabled by this deployment. Activation requires an administrator’s explicit acknowledgment.'
                       : 'Cloud execution is disabled by this deployment. An operator must configure a separate cloud processor before activation.'}
-                    {!snapshot.cloudAllowed && snapshot.cloudReadinessReason && snapshot.cloudReadinessReason !== 'Cloud execution disabled by deployment.'
+                    {!snapshot.cloudAllowed &&
+                    snapshot.cloudReadinessReason &&
+                    snapshot.cloudReadinessReason !==
+                      'Cloud execution disabled by deployment.'
                       ? ` ${snapshot.cloudReadinessReason}`
                       : ''}
                   </span>
@@ -724,7 +835,8 @@ export function EnginesView() {
             subtitle="Profiles are versioned. Queued jobs retain the model and workflow selected when they were created."
             action={
               <Badge variant="secondary">
-                {snapshot.profiles.length} {snapshot.profiles.length === 1 ? 'profile' : 'profiles'}
+                {snapshot.profiles.length}{' '}
+                {snapshot.profiles.length === 1 ? 'profile' : 'profiles'}
               </Badge>
             }
           >
@@ -808,7 +920,7 @@ export function EnginesView() {
                       </span>
                       <span>
                         {profile.lastTest
-                          ? `${profile.lastTest.ok ? 'Schema check passed' : 'Check failed'} · ${new Date(profile.lastTest.testedAt).toLocaleDateString('en-GB')}`
+                          ? `${profile.lastTest.ok ? 'Text connectivity/schema check passed' : 'Text check failed'} · ${new Date(profile.lastTest.testedAt).toLocaleDateString('en-GB')}`
                           : 'Not tested'}
                       </span>
                     </div>
@@ -838,7 +950,7 @@ export function EnginesView() {
                                   await load();
                                 }
                                 setNotice(
-                                  'Synthetic connection check finished. Review the result on this profile; it does not measure extraction accuracy.',
+                                  'Synthetic text connectivity/schema check finished. It does not test images or measure extraction accuracy.',
                                 );
                               },
                             )
@@ -847,7 +959,17 @@ export function EnginesView() {
                           <FlaskConical data-icon="inline-start" />
                           {busy === 'test:' + profile.profileId
                             ? 'Testing…'
-                            : 'Test connection'}
+                            : 'Test text connection'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={!!busy || cloudUnavailable}
+                          onClick={() =>
+                            void inspectRuntime(profile, 'profile')
+                          }
+                        >
+                          <Cpu data-icon="inline-start" />
+                          Inspect metadata
                         </Button>
                         <Button
                           variant="ghost"
@@ -1006,7 +1128,7 @@ export function EnginesView() {
                       <strong>{model.name}</strong>
                       <span>
                         {(model.size / 1e9).toFixed(2)} GB installed ·
-                        capability not yet tested
+                        capabilities not inspected here
                       </span>
                     </div>
                     <Button
@@ -1037,10 +1159,10 @@ export function EnginesView() {
             </Panel>
           )}
           <p className={styles.footnote}>
-            A connection test uses synthetic text. Test representative documents
-            before changing your production engine. Financial stress
-            calculations run deterministically and do not depend on the selected
-            LLM.
+            A connection test checks text connectivity and schema only. It does
+            not test images. Test representative documents before changing your
+            production engine. Financial stress calculations run
+            deterministically and do not depend on the selected LLM.
           </p>
         </>
       )}

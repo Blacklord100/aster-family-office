@@ -1,0 +1,4 @@
+"""Wall-clock deadlines shared by execution and read-only runtime inspection."""
+DOCUMENT_TIMEOUT_SECONDS = 590
+ENGINE_TEST_TIMEOUT_SECONDS = 140
+ENGINE_INFO_TIMEOUT_SECONDS = 20

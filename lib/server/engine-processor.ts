@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { EngineModelSchema, type EngineTestResult } from '../engine-contract';
+import { EngineInfoSchema } from '../engine-inspection';
 import { AccessError } from './access';
 import { readBody } from './http';
 import {
@@ -11,9 +12,10 @@ import {
 } from './engine-store';
 
 export async function processorControl(
-  path: '/v1/models' | '/v1/engine-test',
+  path: '/v1/models' | '/v1/engine-test' | '/v1/engine-info',
   config?: EngineConfig,
   fetcher: typeof fetch = fetch,
+  signal?: AbortSignal,
 ) {
   if (config) assertEngineEnabled(config);
   const token = process.env.PROCESSOR_TOKEN;
@@ -28,7 +30,12 @@ export async function processorControl(
       {
         method: config ? 'POST' : 'GET',
         redirect: 'error',
-        signal: AbortSignal.timeout(config ? 150000 : 15000),
+        signal: AbortSignal.any([
+          AbortSignal.timeout(
+            path === '/v1/engine-info' ? 25000 : config ? 150000 : 15000,
+          ),
+          ...(signal ? [signal] : []),
+        ]),
         headers: {
           'X-Processor-Key': token,
           ...(config ? { 'Content-Type': 'application/json' } : {}),
@@ -64,6 +71,26 @@ export async function processorControl(
       'Engine check unavailable. No document data was sent.',
     );
   }
+}
+export async function inspectEngine(
+  config: EngineConfig,
+  signal?: AbortSignal,
+) {
+  const result = EngineInfoSchema.parse(
+    await processorControl('/v1/engine-info', config, fetch, signal),
+  );
+  if (
+    result.provider !== config.provider ||
+    result.model !== config.model ||
+    result.execution !== executionFor(config.provider)
+  ) {
+    throw new AccessError(
+      502,
+      'ENGINE_UNAVAILABLE',
+      'Engine inspection identity changed. Refresh and inspect again.',
+    );
+  }
+  return result;
 }
 export async function discoverModels() {
   const parsed = z

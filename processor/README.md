@@ -43,6 +43,8 @@ Multipart fields are `file`, `mode` (`workflow` or `agentic`), `document_id` (1-
 
 Authenticated `GET /v1/models` discovers installed local GGUF metadata only. `POST /v1/engine-test` accepts an engine configuration and runs one bounded synthetic schema request through the same model adapter. It returns `{ok,errorCode}` with no raw provider response. All `/v1/` endpoints authenticate and bound input before body parsing; test bodies are limited to 64 KiB. A successful check establishes connectivity and that schema response only, not extraction accuracy or tool certification.
 
+Authenticated `POST /v1/engine-info` accepts the same engine configuration and returns strict, sanitized metadata and effective processor limits. Its disposable process has a 20-second deadline and shares document concurrency and disconnect cleanup. For a local engine it checks the exact configured alias through bounded `/api/show` metadata, then optionally observes a unique valid digest from bounded `/api/tags`. Missing or malformed capability metadata remains unknown; explicit metadata without vision is unsupported. Deployment image disablement is reported separately. Cloud inspection makes no provider call and reports the current adapters' image-disabled policy. No inspection generates text, sends an image, downloads a model, or pins weights to jobs. The administrator panel resolves an exact active or current saved profile revision before releasing its tenant transaction and requesting metadata; stale selectors fail instead of selecting another revision.
+
 ```json
 {
   "schemaVersion": 1,

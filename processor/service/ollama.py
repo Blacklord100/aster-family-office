@@ -115,6 +115,7 @@ class LocalOllama:
         self.calls = 0
         self.rejected_candidates = 0
         self.capabilities = frozenset()
+        self.capabilities_known = False
         self._verified_local = False
         self.client = httpx.Client(base_url=settings.ollama_base_url,
                                    timeout=httpx.Timeout(settings.ollama_timeout, connect=5),
@@ -143,13 +144,15 @@ class LocalOllama:
     def verify_local(self):
         self._verified_local = False
         self.capabilities = frozenset()
+        self.capabilities_known = False
         result = self._request('/api/show', {'model': self.settings.ollama_model})
         details = result.get('details')
         if result.get('remote_host') or result.get('remote_model') or not isinstance(details, dict) or details.get('format') != 'gguf':
             raise LocalModelError('model_not_verified_local_gguf')
-        capabilities = result.get('capabilities', [])
+        capabilities = result.get('capabilities')
         if isinstance(capabilities, list) and all(isinstance(item, str) for item in capabilities):
             self.capabilities = frozenset(capabilities)
+            self.capabilities_known = True
         self._verified_local = True
 
     @property

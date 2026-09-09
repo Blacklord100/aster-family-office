@@ -198,12 +198,13 @@ def discover_models(settings):
                 if len(data) > 131072:
                     raise LocalModelError('local_discovery_too_large')
         value = json.loads(data)
-        models = value.get('models')
+        models = value.get('models') if isinstance(value, dict) else None
         if not isinstance(models, list) or len(models) > 100:
             raise LocalModelError('local_discovery_invalid')
         result = []
         for item in models:
-            if not isinstance(item, dict) or item.get('remote_host') or item.get('remote_model') or item.get('details', {}).get('format') != 'gguf':
+            if (not isinstance(item, dict) or item.get('remote_host') or item.get('remote_model')
+                    or not isinstance(item.get('details'), dict) or item['details'].get('format') != 'gguf'):
                 continue
             name, size, digest = item.get('name'), item.get('size'), item.get('digest')
             if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:/-]{0,120}', name) or 'cloud' in name.lower():

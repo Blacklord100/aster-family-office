@@ -1,6 +1,6 @@
 # Document engine configuration
 
-Engine selection and processing mode are independent. Both classical workflow and the bounded agent can use an installed Ollama model, OpenAI Responses, or Anthropic Messages. The deployment default remains local; no cloud credential is needed to use it. Local Gemma structured JSON can drive the constrained `read_page`/`extract`/`finish` planner without native tool calling. These actions do not send mail, run commands, browse arbitrary URLs or post financial changes.
+Engine selection and processing mode are independent. Both classical workflow and the bounded agent can use an installed Ollama model, OpenAI Responses, or Anthropic Messages. The deployment default remains local; no cloud credential is needed to use it. Local structured JSON can drive the bounded document planner without native tool calling: read pages, search, inspect layout or source images, extract, review coverage and finish. These actions do not send mail, run commands, browse arbitrary URLs or post financial changes.
 
 ## Profiles and job identity
 
@@ -13,6 +13,14 @@ Uploads and imported mailbox documents pin provider, model tag, execution locati
 Historical jobs without a recorded engine expose `engineLegacy: true`. A queued or explicitly retried legacy job captures the deployment-local default at its next worker claim, then retains that pin. It never borrows the active cloud profile. That new pin says nothing about the engine used in an earlier historical attempt. New jobs with a missing pin are rejected by both SQL constraints and the worker.
 
 Secrets are AES-256-GCM encrypted with tenant/record/revision context, including a separate encrypted copy for each job. DTOs, audit entries, provider-check errors and extraction results exclude credentials. Only authenticated internal calls carry them to the selected processor, then to the fixed provider API. Child processes receive a minimal environment without processor/database/provider service secrets; the selected job credential travels through private stdin. Host administrators, process memory/core dumps and key recovery remain trusted operational boundaries.
+
+## Inspect runtime metadata
+
+Administrators can inspect the exact selected revision, including an older saved revision that remains active, or the current revision of a saved profile. The browser sends only the target, expected profile ID and revision. The server verifies that selection in the tenant, releases the database transaction, then calls the configured processor. Concurrent selection changes produce a conflict. Inspection is rate limited to 20 requests per organization per minute, authenticated, body bounded and cancelled when the caller disconnects; the processor has a separate 20-second inspection deadline.
+
+The panel distinguishes locally advertised image support, effective deployment enablement and image testing. Missing capabilities remain unknown. An exact local alias can advertise vision without establishing image extraction quality; this check sends no image and generates no text. A text connectivity/schema test remains a separate synthetic generation request. Current cloud adapters are text only, and metadata inspection never queries their providers. Both workflow and agentic execution retain the same privacy boundary for a selected engine.
+
+Expandable details show the processor's actual document, OCR, image, email-tree, model-call, action and time ceilings. Local calls request 16,384 context tokens and 3,200 output tokens with an 11,500-byte system/source/schema prompt guard. Cloud output requests are also capped at 3,200 tokens; provider context limits are not inspected. Ceilings do not guarantee full document coverage. An optional local digest is only an exact-alias observation at the displayed time, **not an immutable weights pin for jobs**. Refresh the inspection after replacing a model or changing deployment settings.
 
 ## Enable cloud deliberately
 
@@ -33,7 +41,7 @@ Anthropic uses only `https://api.anthropic.com/v1/messages`, `output_config.form
 
 Provider HTTP clients ignore inherited proxy settings, refuse redirects, cap response bytes and never run returned tool calls. Refusals, incomplete responses and invalid envelopes fail closed. Independently valid financial candidates may survive an invalid sibling, but each still passes unchanged source evidence checks. Provider errors produce bounded safe codes, never raw error bodies. Workflow source parsing remains local; cloud selection permits sending only the bounded model prompts/source windows required by that pipeline.
 
-The existing 120-second inactivity timeout, 590-second total document deadline, 16 workflow calls and configured 1–24 agentic total calls remain enforced. The synthetic check has a separate 140-second process deadline and one model call. Processor-busy responses defer a job for 30 seconds without charging one of its three extraction failure attempts, capped at 30 capacity deferrals. No automatic provider retry or fallback is hidden inside an adapter.
+The configured model inactivity timeout and 590-second total document deadline remain enforced. Both modes share `MAX_MODEL_CALLS` (default 64, maximum 96) and per-page extraction limits; agent planning also has `MAX_AGENT_STEPS` (default 32, maximum 64). The synthetic text check has a separate 140-second process deadline and one model call. Processor-busy responses defer a job for 30 seconds without charging one of its three extraction failure attempts, capped at 30 capacity deferrals. No automatic provider retry or fallback is hidden inside an adapter.
 
 ## Evidence and remaining checks
 

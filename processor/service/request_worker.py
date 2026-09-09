@@ -12,6 +12,10 @@ from .engines import selection, test_engine
 def main():
     request = json.load(sys.stdin)
     settings = Settings(**request['settings'])
+    if request.get('operation') == 'engine_info':
+        from .engine_info import inspect_engine
+        print(inspect_engine(settings, selection(request['engine'], settings)).model_dump_json())
+        return
     if request.get('operation') == 'engine_test':
         print(json.dumps(test_engine(settings, selection(request['engine'], settings))))
         return

@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse
 from .config import Settings
 from .schema import Extraction, Mode
 from .engines import selection
+from .runtime_limits import DOCUMENT_TIMEOUT_SECONDS, ENGINE_TEST_TIMEOUT_SECONDS, ENGINE_INFO_TIMEOUT_SECONDS
 
 
 def child_environment(tmpdir):
@@ -95,17 +96,22 @@ def create_app(settings: Settings | None = None):
                     if stopped.is_set():
                         stop_child()
                     try:
-                        output, _ = child.communicate(json.dumps(child_request).encode(), timeout=140 if is_test else 590)
+                        deadline = (ENGINE_INFO_TIMEOUT_SECONDS if payload.get('operation') == 'engine_info' else
+                                    ENGINE_TEST_TIMEOUT_SECONDS if is_test else DOCUMENT_TIMEOUT_SECONDS)
+                        output, _ = child.communicate(json.dumps(child_request).encode(), timeout=deadline)
                     except subprocess.TimeoutExpired as exc:
                         stop_child()
                         child.communicate()
-                        raise HTTPException(504, 'Document processing exceeded the 590-second deadline') from exc
+                        raise HTTPException(504, f'Processing exceeded the {deadline}-second deadline') from exc
                 if child.returncode != 0:
                     raise HTTPException(422, 'Document processing failed within the local sandbox')
                 try:
                     parsed = json.loads(output)
                     if 'inputError' in parsed:
                         raise HTTPException(422, parsed['inputError'])
+                    if payload.get('operation') == 'engine_info':
+                        from .engine_info import EngineInfo
+                        return EngineInfo.model_validate(parsed)
                     if is_test:
                         if not isinstance(parsed, dict) or set(parsed) != {'ok', 'errorCode'} or type(parsed['ok']) is not bool or parsed['errorCode'] not in (None, 'MODEL_UNAVAILABLE', 'SCHEMA_CHECK_FAILED'):
                             raise ValueError('Invalid engine test result')
@@ -163,6 +169,14 @@ def create_app(settings: Settings | None = None):
             return await asyncio.to_thread(discover_models, settings)
         except Exception:
             raise HTTPException(502, 'Local model discovery unavailable') from None
+
+    @app.post('/v1/engine-info')
+    async def engine_info(request: Request):
+        try:
+            selected = selection(await request.json(), settings)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Invalid or disabled engine selection') from None
+        return await sandbox(request, {'operation': 'engine_info', 'engine': selected.model_dump(exclude_none=True)})
 
     from .knowledge_routes import knowledge_router
     app.include_router(knowledge_router(settings, sandbox))
