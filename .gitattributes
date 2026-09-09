@@ -4,3 +4,7 @@
 benchmark/**/fixtures/*.eml -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 # Multipart mailroom originals include binary attachment payloads and fixed CRLF.
 benchmark/mailroom-v1/fixtures/emails/*.eml binary
+# Authentication evidence is hash-pinned to publisher bytes, including CRLF and
+# whitespace in public-key armor headers; never normalize those source files.
+processor/runtime/source-provenance/* -text
+processor/runtime/source-provenance/*.asc whitespace=-blank-at-eol

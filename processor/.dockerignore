@@ -5,6 +5,9 @@
 !runtime/
 !runtime/*.py
 !runtime/*.sha256
+!runtime/upstream-sources.json
+!runtime/source-provenance/
+!runtime/source-provenance/*
 !service/
 !service/*.py
 !corpus/

@@ -17,7 +17,9 @@ All three scan records have an empty `FixedVersion`; no fixed Debian 13 package 
 
 Both independent signature checks used OpenPGP.js 6.3.1 with default verification, pinned full fingerprints and negative tampering checks. Publisher HTTPS identities anchor the public keys; this is not an out-of-band LP trust exchange. Archive hashes identify downloaded bytes and are not independently published checksum attestations. No upstream replacement has yet passed Linux qualification.
 
-The locked Pillow 12.3.0 Linux wheel separately bundles libtiff 4.7.1. Replacing the OS library alone would leave that copy in place. The candidate must therefore rebuild the same Pillow version from its official PyPI source archive (SHA256 `3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce`) against the fixed shared libtiff. Both library paths, source identities and codec roundtrips require verification.
+The locked Pillow 12.3.0 Linux wheel separately bundles libtiff 4.7.1. Replacing the OS library alone would leave that copy in place. The candidate rebuilds the same Pillow version from its official PyPI source archive (SHA256 `3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce`) against the fixed shared libtiff. Both library paths, source identities and codec roundtrips require verification.
+
+The candidate [source inventory](../processor/runtime/upstream-sources.json) pins the archives, build tools and retained public verification files. The [build verifier](../processor/runtime/fetch-sources.py) rechecks the exact source hashes and signatures on every build. Local package identities remain `libtiff6` / source `tiff` and `tesseract-ocr` / source `tesseract`; no scanner identity is removed. The existing native macOS demo runtime is separate and has not been replaced by this Linux container candidate.
 
 ## Coverage and qualification required
 

@@ -21,7 +21,13 @@ OMITTED_MODULES = ['sqlite3', '_sqlite3', 'curses', '_curses', 'readline', '_uui
 # These are not needed by document decoding or inference. Fail closed if a
 # future native dependency unexpectedly reintroduces one of their packages.
 EXCLUDED_PACKAGES = {'perl-base', 'libsqlite3-0', 'libncursesw6', 'libtinfo6',
-                     'libuuid1', 'libacl1', 'libarchive13t64'}
+                     'libuuid1', 'libacl1', 'libarchive13t64', 'libtiff6'}
+CUSTOM_PACKAGES = {
+    '/opt/tesseract': {'id': 'tesseract-ocr:aster', 'name': 'tesseract-ocr',
+                       'version': '5.5.3', 'source': 'tesseract', 'license': 'tesseract-5.5.3/LICENSE'},
+    '/opt/libtiff': {'id': 'libtiff6:aster', 'name': 'libtiff6',
+                   'version': '4.7.2', 'source': 'tiff', 'license': 'tiff-4.7.2/LICENSE.md'},
+}
 
 
 def fields(stanza):
@@ -44,7 +50,7 @@ def elf(path):
 def linked_files(path):
     result = subprocess.run(['ldd', str(path)], capture_output=True, text=True,
                             env={**os.environ, 'LC_ALL': 'C',
-                                 'LD_LIBRARY_PATH': '/usr/local/lib:/opt/tesseract/lib'}, check=False)
+                                 'LD_LIBRARY_PATH': '/opt/libtiff/lib:/opt/tesseract/lib:/usr/local/lib'}, check=False)
     output = result.stdout + result.stderr
     if 'not found' in output or (result.returncode and not any(
             marker in output for marker in ['statically linked', 'not a dynamic executable'])):
@@ -194,18 +200,20 @@ def main():
     for path in Path('/usr/local/lib').glob('libpython*.so*'):
         copy_file(path)
 
-    custom_id = 'tesseract-ocr:aster'
-    for path in Path('/opt/tesseract').rglob('*'):
-        if path.is_file() or path.is_symlink():
-            # Headers, static archives, cmake/pkg-config files and manuals are
-            # builder inputs, not runtime functionality.
-            relative = path.relative_to('/opt/tesseract')
-            if relative.parts[0] == 'bin' and path.name != 'tesseract':
-                continue
-            if relative.parts[0] == 'include' or path.suffix == '.a' or any(
-                    part in {'cmake', 'pkgconfig', 'man'} for part in relative.parts):
-                continue
-            copy_file(path, custom_id)
+    for custom_prefix, package in CUSTOM_PACKAGES.items():
+        if package['name'] in base_status:
+            raise RuntimeError(f'Unexpected old OCR package in the pinned base: {package["name"]}')
+        for path in Path(custom_prefix).rglob('*'):
+            if path.is_file() or path.is_symlink():
+                # Headers, static archives, cmake/pkg-config files and manuals
+                # are builder inputs, not runtime functionality.
+                relative = path.relative_to(custom_prefix)
+                if relative.parts[0] == 'bin' and path.name != 'tesseract':
+                    continue
+                if relative.parts[0] == 'include' or path.suffix == '.a' or any(
+                        part in {'cmake', 'pkgconfig', 'man'} for part in relative.parts):
+                    continue
+                copy_file(path, package['id'])
     language = Path('/usr/share/tesseract-ocr/5/tessdata/eng.traineddata')
     language_owner = owners.get(str(language))
     if not language_owner:
@@ -218,26 +226,34 @@ def main():
             continue
         scanned.add(path)
         for dependency in linked_files(path):
-            if str(dependency).startswith(('/usr/local/', '/opt/tesseract/')):
+            custom_owner = next((package['id'] for prefix, package in CUSTOM_PACKAGES.items()
+                                 if str(dependency).startswith(prefix + '/')), None)
+            if custom_owner:
+                copy_file(dependency, custom_owner)
+            elif str(dependency).startswith('/usr/local/'):
                 # Native wheel RPATHs may contain '..'; normalize before copying.
                 copy_file(dependency)
             else:
                 add_system_file(dependency)
 
     architecture = subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip()
-    stanzas[custom_id] = '\n'.join([
-        'Package: tesseract-ocr', 'Status: install ok installed',
-        'Version: 5.5.0-1+aster1', 'Source: tesseract (5.5.0-1)',
-        f'Architecture: {architecture}',
-        'Maintainer: Aster local processor build',
-        'Description: Local minimal rebuild of the authenticated Debian Tesseract source',
-        'X-Aster-Build: archive=off curl=off graphics=off training=off native-cpu=off',
-    ])
+    for package in CUSTOM_PACKAGES.values():
+        # These are truthful local upstream rebuilds, not official Debian
+        # binaries. Keep canonical source names so existing CVEs remain visible.
+        stanzas[package['id']] = '\n'.join([
+            f'Package: {package["name"]}', 'Status: install ok installed',
+            f'Version: {package["version"]}-1+aster1',
+            f'Source: {package["source"]} ({package["version"]})',
+            f'Architecture: {architecture}', 'Maintainer: Aster local processor build',
+            'Description: Local rebuild of authenticated upstream source; not a Debian binary package',
+            'X-Aster-Provenance: /opt/aster/runtime-manifest.json',
+        ])
     # Preserve license notices as well as source/version identity for each OS
     # package. Their status.d metadata follows the Distroless scanner standard.
     for package_id in list(copied):
         info = fields(stanzas[package_id])
-        copyright_path = (Path('/build/tesseract/source/debian/copyright') if package_id == custom_id
+        custom = next((package for package in CUSTOM_PACKAGES.values() if package['id'] == package_id), None)
+        copyright_path = (Path('/build/sources') / custom['license'] if custom
                           else Path('/usr/share/doc') / info['Package'] / 'copyright')
         if not copyright_path.is_file():
             raise RuntimeError(f'Missing copyright for runtime package: {package_id}')
@@ -268,7 +284,7 @@ def main():
     # Sanitized child processes do not inherit LD_LIBRARY_PATH. Build an actual
     # loader cache for the merged image instead of relying on that environment.
     machine_lib = subprocess.check_output(['gcc', '-print-multiarch'], text=True).strip()
-    (ROOT / 'etc/ld.so.conf').write_text(f'/usr/local/lib\n/opt/tesseract/lib\n/usr/lib/{machine_lib}\n')
+    (ROOT / 'etc/ld.so.conf').write_text(f'/opt/libtiff/lib\n/opt/tesseract/lib\n/usr/local/lib\n/usr/lib/{machine_lib}\n')
     subprocess.run(['ldconfig', '-r', str(ROOT)], check=True)
     trust_store = configure_trust(ROOT, ssl.get_default_verify_paths())
     with (ROOT / 'etc/passwd').open('a') as handle:
@@ -276,15 +292,34 @@ def main():
     with (ROOT / 'etc/group').open('a') as handle:
         handle.write('processor:x:10001:\n')
     (ROOT / 'opt/aster').mkdir(parents=True, exist_ok=True)
-    archives = [{'filename': line.split()[1], 'sha256': line.split()[0]} for line in
-                Path('/build/tesseract/tesseract-source.sha256').read_text().splitlines() if line]
+    sources = json.loads(Path('/build/upstream-sources.json').read_text())
+    native = json.loads(Path('/build/native-build.json').read_text())
+    provenance = []
+    evidence_dir = ROOT / 'opt/aster/source-provenance'
+    evidence_dir.mkdir()
+    for source in [Path('/build/upstream-sources.json'), *sorted(Path('/build/source-provenance').iterdir())]:
+        target = evidence_dir / source.name
+        shutil.copy2(source, target)
+        provenance.append({'path': '/' + str(target.relative_to(ROOT)),
+                           'sha256': hashlib.sha256(target.read_bytes()).hexdigest()})
+
+    def source_details(name):
+        source = sources[name]
+        return {'sourceArchives': [{key: source[key] for key in ['filename', 'sha256', 'url']}],
+                'authentication': source['authentication']}
+
     manifest = {'schemaVersion': 1,
                 'python': {'version': '3.12.13', 'omittedModules': OMITTED_MODULES,
                            'binarySha256': hashlib.sha256((ROOT / 'usr/local/bin/python3.12').read_bytes()).hexdigest()},
-                'tesseract': {'version': '5.5.0', 'packageVersion': '5.5.0-1+aster1',
-                              'sourceVersion': '5.5.0-1', 'sourceArchives': archives,
+                'tesseract': {'version': '5.5.3', 'packageVersion': '5.5.3-1+aster1',
+                              'sourceVersion': '5.5.3', **source_details('tesseract'),
                               'compiledDataPrefix': '/opt/tesseract/share',
                               'options': {'archive': False, 'curl': False, 'graphics': False, 'training': False}},
+                'libtiff': {'version': '4.7.2', 'packageVersion': '4.7.2-1+aster1',
+                            'sourceVersion': '4.7.2', **source_details('libtiff'), **native['libtiff']},
+                'pillow': {**native['pillow'], **source_details('pillow'),
+                           'buildDependencies': sources['buildDependencies']},
+                'sourceProvenance': provenance,
                 'runtimeConfiguration': {'trustStore': trust_store},
                 'systemPackages': package_manifest}
     (ROOT / 'opt/aster/runtime-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

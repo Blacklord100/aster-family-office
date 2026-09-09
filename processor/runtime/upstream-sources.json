@@ -1,0 +1,75 @@
+{
+  "tesseract": {
+    "filename": "tesseract-5.5.3.tar.gz",
+    "url": "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.3.tar.gz",
+    "sha256": "9218e62793116d42a9f6d14cd9348518b27f382096eea3d0f2d1a24616bb5884",
+    "directory": "tesseract-5.5.3",
+    "version": "5.5.3",
+    "authentication": {
+      "method": "OpenPGP signed Git tag; generated archive separately SHA256 pinned",
+      "tagObject": "6951ffe10ce031374bcd04fe400811da1e7e04ad",
+      "commit": "db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+      "fingerprint": "49236FEA75C95D698EC2B78AE08C21D5677450AD",
+      "keyFile": "stweil-keyserver.asc",
+      "tagFile": "tesseract-tag.json",
+      "publisherKeyURL": "https://api.github.com/users/stweil/gpg_keys",
+      "certificateURL": "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x49236FEA75C95D698EC2B78AE08C21D5677450AD"
+    }
+  },
+  "libtiff": {
+    "filename": "tiff-4.7.2.tar.xz",
+    "url": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.xz",
+    "sha256": "4996f0c4f93094719b1ca5c6279b20e588773ba8a247533e486416fb662ddb88",
+    "directory": "tiff-4.7.2",
+    "version": "4.7.2",
+    "authentication": {
+      "method": "OpenPGP detached signature over exact release archive",
+      "fingerprint": "B1FA7D81EEB8E66399178B9733EBBFC47B3DD87D",
+      "keyFile": "rouault-gitlab.asc",
+      "signatureFile": "tiff-4.7.2.tar.xz.sig",
+      "publisherKeyURL": "https://gitlab.com/rouault.gpg",
+      "signatureURL": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.xz.sig"
+    }
+  },
+  "pillow": {
+    "filename": "pillow-12.3.0.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/1c/3d/bb7fca845737cf9d7dbde16ed1843984665ff2e0a518f5db43e77ec540b9/pillow-12.3.0.tar.gz",
+    "sha256": "3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce",
+    "directory": "pillow-12.3.0",
+    "version": "12.3.0",
+    "authentication": {
+      "method": "Official PyPI release SHA256",
+      "publisherURL": "https://pypi.org/pypi/Pillow/12.3.0/json"
+    }
+  },
+  "buildDependencies": [
+    {
+      "filename": "setuptools-84.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl",
+      "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
+    },
+    {
+      "filename": "pybind11-3.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/33/fd/8762f7ee3e4e4be6d1d846cffb4916dd9bb02b2f800d3603718a0efe494c/pybind11-3.1.0-py3-none-any.whl",
+      "sha256": "b8488090f8acffbcb6b5d6a85571a6827a0a2981ffb75e5a0b27b87c4a6b7dd0"
+    }
+  ],
+  "provenanceFiles": [
+    {
+      "filename": "rouault-gitlab.asc",
+      "sha256": "37bfe1497fcd9d638d777306ab2c4476c650d013afc66f1ada58ab408c79bcd8"
+    },
+    {
+      "filename": "stweil-keyserver.asc",
+      "sha256": "5cb125ac164bec19b5d7f1090f153f46da83e0ccb70ede624b1150bde2286f4c"
+    },
+    {
+      "filename": "tesseract-tag.json",
+      "sha256": "7364b0444a46573f3f6a6a12c3ab1db8d3cc853592dd987589d17fb8b8e33046"
+    },
+    {
+      "filename": "tiff-4.7.2.tar.xz.sig",
+      "sha256": "cc5ca256639eb151041dcae3a4359ec105111f8c610123c9f96fefc456c4c0df"
+    }
+  ]
+}

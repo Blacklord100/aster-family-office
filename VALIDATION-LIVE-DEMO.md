@@ -25,7 +25,7 @@ This record covers the native, source-derived demo and its application changes. 
 | Native isolated demo lifecycle/publication suite | Six passed |
 | Native isolated MCP protocol/access suite | Six passed with the official SDK |
 | Native isolated mailbox/recovery suite | Six passed, including all 34 current tables |
-| Container inventory and trust-store regressions | Nine passed; missing packages, invalid trust or high/critical findings fail validation |
+| Container inventory, trust and source-provenance regressions | Twelve passed; missing packages, modified source evidence, invalid trust or high/critical findings fail validation |
 | UI route audit | 14 routes at desktop and mobile sizes; no detected overflow or console errors |
 | Interaction audit | 17 primary interactions, demo start/leave/reopen, source counts, chart and report checks passed |
 | Email/PDF browser checks | Original rendering, attachment expansion, tracking canary and tenant/family-scope denial passed |
@@ -33,7 +33,7 @@ This record covers the native, source-derived demo and its application changes. 
 
 Native suites use the restricted runtime database role and isolated/disposable fixtures. They are recorded separately from the default test command; skipped tests are not counted as passes. Browser checks used generated synthetic QA identities with normal MFA sessions. The retained source-derived demo is separate from the static UI fixtures.
 
-Linux run 34399925018 passed all 38 database test assertions but failed on a fixture shutdown race. The three affected fixture suites now use bounded, non-forced database cleanup: all 18 tests in those suites passed in isolated native databases, and nine cleanup regressions passed. Those disposable databases were removed; the live offices were untouched. The next Linux run must verify the complete database job after this fix.
+The application job in [Linux run 34401902945](https://github.com/Blacklord100/aster-family-office/actions/runs/34401902945) passed completely: 594 application tests, all 38 database integration tests with clean teardown, and 598 host processor/runtime tests (589 service tests plus nine then-existing runtime regressions). Lint, typecheck, production build, dependency audit and CycloneDX SBOM generation also passed. The three previously affected database fixtures now use bounded, non-forced cleanup, covered by nine regressions. Isolated native reruns also passed all 18 tests in those three suites; their disposable databases were removed and live offices were untouched.
 
 ## Recovery and encryption
 
