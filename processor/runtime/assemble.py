@@ -94,13 +94,18 @@ def main():
         if target.is_symlink():
             target.unlink()
         if source.is_symlink():
+            if target.is_dir():
+                # Only an empty directory left by a replaced package may turn
+                # into a symlink. Never recursively erase another package.
+                target.rmdir()
             target.symlink_to(os.readlink(source))
             resolved = source.resolve(strict=True)
             # Relocated language data is a regular file; native symlinks keep
             # their original destinations and need that exact target too.
             if destination != source:
                 raise RuntimeError('Relocated runtime inputs cannot be symlinks')
-            copy_file(resolved, package_id)
+            if not resolved.is_dir():
+                copy_file(resolved, package_id)
         else:
             shutil.copy2(source, target)
             if elf(source):

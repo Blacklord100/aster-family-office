@@ -34,7 +34,9 @@ COPY --from=runtime-base / /runtime-base/
 COPY runtime/assemble.py /build/assemble.py
 RUN python /build/assemble.py
 
-FROM ${PROCESSOR_RUNTIME_IMAGE} AS runner
+# /runtime already contains the full pinned Distroless base. An exact root copy
+# prevents deleted/replaced base-package files surviving from a lower image layer.
+FROM scratch AS runner
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
     PATH="/usr/local/bin:/opt/tesseract/bin:/usr/bin:/bin" LANG=C.UTF-8
 # Contains the base plus a checked native dependency closure and complete package
