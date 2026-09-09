@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { access, readdir, writeFile } from 'node:fs/promises';
+import { access, readFile, readdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
@@ -22,7 +22,8 @@ assert.equal(email.subject, 'Synthetic runtime probe');
 const nextRequire = createRequire(require.resolve('next/package.json'));
 const sharp = nextRequire('sharp');
 assert.ok((await sharp({ create: { width: 1, height: 1, channels: 4, background: '#ffffff' } }).png().toBuffer()).length > 0);
-assert.ok((await readdir('/app/.next/standalone/public/pdfjs')).some((name) => /^pdf\.worker-.*\.min\.mjs$/.test(name)));
+const pdfWorkerName = (await readdir('/app/.next/standalone/public/pdfjs')).find((name) => /^pdf\.worker-.*\.min\.mjs$/.test(name));
+assert.ok(pdfWorkerName);
 for (const service of ['worker', 'folder-worker', 'mailbox-worker', 'delivery-worker', 'report-obligations-worker'])
   await access(`/app/dist-${service}/index.js`);
 await access('/app/migrations/014-demo-workspaces.sql');
@@ -79,21 +80,26 @@ const exited = new Promise((resolve, reject) => {
   child.once('exit', resolve);
 });
 try {
-  let login;
+  let readiness;
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline && child.exitCode === null) {
     try {
-      login = await fetch('http://127.0.0.1:3199/login', { signal: AbortSignal.timeout(2000) });
-      if (login.status === 200) break;
+      readiness = await fetch('http://127.0.0.1:3199/api/health', { signal: AbortSignal.timeout(2000) });
+      break;
     } catch { /* Startup is asynchronous; bounded retry. */ }
     await delay(250);
   }
-  assert.equal(login?.status, 200, 'Built Next application did not serve its sign-in page.');
-  assert.match(await login.text(), /Sign in/i);
-  const readiness = await fetch('http://127.0.0.1:3199/api/health', { signal: AbortSignal.timeout(12_000) });
-  assert.equal(readiness.status, 503, 'A missing database must not be reported healthy.');
+  assert.equal(readiness?.status, 503, 'A missing database must not be reported healthy.');
   assert.deepEqual(await readiness.json(), { status: 'unavailable' });
-  console.log('Runtime imports, native image library, source assets, secret entrypoint and HTTP start probes passed. No external network or model requests.');
+  const asset = await fetch(`http://127.0.0.1:3199/pdfjs/${pdfWorkerName}`, { signal: AbortSignal.timeout(12_000) });
+  assert.equal(asset.status, 200, 'The built server must serve its local PDF worker.');
+  assert.deepEqual(Buffer.from(await asset.arrayBuffer()), await readFile(`/app/.next/standalone/public/pdfjs/${pdfWorkerName}`));
+  // Login resolves the live database session, so it cannot succeed in this
+  // deliberately disconnected probe. Database-backed auth is checked separately.
+  const login = await fetch('http://127.0.0.1:3199/login', { signal: AbortSignal.timeout(12_000), redirect: 'manual' });
+  assert.equal(login.status, 500, 'Login must fail closed while its session database is unavailable.');
+  assert.deepEqual(login.headers.getSetCookie(), [], 'Unavailable authentication must not issue a session cookie.');
+  console.log('Runtime imports, native image library, bootstrap input, secret entrypoint, served source asset and fail-closed HTTP probes passed. No database, external network or model requests.');
 } catch (error) {
   console.error(output);
   throw error;

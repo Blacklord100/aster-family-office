@@ -21,7 +21,7 @@ RUN sha256sum --check tesseract-source.sha256 \
 # OCR only consumes our locally rendered PNG. Network/archive inputs, graphical
 # debugging and training tools are unnecessary; their libraries are not shipped.
 RUN cmake -S source -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/tesseract \
-      -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_RPATH=/opt/tesseract/lib \
+      -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_RPATH=/opt/tesseract/lib -DTESSDATA_PREFIX=/opt/tesseract/share \
       -DBUILD_SHARED_LIBS=ON -DBUILD_TRAINING_TOOLS=OFF -DBUILD_TESTS=OFF \
       -DDISABLE_ARCHIVE=ON -DDISABLE_CURL=ON -DGRAPHICS_DISABLED=ON \
       -DENABLE_NATIVE=OFF -DENABLE_LTO=OFF -DOPENMP_BUILD=ON \

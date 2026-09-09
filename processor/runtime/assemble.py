@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 
@@ -49,6 +50,33 @@ def linked_files(path):
             marker in output for marker in ['statically linked', 'not a dynamic executable'])):
         raise RuntimeError(f'Unresolved native dependency for {path}: {output}')
     return [Path(value) for value in re.findall(r'(?:=>\s+|^\s*)(/[^\s]+)', output, re.MULTILINE)]
+
+
+def configure_trust(root, defaults):
+    """Connect OpenSSL's compiled defaults to the existing Distroless CA store."""
+    bundle_path = '/etc/ssl/certs/ca-certificates.crt'
+    bundle = root / bundle_path.lstrip('/')
+    # Validate the actual retained CA bytes, without downloading/replacing trust.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cafile=str(bundle))
+    if not context.get_ca_certs():
+        raise RuntimeError('The pinned runtime base has no usable CA certificates')
+    aliases = []
+    for expected, retained in [(defaults.openssl_cafile, bundle_path),
+                               (defaults.openssl_capath, '/etc/ssl/certs')]:
+        if not expected or not Path(expected).is_absolute():
+            raise RuntimeError('The builder has an unsupported OpenSSL trust-store default')
+        if expected == retained:
+            continue
+        target = root / Path(expected).relative_to('/')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_symlink():
+            target.unlink()
+        elif target.exists():
+            raise RuntimeError(f'Unexpected existing OpenSSL trust-store path: {expected}')
+        target.symlink_to(retained)
+        aliases.append({'path': expected, 'symlink': retained})
+    return {'bundle': bundle_path, 'sha256': hashlib.sha256(bundle.read_bytes()).hexdigest(), 'aliases': aliases}
 
 
 def main():
@@ -242,6 +270,7 @@ def main():
     machine_lib = subprocess.check_output(['gcc', '-print-multiarch'], text=True).strip()
     (ROOT / 'etc/ld.so.conf').write_text(f'/usr/local/lib\n/opt/tesseract/lib\n/usr/lib/{machine_lib}\n')
     subprocess.run(['ldconfig', '-r', str(ROOT)], check=True)
+    trust_store = configure_trust(ROOT, ssl.get_default_verify_paths())
     with (ROOT / 'etc/passwd').open('a') as handle:
         handle.write('processor:x:10001:10001:Document processor:/nonexistent:/sbin/nologin\n')
     with (ROOT / 'etc/group').open('a') as handle:
@@ -254,7 +283,9 @@ def main():
                            'binarySha256': hashlib.sha256((ROOT / 'usr/local/bin/python3.12').read_bytes()).hexdigest()},
                 'tesseract': {'version': '5.5.0', 'packageVersion': '5.5.0-1+aster1',
                               'sourceVersion': '5.5.0-1', 'sourceArchives': archives,
+                              'compiledDataPrefix': '/opt/tesseract/share',
                               'options': {'archive': False, 'curl': False, 'graphics': False, 'training': False}},
+                'runtimeConfiguration': {'trustStore': trust_store},
                 'systemPackages': package_manifest}
     (ROOT / 'opt/aster/runtime-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps({'runtimePackages': len(package_manifest), 'nativeLibrariesChecked': len(scanned),

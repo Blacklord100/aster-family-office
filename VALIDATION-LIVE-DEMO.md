@@ -16,7 +16,7 @@ This record covers the native, source-derived demo and its application changes. 
 
 | Check | Result |
 | --- | --- |
-| Application unit/component/route tests | 580 passed; 59 opt-in tests skipped in this command |
+| Application unit/component/route tests | 585 passed; 59 opt-in tests skipped in this command |
 | Python processor suite | 589 passed; two dependency deprecation warnings |
 | Production Next build and service bundles | Passed |
 | TypeScript and lint | Passed |
@@ -25,7 +25,7 @@ This record covers the native, source-derived demo and its application changes. 
 | Native isolated demo lifecycle/publication suite | Six passed |
 | Native isolated MCP protocol/access suite | Six passed with the official SDK |
 | Native isolated mailbox/recovery suite | Six passed, including all 34 current tables |
-| Container inventory verifier regressions | Seven passed; missing packages or high/critical findings fail validation |
+| Container inventory and trust-store regressions | Nine passed; missing packages, invalid trust or high/critical findings fail validation |
 | UI route audit | 14 routes at desktop and mobile sizes; no detected overflow or console errors |
 | Interaction audit | 17 primary interactions, demo start/leave/reopen, source counts, chart and report checks passed |
 | Email/PDF browser checks | Original rendering, attachment expansion, tracking canary and tenant/family-scope denial passed |
@@ -35,9 +35,9 @@ Native suites use the restricted runtime database role and isolated/disposable f
 
 ## Recovery and encryption
 
-The bounded native encrypted SQL recovery drill passed for all 34 tables: 6,092 records restored and compared, with 2,955 encrypted application fields authenticated and decrypted. This included the folder connection and all 100 folder receipts. The disposable database, snapshot and temporary recovery key were removed. These are counts at the snapshot time; the live demo was still processing.
+The latest bounded native encrypted SQL recovery drill passed for all 34 tables: 6,381 records restored and compared, with 3,109 encrypted application fields authenticated and decrypted. This included the folder connection and all 100 folder receipts. The disposable database, snapshot and temporary recovery key were removed. These are counts at that snapshot time. Five regression tests cover waiting for the restore connection to close, refusing unsafe database names and surfacing a failed close before deletion.
 
-A subsequent rotation **dry-run** authenticated all configured encrypted fields, including folder receipts, and changed zero records. No running encryption keys or audit signatures were replaced. This verifies the native maintenance paths; production streaming `pg_dump`/`age`, scheduled backups and target-host recovery remain separate qualification work.
+A rotation **dry-run** during native validation authenticated all then-configured encrypted fields, including folder receipts, and changed zero records. No running encryption keys or audit signatures were replaced. This verifies the native maintenance paths; production streaming `pg_dump`/`age`, scheduled backups and target-host recovery remain separate qualification work.
 
 ## Live extraction evaluation
 
@@ -68,5 +68,7 @@ The run exercises combined deterministic source rules and actual local model cal
 Gmail/Microsoft adapters and their workers are implemented, but no real provider consent, tenant configuration or historical backfill was exercised here. The MCP package was validated and tested against the server; it was not activated in a real external client with a production token.
 
 Docker is unavailable on this development host. The [release workflow](.github/workflows/verify.yml) qualifies Linux image builds, non-root/read-only controls, network-disabled startup and OCR, the processor regression suite, and high/critical vulnerability gates. The processor scan additionally checks that every retained native package and locked Python dependency is present in the scanner inventory. Exact commit results are available in [GitHub release checks](https://github.com/Blacklord100/aster-family-office/actions/workflows/verify.yml); a clean base-image scan is not a passing application-image result.
+
+The complete web image passed its high/critical scan in [run 34397825047](https://github.com/Blacklord100/aster-family-office/actions/runs/34397825047). The processor image retained three high-severity dependency findings, which intentionally block release. [The processor release-blocker record](operations/processor-release-blockers.md) identifies the affected versions, upstream fixes and outstanding scanner-coverage qualification. No finding has been suppressed or relabeled to obtain a passing release.
 
 The complete LP deployment still requires target-host permission and egress checks, hardware capacity testing, public TLS and production streaming backup/restore qualification. The native source intake contains plaintext synthetic files before encrypted retention; host storage protections remain an operator responsibility. Use [the deployment readiness record](operations/readiness.md) and [offline LP packaging plan](operations/offline-lp-packaging.md) for the remaining installation work.

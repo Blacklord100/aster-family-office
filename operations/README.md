@@ -10,6 +10,8 @@ The entrypoint reads Docker secret files and constructs `DATABASE_URL` without p
 
 The web/worker runtime uses the pinned Distroless Node 24 Debian 13 image at UID/GID 1000. Its Node binary is `/nodejs/bin/node`; package managers and shells are absent. Build tooling remains in the separate official Node 24 Trixie stage. Run container maintenance commands directly with `node dist-ops/...`; the documented `npm run ...` commands remain valid for native installations. The host bootstrap wrapper sends the password through stdin to a Node helper that creates and removes a private temporary file. Use a separate reviewed debug image when shell access is required. Updating the runtime digest requires repeating the image scan, import/start probes and deployment checks; a clean base scan does not qualify the complete application image.
 
+The image startup probe deliberately has no database or network route. It verifies served local assets byte for byte, readiness returns `503`, and session-dependent login fails without issuing a cookie. Database-backed authentication and tenant/MFA checks are validated separately by the application tests and local UI checks; the disconnected image probe does not establish successful login.
+
 ## Prepare locally
 
 1. Copy `.env.example` to `.env`. Set a domain you control, the exact HTTPS auth origin, a reviewed Ollama image version/digest, and your local model label. Replace placeholder addresses. Pin all images to reviewed digests for release.

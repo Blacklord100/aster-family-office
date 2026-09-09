@@ -1,9 +1,10 @@
 // Bounded development recovery drill, not a replacement for streaming production backups.
-import { Pool } from 'pg';
+import { Client, Pool } from 'pg';
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { mkdtemp, writeFile, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { closeRestoreDatabase } from './recovery-connection.mjs';
 import {
   encryptedTables,
   decrypt,
@@ -144,8 +145,9 @@ async function main() {
     created = true;
     const destination = new URL(url);
     destination.pathname = '/' + dbName;
-    restored = new Pool({ connectionString: destination.toString(), max: 1 });
-    const target = await restored.connect();
+    restored = new Client({ connectionString: destination.toString() });
+    await restored.connect();
+    const target = restored;
     try {
       await target.query('BEGIN');
       await target.query("SET LOCAL timezone='UTC'");
@@ -175,8 +177,6 @@ async function main() {
     } catch (error) {
       await target.query('ROLLBACK');
       throw error;
-    } finally {
-      target.release();
     }
     stage = 'application-decryption';
     let decrypted = 0;
@@ -210,9 +210,8 @@ async function main() {
     try {
       await sourceClient.query('ROLLBACK').catch(() => {});
       sourceClient.release();
-      if (restored) await restored.end();
       if (created)
-        await source.query('DROP DATABASE ' + quote(dbName) + ' WITH (FORCE)');
+        await closeRestoreDatabase(restored, source, dbName);
     } finally {
       try {
         await source.end();

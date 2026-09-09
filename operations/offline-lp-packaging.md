@@ -2,6 +2,8 @@
 
 Prepared 8 September 2026; extraction and engine-inspection qualification updated 9 September 2026. The completed four-cell extraction benchmark stayed pinned to ab7c919; its processor/model/image audits passed. These documentation changes were prepared outside the main frozen tree. This is a delivery design and implementation plan, based on the repository and primary documentation. It is not a claim that an offline appliance has already been built, installed, or penetration-tested. No customer systems, model installations, or network settings were changed for this research.
 
+The subsequent [live folder demonstration](../VALIDATION-LIVE-DEMO.md) implements durable local folder ingestion and exercises real Gemma processing across three fictional families. The new image build, runtime and security gates are in [release CI](../.github/workflows/verify.yml). These additions do not replace the target-appliance acceptance gates below.
+
 ## Recommendation
 
 Ship **Aster Private Appliance**: a signed, versioned Linux virtual machine for the client's existing hypervisor, containing a preinstalled container runtime, prebuilt Aster services, and an approved local model pack. Users open an internal HTTPS address in their browser. Provide the identical release as an offline installation bundle for clients that supply a dedicated Linux server. Start with one certified Linux/CPU architecture; add a separately tested GPU configuration and other architectures only when required.
@@ -46,7 +48,7 @@ This assessment refers to `operations/compose.yaml`, the four Dockerfiles, `proc
 
 | Area | Present in the repository | Work required for the offline release |
 | --- | --- | --- |
-| Runtime | Standalone Next app; separate document, mailbox and delivery workers; PostgreSQL; Python/OCR processor; Ollama; Caddy template | Build and boot the actual Linux images on the chosen target. Docker is unavailable on the current development host; template review is not isolation evidence. |
+| Runtime | Standalone Next app; separate document, folder, mailbox, delivery and reporting workers; PostgreSQL; Python/OCR processor; Ollama; Caddy template | Qualify the exact release on the chosen target. CI image builds and isolated probes do not certify the complete client deployment. |
 | Dependencies | Locked npm/Python dependencies; local Geist fonts; local PDF.js worker prepared during build | Bundle final images and licenses. Current Docker builds call `npm ci`, `apt-get`, and `pip install`; first installation must perform none of these network operations. |
 | Processing | Fixed local Ollama endpoint; cloud disabled by default; bounded source/tool handling | Set cloud denial explicitly in every offline service, omit cloud secrets/endpoints, and validate no fallback after failures. Pin allowed model digests and runtime configuration. |
 | Networking | Internal database and processing networks, private processor/Ollama ports, non-root services, read-only root filesystems | Create a dedicated offline manifest. The current mailbox worker starts by default on `mail-egress`; web/Caddy join a non-internal `edge` network. Do not ship this unchanged as an offline edition. |
@@ -126,7 +128,7 @@ Certify each SKU using the same release/model settings: cold-start and warm late
 
 Give the appliance one client-LAN interface and no general internet route. Enforce destination restrictions at the hypervisor/switch firewall and the host firewall. Permit only browser-to-proxy HTTPS and the explicitly approved internal DNS/time/PKI/backup services. Restrict administration to a client-owned management network. Disable IPv6 or apply equally restrictive IPv6 rules; block direct-IP, DNS and alternate proxy routes as well as ordinary hostname requests.
 
-In the offline Compose manifest, include only PostgreSQL, web, document worker, processor, Ollama, TLS ingress and explicit one-shot maintenance. Omit mailbox/delivery/cloud processors and their credentials by default. A client that needs internal SMTP receives a separate allowlisted configuration; no message-sending agent tool is enabled by importing a document. Never mount the Docker socket or host filesystems into app/inference containers.
+In the offline Compose manifest, include PostgreSQL, web, document worker, processor, Ollama, reporting monitor, TLS ingress and explicit one-shot maintenance. Enable the folder worker when approved local intake is needed, with only its dedicated tenant-scoped intake mount read-only. Omit mailbox/delivery/cloud processors and their credentials by default. A client that needs internal SMTP receives a separate allowlisted configuration; no message-sending agent tool is enabled by importing a document. Never mount the Docker socket or general host filesystems into app/inference containers.
 
 Use internal service networks for database and inference, expose only the HTTPS ingress, and restrict its host bind address. Test the Docker-aware forwarding rules on the chosen firewall backend: Docker warns that published container traffic can bypass UFW's normal rules. A UFW rule listing is not sufficient evidence of container egress denial. [Docker firewall behavior](https://docs.docker.com/engine/network/packet-filtering-firewalls/)
 
@@ -152,6 +154,8 @@ Use current Aster local authentication and TOTP as the first release path. TOTP 
 For larger clients, add a separately tested local OIDC integration with their internal identity provider. Keycloak supports local users and integration with LDAP/Active Directory or OIDC/SAML providers, but Aster does not currently ship that integration. Keep role/scope mapping, disabled-user propagation, key rollover, logout and break-glass behavior in scope; a cloud Entra/Google redirect would break the disconnected promise. [Keycloak capabilities](https://www.keycloak.org/)
 
 ## Collection and LP transfer format
+
+The implemented [folder collector](local-intake.md) imports EML, PDF and TXT originals from an explicitly approved intake root. It records encrypted version receipts, retains original bytes, deduplicates exact copies and resumes through a durable queue. The synthetic-only demo override permits creating demo source folders; an LP's ordinary intake stays read-only and arbitrary files follow normal financial review. This is local collection, not yet a signed gateway transfer or LP export format.
 
 The first offline input is a folder/package of EML and PDF originals. Support bulk import with a manifest naming office, mailbox/person, original Message-ID, receipt time, attachment relation, content hash, provenance and import-batch ID. Show an import receipt with accepted, duplicate, unsupported, quarantined and failed items. Resume by stable source identity without silently duplicating a holding update. Do not imply PST, MBOX, MSG, internal IMAP or Exchange connectors are already implemented; add and test adapters explicitly if clients need them.
 

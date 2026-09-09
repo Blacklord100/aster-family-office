@@ -38,8 +38,13 @@ def image_identity():
     assert hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest() == manifest['python']['binarySha256']
     assert manifest['tesseract']['version'] == '5.5.0'
     assert manifest['tesseract']['sourceArchives'], 'Custom OCR source inventory is missing'
+    assert manifest['tesseract']['compiledDataPrefix'] == '/opt/tesseract/share'
     assert manifest['tesseract']['options'] == {'archive': False, 'curl': False, 'graphics': False, 'training': False}
     assert manifest['systemPackages'], 'Debian scanner inventory is missing'
+    trust = manifest['runtimeConfiguration']['trustStore']
+    assert hashlib.sha256(Path(trust['bundle']).read_bytes()).hexdigest() == trust['sha256']
+    for alias in trust['aliases']:
+        assert Path(alias['path']).is_symlink() and os.readlink(alias['path']) == alias['symlink']
     for package in manifest['systemPackages']:
         metadata = Path(package['metadataPath'])
         assert metadata.is_absolute() and metadata.stat().st_size > 0
@@ -70,7 +75,7 @@ def native_dependencies():
     assert available_backend() == 'tesseract', 'The Linux local OCR backend is missing'
     output = subprocess.run(['tesseract', '--list-langs'], check=True, capture_output=True,
                             text=True, timeout=10)
-    assert 'eng' in output.stdout.splitlines(), 'English OCR data is missing'
+    assert 'eng' in output.stdout.splitlines(), 'English OCR data is missing: ' + output.stdout[:2000] + output.stderr[:2000]
 
 
 def http_runtime(processor_root: Path, entrypoint: Path = Path('/opt/aster/processor-entrypoint.py')):
