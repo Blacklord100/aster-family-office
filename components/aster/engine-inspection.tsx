@@ -78,7 +78,7 @@ export function EngineInspectionDetails({
         <h3>{imageStatus[vision.effective]}</h3>
         <p>
           {vision.basis === 'local_metadata'
-            ? `Local runtime metadata: image support ${vision.advertised}.`
+            ? `Local runtime metadata reports image support as ${vision.advertised}.`
             : 'Provider capabilities were not queried. This adapter currently accepts text only.'}{' '}
           No image or generation request was made. Image extraction quality has
           not been tested by this check.
