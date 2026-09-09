@@ -114,6 +114,28 @@ def _constrain_optional_field(fields: dict, key: str, values: list[str], descrip
         fields[key] = {'title':fields[key].get('title',key),'type':'null','description':description}
 
 
+def _source_has_no_amount(text: str) -> bool:
+    if money_mentions(text):
+        return False
+    # Date digits cannot become an invented financial amount. Everything else
+    # numerical stays unconstrained by this guard, including unsupported formats
+    # and nonfinancial quantities; independent amount/role grounding still applies.
+    remaining = list(text)
+    for mention in date_mentions(text):
+        remaining[mention.start:mention.end] = ' ' * (mention.end-mention.start)
+    remaining = ''.join(remaining)
+    if any(character.isnumeric() or unicodedata.category(character) == 'Sc' for character in remaining):
+        return False
+    if re.search(r'[%‰‱]|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|'
+                 r'thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|'
+                 r'fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|'
+                 r'dozen|half|quarter)\b',remaining,re.I):
+        return False
+    if re.search(r'\b[IVXLCDM]+\b',remaining):
+        return False
+    return True
+
+
 def candidate_schema(block: SourceBlock) -> dict:
     schema = SourceCandidates.model_json_schema()
     properties = schema['$defs']['SourceReference']['properties']
@@ -121,6 +143,9 @@ def candidate_schema(block: SourceBlock) -> dict:
     properties['page']['enum'] = [block.page]
     safe = mask_instructions(block.text)
     fields = schema['$defs']['ReferencedFact']['properties']
+    if _source_has_no_amount(safe):
+        fields['amount'] = {'title':fields['amount'].get('title','amount'),'type':'null',
+                            'description':'No monetary or non-date numeric value is present in this source block. Use JSON null, never a quoted null string or an invented amount.'}
     currency_branch = next(branch for branch in fields['currency']['anyOf'] if branch.get('type') == 'string')
     currencies = _currency_options(safe,currency_branch['enum'])
     if currencies is not None:
