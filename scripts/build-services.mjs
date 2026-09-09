@@ -1,5 +1,10 @@
 import { build } from 'esbuild';
-for (const name of ['worker', 'mailbox-worker', 'delivery-worker'])
+for (const name of [
+  'worker',
+  'mailbox-worker',
+  'delivery-worker',
+  'report-obligations-worker',
+])
   await build({
     entryPoints: ['scripts/' + name + '.ts'],
     outfile: 'dist-' + name + '/index.js',

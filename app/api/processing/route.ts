@@ -30,12 +30,20 @@ export async function GET(request: Request) {
           [ctx.organizationId],
         ),
         client.query(
-          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,j.review_revision,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id WHERE j.organization_id=$1 ORDER BY j.created_at DESC,j.id DESC LIMIT 100',
-          [ctx.organizationId],
+          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,j.review_revision,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id AND d.organization_id=j.organization_id WHERE j.organization_id=$1 ORDER BY (j.id=$2::uuid) DESC,j.created_at DESC,j.id DESC LIMIT 100',
+          [ctx.organizationId, selectedId],
         ),
       ]);
       // List metadata is bounded; decrypt only the selected (or newest) job.
-      const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0];
+      const selected = selectedId
+        ? jobs.find((j) => j.id === selectedId)
+        : jobs[0];
+      if (selectedId && !selected)
+        throw new AccessError(
+          404,
+          'JOB_NOT_FOUND',
+          'The selected source review is not available in this office.',
+        );
       const stored = selected
         ? await client.query(
             'SELECT result,review_state FROM app_jobs WHERE id=$1 AND organization_id=$2',

@@ -21,6 +21,8 @@ import {
   BookOpen,
   Network,
   ShieldCheck,
+  CalendarDays,
+  CircleAlert,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -47,6 +49,8 @@ export type View =
   | 'investments'
   | 'timeline'
   | 'inbox'
+  | 'exceptions'
+  | 'calendar'
   | 'reports'
   | 'risk'
   | 'engines'
@@ -60,6 +64,8 @@ export const navigation = [
   { id: 'risk', label: 'Exposure & stress', icon: Activity },
   { id: 'timeline', label: 'Timeline', icon: Clock3 },
   { id: 'inbox', label: 'Inbox', icon: Mail },
+  { id: 'exceptions', label: 'Exceptions', icon: CircleAlert },
+  { id: 'calendar', label: 'Reporting calendar', icon: CalendarDays },
   { id: 'reports', label: 'Reports', icon: ChartNoAxesCombined },
   { id: 'agents', label: 'Processing', icon: Bot },
   { id: 'engines', label: 'AI engines', icon: Cpu },

@@ -90,7 +90,11 @@ try {
     process.env.MIGRATION_DATABASE_URL = process.env.DATABASE_URL;
     process.env.BOOTSTRAP_DATABASE_URL = process.env.DATABASE_URL;
   }
-  if (!['mailbox', 'delivery'].includes(process.env.ASTER_SERVICE)) {
+  if (
+    !['mailbox', 'delivery', 'report-obligations'].includes(
+      process.env.ASTER_SERVICE,
+    )
+  ) {
     const auth = secret('BETTER_AUTH_SECRET');
     if (auth.length < 32)
       throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');

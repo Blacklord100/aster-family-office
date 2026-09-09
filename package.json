@@ -26,6 +26,8 @@
     "mailbox:dev": "node --conditions=react-server --import tsx --env-file=.env.local scripts/mailbox-worker.ts",
     "delivery:worker": "node dist-delivery-worker/index.js",
     "delivery:dev": "node --conditions=react-server --import tsx --env-file=.env.local scripts/delivery-worker.ts",
+    "reports:worker": "node dist-report-obligations-worker/index.js",
+    "reports:dev": "node --conditions=react-server --import tsx --env-file=.env.local scripts/report-obligations-worker.ts",
     "keys:dry-run": "node dist-ops/rotate-keys.js --dry-run",
     "keys:rotate": "node dist-ops/rotate-keys.js --apply",
     "monitor": "node dist-ops/monitor.js",

@@ -135,14 +135,16 @@ describe('processing list result minimization', () => {
         .status,
     ).toBe(400);
     expect(fixtures.query).not.toHaveBeenCalled();
-    await GET(
+    const unknown = await GET(
       new Request(
         'http://localhost/api/processing?jobId=00000000-0000-4000-8000-000000000099',
       ),
     );
+    expect(unknown.status).toBe(404);
+    expect(fixtures.decrypt).not.toHaveBeenCalled();
     expect(fixtures.query).toHaveBeenLastCalledWith(
-      expect.stringContaining('SELECT result,review_state FROM app_jobs'),
-      [fixtures.ids[0], fixtures.organizationId],
+      expect.stringContaining('ORDER BY (j.id=$2::uuid) DESC'),
+      [fixtures.organizationId, '00000000-0000-4000-8000-000000000099'],
     );
   });
 });

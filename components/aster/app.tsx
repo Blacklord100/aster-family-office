@@ -54,8 +54,24 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-type Route = { view: View; family: string; holding: string | null };
-const DEFAULT_ROUTE: Route = { view: 'overview', family: 'all', holding: null };
+type Route = {
+  view: View;
+  family: string;
+  holding: string | null;
+  jobId: string | null;
+};
+const DEFAULT_ROUTE: Route = {
+  view: 'overview',
+  family: 'all',
+  holding: null,
+  jobId: null,
+};
+const ReportingCalendarView = dynamic(() =>
+  import('./reporting-calendar').then((module) => module.ReportingCalendarView),
+);
+const ExceptionInboxView = dynamic(() =>
+  import('./exception-inbox').then((module) => module.ExceptionInboxView),
+);
 const ReportingWorkbench = dynamic(() =>
   import('./reporting-workbench').then((module) => module.ReportingWorkbench),
 );
@@ -168,6 +184,7 @@ export function AsterApp() {
         view: navigation.some((n) => n.id === v) ? (v as View) : 'overview',
         family: p.get('family') ?? 'all',
         holding: p.get('holding'),
+        jobId: p.get('jobId'),
       });
     }
     read();
@@ -192,13 +209,15 @@ export function AsterApp() {
         family: next.family,
       });
       if (next.holding) params.set('holding', next.holding);
+      if (next.view === 'agents' && next.jobId) params.set('jobId', next.jobId);
       window.history.pushState(null, '', '?' + params.toString());
       setRoute(next);
       window.scrollTo({ top: 0, behavior: 'instant' });
     },
     [route],
   );
-  const navigate = (view: View) => changeRoute({ view, holding: null });
+  const navigate = (view: View) =>
+    changeRoute({ view, holding: null, jobId: null });
   const family = (family: string) => changeRoute({ family, holding: null });
   const openHolding = (id: string) => {
     setSource(null);
@@ -211,6 +230,15 @@ export function AsterApp() {
     setAskOpen(false);
     setSource(id);
   };
+  const openOriginal = (id: string) => {
+    window.open(
+      '/api/documents/' + encodeURIComponent(id) + '/preview',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
+  const openReview = (jobId: string) =>
+    changeRoute({ view: 'agents', holding: null, jobId });
   const preview = (report: SavedReport | null, range = 'YTD') => {
     setSavedReport(report);
     setReportRange(range);
@@ -303,6 +331,24 @@ export function AsterApp() {
             {route.view === 'ledger' ? (
               <LedgerView family={route.family} onFamily={family} />
             ) : null}
+            {route.view === 'exceptions' ? (
+              <ExceptionInboxView
+                family={route.family}
+                onFamily={family}
+                onHolding={openHolding}
+                onSource={openOriginal}
+                onReview={openReview}
+              />
+            ) : null}
+            {route.view === 'calendar' ? (
+              <ReportingCalendarView
+                family={route.family}
+                onFamily={family}
+                onHolding={openHolding}
+                onSource={openOriginal}
+                onReview={openReview}
+              />
+            ) : null}
             {route.view === 'intelligence' && !state.identity?.dataScope ? (
               <IntelligenceView family={route.family} />
             ) : null}
@@ -310,7 +356,10 @@ export function AsterApp() {
               <OperationsView />
             ) : null}
             {route.view === 'agents' && !state.identity?.dataScope ? (
-              <ProcessingView />
+              <ProcessingView
+                key={route.jobId ?? 'processing'}
+                initialJobId={route.jobId}
+              />
             ) : null}
             {route.view === 'risk' ? (
               <RiskView family={route.family} onFamily={family} />

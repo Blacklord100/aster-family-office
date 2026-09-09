@@ -4,6 +4,8 @@ A portable family-office workspace with a Linear/Notion-inspired interface, Post
 
 ## Current release: 0.4
 
+The reporting calendar and unified exception inbox add versioned expectations, source-backed receipt matching, separate delivery/review status, assigned exceptions, snooze and disposition history, and an unattended local monitor. See [reporting operations](operations/report-obligations.md) and [their validation record](VALIDATION-REPORT-OBLIGATIONS.md).
+
 The seven-item expansion adds a sourced investment register and transaction ledger, per-fact review history, document/manager intelligence, custom-period reconciliation and liquidity reporting, immutable stress-run inputs/results, real selected-engine document answers, a new synthetic model benchmark and operational access/recovery/retention controls. See [access and maintenance](operations/access-recovery-maintenance.md), [intelligence](operations/intelligence.md), and [the release validation record](VALIDATION-SEVEN-ITEMS.md). Earlier validation files remain historical evidence of their recorded versions.
 
 The [100-email mailroom demonstration](benchmark/mailroom-v1/README.md) supplies three fictional offices, nine inboxes, messy originals and a reproducible four-configuration local-model comparison. See [the collection harness](benchmark/mailroom-v1/HARNESS.md) for execution and preserved scoring, and [the offline LP packaging plan](operations/offline-lp-packaging.md) for the proposed disconnected appliance. The offline appliance is a delivery plan, not a deployed or certified installation.

@@ -4,7 +4,7 @@ This is a portable single-host Docker Compose template. It has not been booted w
 
 ## Files and application contract
 
-Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-mailbox-worker/index.js`, `dist-delivery-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs `npm run worker` or `npm run mailbox:worker`. Health routes are web `/api/health` and processor `/healthz`; the worker writes `/run/aster-health/document` in its shared health volume at least once per 180 seconds.
+Run Compose from this directory. Build context is the app repository root, one directory above operations/. The bundled processor lives at processor/ in that same repository. The app must produce `.next/standalone/server.js`, `dist-worker/index.js`, `dist-mailbox-worker/index.js`, `dist-delivery-worker/index.js`, `dist-report-obligations-worker/index.js`, `dist-ops/migrate.js` and `dist-ops/bootstrap.js` during `npm run build`; runtime SQL lives in `/app/migrations`. The same image serves Next on 3000 and runs the workers. Health routes are web `/api/health` and processor `/healthz`; the document worker and report monitor write separate heartbeat files in their shared health volume. See [report monitoring](report-obligations-monitor.md) for its lease, restart and health contract.
 
 The entrypoint reads Docker secret files and constructs `DATABASE_URL` without placing a password in Compose configuration. Only the maintenance service also receives `MIGRATION_DATABASE_URL` and `BOOTSTRAP_DATABASE_URL`. Canonical auth variables are `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`. The processor receives `PROCESSOR_TOKEN` and authenticates `X-Processor-Key`.
 
@@ -55,7 +55,7 @@ For the optional Caddy profile, configure DNS and inbound 80/443 on the intended
 
 ```sh
 docker compose --profile tls build caddy
-docker compose --profile tls up -d web worker mailbox-worker caddy
+docker compose --profile tls up -d web worker mailbox-worker report-obligations-worker caddy
 ```
 
 Caddy listens as a nonroot user on container 8080/8443 mapped to host 80/443. Its admin API is container-loopback only. A public hostname can trigger certificate issuance; this step is an operator action and has not been run here. For private localhost TLS, use `ASTER_DOMAIN=localhost`, matching auth origin, and explicitly trust the private CA on the client; no production cookie weakening is provided. [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https)

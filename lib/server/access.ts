@@ -118,7 +118,12 @@ export async function requireWorkspace(
     const path = new URL(request.url).pathname;
     const readable =
       request.method === 'GET' &&
-      (['/api/workspace', '/api/ledger', '/api/reporting'].includes(path) ||
+      ([
+        '/api/workspace',
+        '/api/ledger',
+        '/api/reporting',
+        '/api/report-obligations',
+      ].includes(path) ||
         /^\/api\/documents\/[a-f0-9-]{36}(?:\/preview)?$/i.test(path));
     const question =
       request.method === 'POST' && path === '/api/intelligence/ask';

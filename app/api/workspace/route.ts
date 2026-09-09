@@ -157,6 +157,15 @@ export async function POST(request: Request) {
           case 'settings':
             return { ...s, officeName: input.name };
           case 'seed':
+            if (
+              s.obligations?.schedules.length ||
+              s.obligations?.exceptions.length
+            )
+              throw new AccessError(
+                409,
+                'REPORT_HISTORY_RETAINED',
+                'Reporting expectations and exception history must be retained. Use a separate empty workspace for sample data.',
+              );
             if (process.env.ASTER_ALLOW_SAMPLE_DATA !== 'true')
               throw new AccessError(
                 403,
@@ -171,6 +180,15 @@ export async function POST(request: Request) {
               );
             return { ...initialWorkspace(true), officeName: s.officeName };
           case 'reset':
+            if (
+              s.obligations?.schedules.length ||
+              s.obligations?.exceptions.length
+            )
+              throw new AccessError(
+                409,
+                'REPORT_HISTORY_RETAINED',
+                'Reporting expectations and exception history must be retained. Use a separate workspace for a new demo.',
+              );
             if (!s.sampleData || data.evidence.some((e) => !e.synthetic))
               throw new AccessError(
                 403,

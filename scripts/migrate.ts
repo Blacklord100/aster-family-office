@@ -46,6 +46,10 @@ try {
   );
   await client.query('REVOKE ALL ON aster_migrations FROM ' + role);
   await client.query('REVOKE UPDATE,DELETE,TRUNCATE ON app_audit FROM ' + role);
+  await client.query(
+    'GRANT EXECUTE ON FUNCTION claim_report_obligations(uuid,uuid[]),finish_report_obligations(uuid,uuid,bigint,text) TO ' +
+      role,
+  );
   await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
   console.log('Migrations complete; runtime grants applied.');
 } finally {

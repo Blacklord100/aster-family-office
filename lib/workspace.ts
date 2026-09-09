@@ -74,6 +74,8 @@ export type WorkspaceState = {
   finance?: FinanceState;
   reporting?: ReportingState;
   intelligence?: IntelligenceState;
+  obligations?: import('./report-obligations-contract').ReportObligationsState;
+  obligationReceipts?: { key: string; digest: string; resultId: string }[];
   syncs: Record<string, string>;
   officeName: string;
 };

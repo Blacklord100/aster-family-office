@@ -44,6 +44,7 @@ next-env.d.ts
 /dist-worker/
 /dist-delivery-worker/
 /dist-mailbox-worker/
+/dist-report-obligations-worker/
 /dist-ops/
 /public/pdfjs/
 /.local-data/

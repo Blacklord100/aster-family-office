@@ -21,6 +21,7 @@ const order = [
   'app_engine_policy',
   'app_memberships',
   'app_workspace',
+  'app_report_obligations_queue',
   'app_documents',
   'app_jobs',
   'app_job_queue',

@@ -135,10 +135,12 @@ function errorMessage(error: unknown) {
     : 'Aster could not connect. Check your connection and try again.';
 }
 
-export function ProcessingView() {
+export function ProcessingView({
+  initialJobId = null,
+}: { initialJobId?: string | null } = {}) {
   const { data, reload } = useWorkspace();
   const [snapshot, setSnapshot] = useState<ProcessingResponse | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialJobId);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
