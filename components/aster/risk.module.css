@@ -1,6 +1,166 @@
 .root {
   min-width: 0;
 }
+.familyBars {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.familyBarRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px 20px;
+  min-width: 0;
+}
+.familyBarLabel,
+.familyBarNumbers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 12px;
+  min-width: 0;
+}
+.familyBarLabel > button {
+  padding: 0;
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  justify-content: flex-start;
+}
+.familyBarLabel > span,
+.familyBarNumbers > span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.familyBarNumbers {
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.familyBarNumbers strong {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+.familyTrack {
+  display: flex;
+  grid-column: 1 / -1;
+  height: 8px;
+  background: var(--muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.familyTrack > span {
+  display: block;
+  height: 100%;
+}
+.familyDirect {
+  background: var(--primary);
+}
+.familyIndirect {
+  background: var(--chart-2);
+}
+.familyCoverage,
+.familyLegend {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.familyLegend {
+  margin-bottom: 24px;
+  font-size: 11px;
+}
+.familyLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.familyLegend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.familyMatrixScroll {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.familyMatrix th:not(:first-child),
+.familyMatrix td:not(:first-child) {
+  min-width: 138px;
+  text-align: center;
+}
+.familyMatrix th {
+  white-space: normal;
+  vertical-align: top;
+}
+.familyMatrixCell {
+  display: block;
+  width: 100%;
+  padding: 13px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+.familyMatrixCell:hover {
+  outline: 1px solid var(--primary);
+}
+.familyMatrixCell:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.familyPagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.familyPagination > span {
+  margin-right: auto;
+}
+.familyPathList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.familyPath {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.familyPath > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  font-size: 12px;
+}
+.familyPath strong {
+  font-weight: 500;
+}
+.familyPath p {
+  margin: 8px 0 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.familyPath button {
+  white-space: normal;
+  height: auto;
+  min-height: 30px;
+  text-align: left;
+}
 .stack {
   display: flex;
   flex-direction: column;
@@ -449,6 +609,19 @@
   }
 }
 @media (max-width: 700px) {
+  .familyBarRow {
+    grid-template-columns: 1fr;
+  }
+  .familyBarNumbers {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .panel:has(.familyBars) :global(.panel-heading),
+  .panel:has(.familyMatrixScroll) :global(.panel-heading) {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
   .equalGrid {
     grid-template-columns: 1fr;
   }

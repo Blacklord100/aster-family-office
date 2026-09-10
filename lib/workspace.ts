@@ -80,6 +80,7 @@ export type WorkspaceState = {
   riskScenarios?: SavedRiskScenario[];
   finance?: FinanceState;
   historyLifecycle?: import('./portfolio-history-lifecycle-contract').HistoryLifecycleState;
+  participation?: import('./participation-contract').ParticipationState;
   reporting?: ReportingState;
   intelligence?: IntelligenceState;
   obligations?: import('./report-obligations-contract').ReportObligationsState;

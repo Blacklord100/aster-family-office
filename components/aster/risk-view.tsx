@@ -54,6 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { currentRiskHoldings } from '@/lib/family-exposure';
 import {
   RISK_ASSET_CLASSES,
   RISK_CURRENCIES,
@@ -80,6 +81,11 @@ import {
 } from './primitives';
 import { useWorkspace } from './workspace-context';
 import { RiskMappingEditor } from './risk-editor';
+import {
+  FamilyIssuerView,
+  FamilyStressView,
+  ManagerIssuerView,
+} from './family-risk-view';
 import styles from './risk.module.css';
 
 const points = (value: number | null, digits = 1) =>
@@ -508,13 +514,19 @@ export function RiskView({
   const canWrite = ['owner', 'admin', 'analyst'].includes(
     state.identity?.role ?? '',
   );
-  const holdings = useMemo(
+  const asOfDate = new Date().toISOString().slice(0, 10);
+  const currentSelection = useMemo(
     () =>
-      data.holdings.filter(
-        (holding) => family === 'all' || holding.familyId === family,
+      currentRiskHoldings(
+        data.holdings.filter(
+          (holding) => family === 'all' || holding.familyId === family,
+        ),
+        state.historyLifecycle,
+        asOfDate,
       ),
-    [data.holdings, family],
+    [data.holdings, state.historyLifecycle, family, asOfDate],
   );
+  const holdings = currentSelection.holdings;
   const riskData = useMemo(
     () =>
       state.riskData ??
@@ -523,11 +535,7 @@ export function RiskView({
   );
   const analysis = useMemo(() => {
     try {
-      const exposure = buildTotalExposure(
-        holdings,
-        riskData,
-        new Date().toISOString().slice(0, 10),
-      );
+      const exposure = buildTotalExposure(holdings, riskData, asOfDate);
       return {
         exposure,
         stress: runStressScenario(exposure, scenario),
@@ -543,36 +551,12 @@ export function RiskView({
             : 'Exposure analysis is unavailable.',
       };
     }
-  }, [holdings, riskData, scenario]);
+  }, [holdings, riskData, scenario, asOfDate]);
   const { exposure, stress } = analysis;
-  const overlap = useMemo(() => {
-    const groups = new Map<
-      string,
-      {
-        name: string;
-        managers: Map<string, string>;
-        value: number;
-        holdings: Set<string>;
-      }
-    >();
-    for (const lot of exposure?.lots ?? []) {
-      if (!lot.issuerId || !lot.managerId) continue;
-      const group = groups.get(lot.issuerId) ?? {
-        name: lot.issuerName ?? lot.issuerId,
-        managers: new Map<string, string>(),
-        value: 0,
-        holdings: new Set<string>(),
-      };
-      group.managers.set(lot.managerId, lot.managerName ?? lot.managerId);
-      group.holdings.add(lot.holdingId);
-      group.value += lot.valueEUR;
-      groups.set(lot.issuerId, group);
-    }
-    return [...groups.entries()]
-      .map(([id, group]) => ({ id, ...group }))
-      .filter((group) => group.managers.size > 1)
-      .sort((a, b) => b.value - a.value);
-  }, [exposure]);
+  const evidenceIds = useMemo(
+    () => new Set(data.evidence.map((item) => item.id)),
+    [data.evidence],
+  );
   const evidence = data.evidence.find((item) => item.id === sourceDetail);
   const issuerRows =
     exposure?.issuerExposure.filter((row) =>
@@ -678,6 +662,17 @@ export function RiskView({
       ) : null}
       {state.sampleData ? (
         <p className={styles.note}>{RISK_DEMO_NOTICE}</p>
+      ) : null}
+      {currentSelection.excluded.length ||
+      currentSelection.unknownOwnership.length ? (
+        <p className={styles.note}>
+          {currentSelection.excluded.length
+            ? `${currentSelection.excluded.length} positions with a sourced exit or future acquisition are excluded from current exposure. `
+            : ''}
+          {currentSelection.unknownOwnership.length
+            ? `${currentSelection.unknownOwnership.length} registered positions have no sourced acquisition date; they remain included with ownership history unverified.`
+            : ''}
+        </p>
       ) : null}
       {analysis.error ? (
         <Alert variant="destructive">
@@ -796,6 +791,18 @@ export function RiskView({
                 help="Share of portfolio value attributed to explicitly mapped issuer identities. Coverage does not verify evidence quality or completeness."
               />
             </div>
+            <FamilyStressView
+              holdings={holdings}
+              families={data.families}
+              stress={stress}
+              navScope={
+                state.identity?.dataScope?.entityIds?.length
+                  ? 'visible'
+                  : 'family'
+              }
+              evidenceIds={evidenceIds}
+              onSource={setSourceDetail}
+            />
             <div className={styles.grid}>
               <Panel
                 title="What drives the change"
@@ -957,6 +964,18 @@ export function RiskView({
             </div>
           </TabsContent>
           <TabsContent value="exposure" className={styles.stack}>
+            <FamilyIssuerView
+              holdings={holdings}
+              families={data.families}
+              exposure={exposure}
+              navScope={
+                state.identity?.dataScope?.entityIds?.length
+                  ? 'visible'
+                  : 'family'
+              }
+              evidenceIds={evidenceIds}
+              onSource={setSourceDetail}
+            />
             <div className={styles.equalGrid}>
               <Panel
                 title="Company & issuer exposure"
@@ -1068,41 +1087,12 @@ export function RiskView({
                 </Panel>
               </div>
             </div>
-            <Panel
-              title="Shared companies across managers"
-              subtitle="Overlap supported by disclosed issuer and manager identities"
-              className={styles.panel}
-            >
-              {overlap.length ? (
-                <div className={styles.overlap}>
-                  {overlap.map((row) => (
-                    <div className={styles.overlapRow} key={row.id}>
-                      <div>
-                        {row.name}
-                        <p>{[...row.managers.values()].join(' · ')}</p>
-                        <p>
-                          {row.holdings.size} holding
-                          {row.holdings.size !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <span className={styles.number}>
-                        {money(row.value)}
-                        <p>
-                          {points((row.value / exposure.totalValueEUR) * 100)}{' '}
-                          of portfolio
-                        </p>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <NoExposure title="No disclosed manager overlap">
-                  No mapped issuer currently appears under more than one
-                  attributed manager. Unknown exposure may contain additional
-                  overlap.
-                </NoExposure>
-              )}
-            </Panel>
+            <ManagerIssuerView
+              holdings={holdings}
+              exposure={exposure}
+              evidenceIds={evidenceIds}
+              onSource={setSourceDetail}
+            />
           </TabsContent>
           <TabsContent value="evidence" className={styles.stack}>
             <div className={styles.grid}>

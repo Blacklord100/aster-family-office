@@ -306,7 +306,7 @@ export function buildTotalExposure(
     inspectSource(rootSource, holding.id);
     const reportedManager = holding.manager.trim();
     const holdingManager =
-      /^(?:unspecified|unknown|undisclosed|n\/?a|none|not specified|not disclosed)$/i.test(
+      /^(?:unspecified|unknown|undisclosed|n\/?a|none|not specified|not disclosed|not reported|unreported)$/i.test(
         reportedManager,
       )
         ? ''

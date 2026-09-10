@@ -245,5 +245,37 @@ export function scopeWorkspace(
             )),
       ),
     };
+  if (state.participation) {
+    // If any visible position's mapping source is withheld, suppress its whole
+    // mapping chain. Otherwise removing a correction could resurrect a stale link.
+    const blocked = new Set(
+      state.participation.records
+        .filter(
+          (record) =>
+            holdingIds.has(record.holdingId) &&
+            (!sourceIds.has(record.sourceId) ||
+              !releasedDocuments.has(record.documentId)),
+        )
+        .map((record) => record.holdingId),
+    );
+    const records = state.participation.records.filter(
+      (record) =>
+        holdingIds.has(record.holdingId) &&
+        !blocked.has(record.holdingId) &&
+        sourceIds.has(record.sourceId) &&
+        releasedDocuments.has(record.documentId) &&
+        scopeAllows(scope, record.familyId, record.entityId),
+    );
+    const investments = new Set(records.map((record) => record.investmentId));
+    result.participation = {
+      version: 1,
+      revision: state.participation.revision,
+      receipts: [],
+      records,
+      investments: state.participation.investments.filter((investment) =>
+        investments.has(investment.id),
+      ),
+    };
+  }
   return result;
 }

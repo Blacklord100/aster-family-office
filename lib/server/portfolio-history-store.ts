@@ -87,6 +87,131 @@ export async function readHistoryWorkspace(
   ) as WorkspaceState;
   return { state, revision: row.revision };
 }
+/** Internal transaction-level projection: callers can compose other sourced
+ * portfolio views without changing the authorization or workspace snapshot. */
+export async function readPortfolioHistorySnapshot(
+  client: PoolClient,
+  ctx: WorkspaceContext,
+  query: PortfolioHistoryQuery,
+) {
+  await assertHistoryAccess(client, ctx);
+  const { state, revision } = await readHistoryWorkspace(
+    client,
+    ctx.organizationId,
+  );
+  const relevantHoldings = new Set(
+    (state.portfolio?.holdings ?? [])
+      .filter(
+        (h) =>
+          scopeAllows(ctx.scope, h.familyId, h.entityId) &&
+          (!query.holdingIds || query.holdingIds.includes(h.id)) &&
+          (!query.familyIds || query.familyIds.includes(h.familyId)) &&
+          (!query.entityIds || query.entityIds.includes(h.entityId)),
+      )
+      .map((h) => h.id),
+  );
+  const originals = new Set(
+    (state.portfolio?.evidence ?? []).flatMap((e) =>
+      e.documentId && relevantHoldings.has(e.holdingId) ? [e.documentId] : [],
+    ),
+  );
+  if (originals.size > HISTORY_LIMITS.maxObservations)
+    throw new AccessError(
+      413,
+      'HISTORY_CAPACITY',
+      'This history library exceeds the bounded source lookup capacity.',
+    );
+  const documents = originals.size
+    ? (
+        await client.query<{
+          id: string;
+          created_at: Date;
+          content_hash: string;
+          family_ids: string[] | null;
+          entity_ids: string[] | null;
+        }>(
+          `SELECT d.id,d.created_at,d.content_hash,a.family_ids,a.entity_ids FROM app_documents d LEFT JOIN app_document_access a ON a.organization_id=d.organization_id AND a.document_id=d.id WHERE d.organization_id=$1 AND d.id=ANY($2::uuid[])`,
+          [ctx.organizationId, [...originals]],
+        )
+      ).rows
+    : [];
+  const allowed = new Set(
+    documents
+      .filter(
+        (d) =>
+          !ctx.scope ||
+          (!!d.family_ids &&
+            !!d.entity_ids &&
+            documentScopeAllows(ctx.scope, {
+              family_ids: d.family_ids,
+              entity_ids: d.entity_ids,
+            })),
+      )
+      .map((d) => d.id),
+  );
+  // Legacy/sample-only fallback is deliberately empty. This API never
+  // substitutes the static illustration dataset for a retained portfolio.
+  const scoped = scopeWorkspace(
+    { ...state, sampleData: false },
+    ctx.scope,
+    allowed,
+  );
+  const portfolio: PortfolioRecords = deriveWorkspace(scoped);
+  const evidence = portfolio.evidence.filter(
+    (source) => !source.documentId || allowed.has(source.documentId),
+  );
+  const sourceIds = new Set(evidence.map((e) => e.id));
+  const finance = scoped.finance
+    ? {
+        ...scoped.finance,
+        valuations: scoped.finance.valuations.filter((r) =>
+          sourceIds.has(r.sourceId),
+        ),
+      }
+    : undefined;
+  const safePortfolio = {
+    ...portfolio,
+    evidence,
+    history: ctx.scope ? [] : portfolio.history,
+  };
+  const metadata = new Map(
+    documents
+      .filter((d) => allowed.has(d.id))
+      .map((d) => [d.id, { importedAt: d.created_at.toISOString() }]),
+  );
+  const hashes = new Map(documents.map((d) => [d.id, d.content_hash]));
+  const lifecycle = scoped.historyLifecycle
+    ? {
+        ...scoped.historyLifecycle,
+        records: scoped.historyLifecycle.records.filter(
+          (r) =>
+            allowed.has(r.documentId) &&
+            sourceIds.has(r.sourceId) &&
+            hashes.get(r.documentId) === r.sourceSha256,
+        ),
+        receipts: [],
+      }
+    : undefined;
+  const result = projectPortfolioHistory(safePortfolio, finance, query, {
+    revision,
+    documentMetadata: metadata,
+    lifecycle,
+  });
+  if (Buffer.byteLength(JSON.stringify(result)) > 8 * 1024 * 1024)
+    throw new AccessError(
+      413,
+      'HISTORY_RESPONSE_CAPACITY',
+      'This history projection exceeds the safe response capacity. Narrow the selected holdings or date range.',
+    );
+  return {
+    result,
+    portfolio: safePortfolio,
+    state: scoped,
+    rawState: state,
+    documentHashes: hashes,
+    allowedDocuments: allowed,
+  };
+}
 export async function readPortfolioHistory(
   ctx: WorkspaceContext,
   input: Partial<PortfolioHistoryQuery> = {},
@@ -95,120 +220,8 @@ export async function readPortfolioHistory(
   try {
     return await withTenant(
       ctx.organizationId,
-      async (client) => {
-        await assertHistoryAccess(client, ctx);
-        const { state, revision } = await readHistoryWorkspace(
-          client,
-          ctx.organizationId,
-        );
-        const relevantHoldings = new Set(
-          (state.portfolio?.holdings ?? [])
-            .filter(
-              (h) =>
-                scopeAllows(ctx.scope, h.familyId, h.entityId) &&
-                (!query.holdingIds || query.holdingIds.includes(h.id)) &&
-                (!query.familyIds || query.familyIds.includes(h.familyId)) &&
-                (!query.entityIds || query.entityIds.includes(h.entityId)),
-            )
-            .map((h) => h.id),
-        );
-        const originals = new Set(
-          (state.portfolio?.evidence ?? []).flatMap((e) =>
-            e.documentId && relevantHoldings.has(e.holdingId)
-              ? [e.documentId]
-              : [],
-          ),
-        );
-        if (originals.size > HISTORY_LIMITS.maxObservations)
-          throw new AccessError(
-            413,
-            'HISTORY_CAPACITY',
-            'This history library exceeds the bounded source lookup capacity.',
-          );
-        const documents = originals.size
-          ? (
-              await client.query<{
-                id: string;
-                created_at: Date;
-                content_hash: string;
-                family_ids: string[] | null;
-                entity_ids: string[] | null;
-              }>(
-                `SELECT d.id,d.created_at,d.content_hash,a.family_ids,a.entity_ids FROM app_documents d LEFT JOIN app_document_access a ON a.organization_id=d.organization_id AND a.document_id=d.id WHERE d.organization_id=$1 AND d.id=ANY($2::uuid[])`,
-                [ctx.organizationId, [...originals]],
-              )
-            ).rows
-          : [];
-        const allowed = new Set(
-          documents
-            .filter(
-              (d) =>
-                !ctx.scope ||
-                (!!d.family_ids &&
-                  !!d.entity_ids &&
-                  documentScopeAllows(ctx.scope, {
-                    family_ids: d.family_ids,
-                    entity_ids: d.entity_ids,
-                  })),
-            )
-            .map((d) => d.id),
-        );
-        // Legacy/sample-only fallback is deliberately empty. This API never
-        // substitutes the static illustration dataset for a retained portfolio.
-        const scoped = scopeWorkspace(
-          { ...state, sampleData: false },
-          ctx.scope,
-          allowed,
-        );
-        const portfolio: PortfolioRecords = deriveWorkspace(scoped);
-        const evidence = portfolio.evidence.filter(
-          (source) => !source.documentId || allowed.has(source.documentId),
-        );
-        const sourceIds = new Set(evidence.map((e) => e.id));
-        const finance = scoped.finance
-          ? {
-              ...scoped.finance,
-              valuations: scoped.finance.valuations.filter((r) =>
-                sourceIds.has(r.sourceId),
-              ),
-            }
-          : undefined;
-        const safePortfolio = {
-          ...portfolio,
-          evidence,
-          history: ctx.scope ? [] : portfolio.history,
-        };
-        const metadata = new Map(
-          documents
-            .filter((d) => allowed.has(d.id))
-            .map((d) => [d.id, { importedAt: d.created_at.toISOString() }]),
-        );
-        const hashes = new Map(documents.map((d) => [d.id, d.content_hash]));
-        const lifecycle = scoped.historyLifecycle
-          ? {
-              ...scoped.historyLifecycle,
-              records: scoped.historyLifecycle.records.filter(
-                (r) =>
-                  allowed.has(r.documentId) &&
-                  sourceIds.has(r.sourceId) &&
-                  hashes.get(r.documentId) === r.sourceSha256,
-              ),
-              receipts: [],
-            }
-          : undefined;
-        const result = projectPortfolioHistory(safePortfolio, finance, query, {
-          revision,
-          documentMetadata: metadata,
-          lifecycle,
-        });
-        if (Buffer.byteLength(JSON.stringify(result)) > 8 * 1024 * 1024)
-          throw new AccessError(
-            413,
-            'HISTORY_RESPONSE_CAPACITY',
-            'This history projection exceeds the safe response capacity. Narrow the selected holdings or date range.',
-          );
-        return result;
-      },
+      async (client) =>
+        (await readPortfolioHistorySnapshot(client, ctx, query)).result,
       { readOnlySnapshot: true },
     );
   } catch (error) {

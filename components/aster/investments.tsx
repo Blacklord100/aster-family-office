@@ -40,34 +40,70 @@ import { obligationSummary } from '@/lib/ledger';
 import type { Holding } from '@/data';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import historyStyles from './investment-history.module.css';
+import {
+  DealParticipation,
+  DealsTable,
+  ParticipationPositionsTable,
+} from './deal-participation';
+import { ParticipationEditor } from './participation-editor';
+import { useParticipation } from './use-participation';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import participationStyles from './participation.module.css';
 export function InvestmentsView({
   family,
   onFamily,
   onHolding,
   onExport,
   onManagers,
+  onSource,
 }: {
   family: string;
   onFamily: (s: string) => void;
   onHolding: (id: string) => void;
   onExport: () => void;
   onManagers?: () => void;
+  onSource?: (id: string) => void;
 }) {
   const { state, data } = useWorkspace();
+  const parameters = useSearchParams();
+  const listView =
+    parameters.get('investmentList') === 'positions' ? 'positions' : 'deals';
+  const { controls, query, setControls } = useHistoryControls();
+  const [linkingId, setLinkingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState(''),
     [asset, setAsset] = useState('all'),
     [sort, setSort] = useState('value'),
     [entity, setEntity] = useState('all');
+  const participation = useParticipation({
+    ...query,
+    ...(family === 'all' ? { familyIds: undefined } : { familyIds: [family] }),
+    ...(entity === 'all' ? { entityIds: undefined } : { entityIds: [entity] }),
+  });
+  const linking = data.holdings.find((holding) => holding.id === linkingId);
+  const setListView = (value: string) => {
+    const url = new URL(window.location.href);
+    if (value === 'deals') url.searchParams.delete('investmentList');
+    else url.searchParams.set('investmentList', value);
+    window.history.replaceState(null, '', url.pathname + url.search);
+  };
   const scoped = data.holdings.filter(
     (h) => family === 'all' || h.familyId === family,
+  );
+  const dealNames = new Map(
+    participation.data?.investments.flatMap((investment) =>
+      investment.positions.map(
+        (position) => [position.holdingId, investment.identity.name] as const,
+      ),
+    ) ?? [],
   );
   const filtered = scoped
     .filter(
       (h) =>
         (asset === 'all' || h.assetClass === asset) &&
         (entity === 'all' || h.entityId === entity) &&
-        [h.name, h.manager, h.ticker ?? '']
+        [h.name, h.manager, h.ticker ?? '', dealNames.get(h.id) ?? '']
           .join(' ')
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -86,47 +122,91 @@ export function InvestmentsView({
   );
   return (
     <>
-      <PageHeading
-        title="Investments"
-        subtitle={
-          scoped.length +
-          ' investments · ' +
-          money(total) +
-          (scoped.some((h) => h.valuationStatus === 'unknown')
-            ? ' in reported value · valuations incomplete'
-            : ' in portfolio value')
-        }
-      >
-        <FamilyPicker
-          value={family}
-          onChange={(v) => {
-            setEntity('all');
-            onFamily(v);
-          }}
-        />
-        {onManagers && !state.identity?.dataScope ? (
-          <Button variant="ghost" onClick={onManagers}>
-            Managers & contacts
-          </Button>
-        ) : null}
-        <Button
-          onClick={() => setAdding((v) => !v)}
-          disabled={state.identity?.role === 'viewer'}
+      <div className={participationStyles.headingWrap}>
+        <PageHeading
+          title="Investments"
+          subtitle={
+            state.identity
+              ? `${scoped.length} registered positions${participation.data ? ` · As of ${dateLabel(participation.data.asOf)} · ${participation.data.currency}` : ' · Source-linked participation'}`
+              : scoped.length +
+                ' investments · ' +
+                money(total) +
+                (scoped.some((h) => h.valuationStatus === 'unknown')
+                  ? ' in reported value · valuations incomplete'
+                  : ' in portfolio value')
+          }
         >
-          <Plus data-icon="inline-start" />
-          Add holding
-        </Button>
-        <Button variant="outline" onClick={onExport}>
-          <Download data-icon="inline-start" />
-          Export report
-        </Button>
-      </PageHeading>
+          <FamilyPicker
+            value={family}
+            onChange={(v) => {
+              setEntity('all');
+              onFamily(v);
+            }}
+          />
+          {onManagers && !state.identity?.dataScope ? (
+            <Button variant="ghost" onClick={onManagers}>
+              Managers & contacts
+            </Button>
+          ) : null}
+          <Button
+            onClick={() => setAdding((v) => !v)}
+            disabled={state.identity?.role === 'viewer'}
+          >
+            <Plus data-icon="inline-start" />
+            Add holding
+          </Button>
+          <Button variant="outline" onClick={onExport}>
+            <Download data-icon="inline-start" />
+            Export report
+          </Button>
+        </PageHeading>
+      </div>
       {adding ? (
         <AddHoldingForm
           family={family}
           onSaved={() => setAdding(false)}
           onCancel={() => setAdding(false)}
         />
+      ) : null}
+      {state.identity ? (
+        <div className={participationStyles.listTabs}>
+          <Tabs value={listView} onValueChange={setListView}>
+            <TabsList variant="line" aria-label="Investment grouping">
+              <TabsTrigger value="deals">Deals & families</TabsTrigger>
+              <TabsTrigger value="positions">Individual positions</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className={participationStyles.listDate}>
+            <label htmlFor="participation-list-date">As of</label>
+            <Input
+              id="participation-list-date"
+              aria-label="Participation as of date"
+              type="date"
+              value={controls.asOf}
+              onChange={(event) =>
+                setControls({
+                  asOf: event.target.value,
+                  to: event.target.value,
+                  offset: 0,
+                })
+              }
+            />
+            <Picker
+              label="Participation currency"
+              value={controls.currency}
+              onChange={(currency) =>
+                setControls({
+                  currency: currency as typeof controls.currency,
+                  offset: 0,
+                })
+              }
+              options={['EUR', 'USD', 'GBP', 'CHF'].map((currency) => ({
+                value: currency,
+                label: currency,
+              }))}
+            />
+          </div>
+        </div>
       ) : null}
       <div className="list-toolbar">
         <div className="search-input">
@@ -177,7 +257,45 @@ export function InvestmentsView({
         />
       </div>
       <div className="investments-table-panel">
-        {filtered.length ? (
+        {state.identity && participation.loading ? (
+          <div className="p-6 flex flex-col gap-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : state.identity && participation.error ? (
+          <div className="p-6">
+            <Alert variant="destructive">
+              <AlertTitle>Participation unavailable</AlertTitle>
+              <AlertDescription>
+                {participation.error}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={participation.refresh}
+                >
+                  Try again
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : state.identity && participation.data && filtered.length ? (
+          listView === 'deals' ? (
+            <DealsTable
+              response={participation.data}
+              sort={sort}
+              holdingIds={filtered.map((holding) => holding.id)}
+              onHolding={onHolding}
+              onLink={setLinkingId}
+              onSource={onSource}
+            />
+          ) : (
+            <ParticipationPositionsTable
+              holdings={filtered}
+              response={participation.data}
+              onHolding={onHolding}
+            />
+          )
+        ) : filtered.length && !state.identity ? (
           <HoldingsTable
             holdings={filtered}
             onSelect={onHolding}
@@ -218,20 +336,48 @@ export function InvestmentsView({
           </div>
         )}
       </div>
+      {linking && participation.data ? (
+        <ParticipationEditor
+          key={JSON.stringify([
+            state.identity?.organizationId,
+            state.identity?.dataScope,
+            linking.id,
+          ])}
+          open={!!linkingId}
+          onOpenChange={(open) => {
+            if (!open) setLinkingId(null);
+          }}
+          holding={linking}
+          response={participation.data}
+          onSaved={participation.refresh}
+        />
+      ) : null}
       <div className="table-footer">
         <span>
-          {filtered.length} investments ·{' '}
-          {money(
-            filtered.reduce(
-              (sum, holding) =>
-                sum +
-                (holding.valuationStatus === 'unknown' ? 0 : holding.valueEUR),
-              0,
-            ),
-          )}{' '}
-          matched
+          {state.identity ? (
+            `${filtered.length} registered positions match the filters`
+          ) : (
+            <>
+              {filtered.length} investments ·{' '}
+              {money(
+                filtered.reduce(
+                  (sum, holding) =>
+                    sum +
+                    (holding.valuationStatus === 'unknown'
+                      ? 0
+                      : holding.valueEUR),
+                  0,
+                ),
+              )}{' '}
+              matched
+            </>
+          )}
         </span>
-        <span>Weights use the selected family’s complete portfolio.</span>
+        <span>
+          {state.identity
+            ? 'Deal participation uses visible recorded NAV; actual ownership needs separate evidence.'
+            : 'Weights use the selected family’s complete portfolio.'}
+        </span>
       </div>
     </>
   );
@@ -300,29 +446,34 @@ export function InvestmentDetail({
         <ArrowLeft />
         All investments
       </button>
-      <PageHeading
-        title={h.name}
-        subtitle={[
-          h.manager === 'Not reported' ? 'Manager not reported' : h.manager,
-          family?.name,
-          entity?.name,
-          h.currency,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-      >
-        <HistoryLifecycle holding={h} onSaved={projection.refresh} />
-        <Status>
-          {h.assetClass}
-          {h.assetClassStatus === 'inferred' ? ' · Inferred' : ''}
-        </Status>
-        {latest?.sourceId ? (
-          <Button variant="outline" onClick={() => onSource(latest.sourceId!)}>
-            <FileText data-icon="inline-start" />
-            Latest source
-          </Button>
-        ) : null}
-      </PageHeading>
+      <div className={participationStyles.headingWrap}>
+        <PageHeading
+          title={h.name}
+          subtitle={[
+            h.manager === 'Not reported' ? 'Manager not reported' : h.manager,
+            family?.name,
+            entity?.name,
+            h.currency,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        >
+          <HistoryLifecycle holding={h} onSaved={projection.refresh} />
+          <Status>
+            {h.assetClass}
+            {h.assetClassStatus === 'inferred' ? ' · Inferred' : ''}
+          </Status>
+          {latest?.sourceId ? (
+            <Button
+              variant="outline"
+              onClick={() => onSource(latest.sourceId!)}
+            >
+              <FileText data-icon="inline-start" />
+              Latest source
+            </Button>
+          ) : null}
+        </PageHeading>
+      </div>
       <div className={historyStyles.context}>
         <span>
           {account
@@ -345,6 +496,12 @@ export function InvestmentDetail({
           {h.liquidityStatus === 'unknown' ? 'Not reported' : h.liquidityBucket}
         </span>
       </div>
+      <DealParticipation
+        holding={h}
+        query={query}
+        onHolding={onHolding}
+        onSource={onSource}
+      />
       <div className={'metrics-row three ' + historyStyles.detailMetrics}>
         <Metric
           label={

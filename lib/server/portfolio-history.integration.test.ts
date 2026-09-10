@@ -188,7 +188,7 @@ describe.skipIf(!enabled)(
         valuationMethod: 'Reported fund NAV',
       });
       const source = Buffer.from(
-        'Synthetic subscription completed on 2026-03-31; NAV EUR 100 on 2026-06-30',
+        'Synthetic subscription completed on 2026-03-31; NAV EUR 100 on 2026-06-30. Investor holds Synthetic Orion LP, Class A, Fund I. Ownership is 6% of Class A issued units effective 2026-03-31.',
       );
       await admin.query(
         'INSERT INTO app_documents(id,organization_id,created_by,filename,mime_type,content_hash,byte_size,payload,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
@@ -309,6 +309,156 @@ describe.skipIf(!enabled)(
           )
         ).rows.map((r) => r.action),
       ).toEqual(['history.lifecycle.opened']);
+    });
+    it('records sourced participation through actual authenticated POST and GET without changing financial facts', async () => {
+      const participation = await import('./participation-store');
+      const { GET, POST } = await import('@/app/api/participation/route');
+      const before = await store.readPortfolioHistory(ownerCtx);
+      const body = {
+        expectedRevision: before.revision,
+        idempotencyKey: randomUUID(),
+        command: {
+          kind: 'link' as const,
+          holdingId: 'holding',
+          effectiveDate: '2026-03-31',
+          newInvestment: {
+            name: 'Synthetic Orion',
+            manager: 'Synthetic manager',
+            vehicle: 'Synthetic Orion LP',
+            shareClass: 'Class A',
+            round: 'Fund I',
+          },
+          sourceId,
+          evidenceVerified: true as const,
+          page: 1,
+          quote: 'Investor holds Synthetic Orion LP, Class A, Fund I.',
+          reason: 'Reviewed synthetic investor identity in retained source.',
+        },
+      };
+      const response = await POST(
+        new Request('https://history.fixture.invalid/api/participation', {
+          method: 'POST',
+          headers: {
+            origin: 'https://history.fixture.invalid',
+            'content-type': 'application/json',
+            'x-aster-organization': org,
+          },
+          body: JSON.stringify(body),
+        }),
+      );
+      expect(response.status).toBe(200);
+      const created = await response.json();
+      expect(created.revision).toBe(before.revision + 1);
+      expect(
+        (await participation.writeParticipation(ownerCtx, body)).duplicate,
+      ).toBe(true);
+      const owned = await participation.writeParticipation(ownerCtx, {
+        expectedRevision: created.revision,
+        idempotencyKey: randomUUID(),
+        command: {
+          kind: 'ownership',
+          holdingId: 'holding',
+          effectiveDate: '2026-03-31',
+          percent: '6',
+          ownershipBasis: 'Class A issued units',
+          sourceId,
+          evidenceVerified: true,
+          page: 1,
+          quote:
+            'Ownership is 6% of Class A issued units effective 2026-03-31.',
+          reason:
+            'Reviewed the independent ownership denominator in the retained source.',
+        },
+      });
+      const query = encodeURIComponent(
+        JSON.stringify({ asOf: '2026-06-30', cohort: 'historical' }),
+      );
+      const read = await GET(
+        new Request(
+          'https://history.fixture.invalid/api/participation?query=' + query,
+          { headers: { 'x-aster-organization': org } },
+        ),
+      );
+      expect(read.status).toBe(200);
+      const result = await read.json();
+      expect(result.revision).toBe(owned.revision);
+      expect(result.investments[0].families[0].shareOfKnownNAV).toBe(100);
+      expect(result.investments[0].positions[0].actualOwnershipPercent).toBe(
+        '6',
+      );
+      expect(result.investments[0].positions[0].ownershipBasis).toBe(
+        'Class A issued units',
+      );
+      expect(result.investments[0].positions[0].ownershipSourceId).toBe(
+        sourceId,
+      );
+      const after = await store.readPortfolioHistory(ownerCtx);
+      expect(after.financeRevision).toBe(before.financeRevision);
+      expect(after.observations).toEqual(before.observations);
+      const payload = (
+        await admin.query(
+          'SELECT payload FROM app_workspace WHERE organization_id=$1',
+          [org],
+        )
+      ).rows[0].payload;
+      expect(payload.includes(Buffer.from('Synthetic Orion LP'))).toBe(false);
+      const actions = (
+        await admin.query(
+          'SELECT action FROM app_audit WHERE organization_id=$1 ORDER BY created_at',
+          [org],
+        )
+      ).rows.map((r) => r.action);
+      expect(actions).toContain('participation.link');
+      expect(actions).toContain('participation.ownership');
+      await admin.query(
+        'UPDATE app_memberships SET revoked_at=NULL WHERE organization_id=$1 AND user_id=$2',
+        [org, viewer],
+      );
+      actor.id = viewer;
+      actor.session = viewerSession;
+      try {
+        const scopedResponse = await GET(
+          new Request(
+            'https://history.fixture.invalid/api/participation?query=' + query,
+            { headers: { 'x-aster-organization': org } },
+          ),
+        );
+        expect(scopedResponse.status).toBe(200);
+        const scoped = await scopedResponse.json();
+        expect(scoped.canWrite).toBe(false);
+        expect(scoped.investments[0].familyCount).toBe(1);
+        const deniedWrite = await POST(
+          new Request('https://history.fixture.invalid/api/participation', {
+            method: 'POST',
+            headers: {
+              origin: 'https://history.fixture.invalid',
+              'content-type': 'application/json',
+              'x-aster-organization': org,
+            },
+            body: JSON.stringify(body),
+          }),
+        );
+        expect(deniedWrite.status).toBe(403);
+      } finally {
+        actor.id = owner;
+        actor.session = ownerSession;
+        await admin.query(
+          'UPDATE app_memberships SET revoked_at=now() WHERE organization_id=$1 AND user_id=$2',
+          [org, viewer],
+        );
+      }
+      const crossOrigin = await POST(
+        new Request('https://history.fixture.invalid/api/participation', {
+          method: 'POST',
+          headers: {
+            origin: 'https://foreign.fixture.invalid',
+            'content-type': 'application/json',
+            'x-aster-organization': org,
+          },
+          body: JSON.stringify(body),
+        }),
+      );
+      expect(crossOrigin.status).toBe(403);
     });
     it('returns the preserved snapshot on an exact retry even when current observation capacity is exceeded', async () => {
       const { saveReporting, snapshotIntegrity } =

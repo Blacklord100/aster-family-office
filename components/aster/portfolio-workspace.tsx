@@ -46,6 +46,7 @@ import {
   TextAction,
 } from './primitives';
 import { AllocationBars } from './charts';
+import { ParticipationHeatmap } from './participation-heatmap';
 import type { View } from './shell';
 import styles from './portfolio-workspace.module.css';
 
@@ -474,6 +475,9 @@ export function PortfolioWorkspace({
                     Positions at selected date
                   </TabsTrigger>
                   <TabsTrigger value="totals">Historical totals</TabsTrigger>
+                  <TabsTrigger value="participation">
+                    Families × deals
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="positions" className={styles.tableWrap}>
                   <Table className={styles.table}>
@@ -617,36 +621,52 @@ export function PortfolioWorkspace({
                     </TableBody>
                   </Table>
                 </TabsContent>
+                <TabsContent value="participation" className={styles.tableWrap}>
+                  <ParticipationHeatmap
+                    query={{
+                      ...scopedQuery,
+                      ...(comparableMode && comparableIds.length
+                        ? { holdingIds: comparableIds }
+                        : {}),
+                    }}
+                    expectedRevision={result.revision}
+                    onHolding={onHolding}
+                    onSource={onSource}
+                    onInvestments={() => onNavigate('investments')}
+                  />
+                </TabsContent>
               </Tabs>
-              <div className={styles.pagination}>
-                <span className={styles.note}>
-                  {rows.length
-                    ? `${safePage * pageSize + 1}–${Math.min((safePage + 1) * pageSize, rows.length)} of ${rows.length}`
-                    : 'No records'}
-                </span>
-                <div className={styles.actions}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!safePage}
-                    onClick={() =>
-                      setPageState({ key: pageKey, page: safePage - 1 })
-                    }
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={safePage + 1 >= pageCount}
-                    onClick={() =>
-                      setPageState({ key: pageKey, page: safePage + 1 })
-                    }
-                  >
-                    Next
-                  </Button>
+              {table !== 'participation' ? (
+                <div className={styles.pagination}>
+                  <span className={styles.note}>
+                    {rows.length
+                      ? `${safePage * pageSize + 1}–${Math.min((safePage + 1) * pageSize, rows.length)} of ${rows.length}`
+                      : 'No records'}
+                  </span>
+                  <div className={styles.actions}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!safePage}
+                      onClick={() =>
+                        setPageState({ key: pageKey, page: safePage - 1 })
+                      }
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage + 1 >= pageCount}
+                      onClick={() =>
+                        setPageState({ key: pageKey, page: safePage + 1 })
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </Panel>
             <div className={styles.lower}>
               <Panel

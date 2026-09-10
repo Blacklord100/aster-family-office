@@ -7,6 +7,7 @@ import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Shell, navigation, navigationFor, type View } from './shell';
 import { Overview } from './overview';
 import { InvestmentsView, InvestmentDetail } from './investments';
+import { copyHistoryNavigation } from '@/lib/history-navigation';
 import { TimelineView } from './timeline';
 import { InboxView } from './inbox';
 import { ConnectionsView } from './connections-view';
@@ -249,19 +250,12 @@ export function AsterApp() {
         view: next.view,
         family: next.family,
       });
-      if (next.view === route.view && next.holding === route.holding) {
-        const current = new URLSearchParams(window.location.search);
-        for (const [key, value] of current)
-          if (
-            key.startsWith('history') ||
-            key === 'activityMode' ||
-            key === 'activityOrder' ||
-            key === 'investmentTab'
-          )
-            params.set(key, value);
-        if (next.family === route.family && current.has('observation'))
-          params.set('observation', current.get('observation')!);
-      }
+      copyHistoryNavigation(
+        new URLSearchParams(window.location.search),
+        params,
+        route,
+        next,
+      );
       if (next.holding) params.set('holding', next.holding);
       if (next.view === 'agents' && next.jobId) params.set('jobId', next.jobId);
       if (next.view === 'connections') params.set('tab', next.connectionsTab);
@@ -388,6 +382,7 @@ export function AsterApp() {
                   onHolding={openHolding}
                   onExport={() => preview(null)}
                   onManagers={() => navigate('intelligence')}
+                  onSource={openSource}
                 />
               )
             ) : null}
