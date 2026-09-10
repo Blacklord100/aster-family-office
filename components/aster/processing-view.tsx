@@ -1,26 +1,30 @@
 'use client';
 
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
-  ArrowDownToLine,
-  Bot,
   Check,
-  CheckCheck,
-  Cloud,
-  FileSearch,
+  ChevronLeft,
+  ChevronRight,
   FileText,
-  GitBranch,
+  FolderOpen,
   Loader2,
-  LockKeyhole,
+  Mail,
   RefreshCw,
-  ShieldCheck,
+  Search,
+  Settings2,
   Upload,
   X,
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 import {
   Field,
   FieldDescription,
@@ -37,26 +41,64 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { ReviewWorkbench } from './review-workbench';
 import type { ReviewDecision, ReviewState } from '@/lib/review-contract';
-import type { Holding } from '@/data/types';
 import type {
   ProcessingJob,
-  ProcessingMode,
+  ProcessingPage,
   ProcessingPolicy,
   WorkspaceIdentity,
 } from '@/lib/processing-contract';
-import { PageHeading, Panel, Status } from './primitives';
+import {
+  documentNextStep,
+  documentStage,
+  documentStages,
+  documentTimestamp,
+  documentTone,
+  durationLabel,
+  factCounts,
+  factTypeLabel,
+} from '@/lib/document-pipeline';
+import {
+  DocumentRecord,
+  type DocumentRecordTab,
+  type DocumentJobAction,
+} from './document-record';
+import { PageHeading, Status } from './primitives';
 import { useWorkspace } from './workspace-context';
+import styles from './document-pipeline.module.css';
 
 type ProcessingResponse = {
   jobs: ProcessingJob[];
   policy: ProcessingPolicy;
   role: WorkspaceIdentity['role'];
+  page: ProcessingPage;
 };
 type ReviewSelection = ReviewDecision;
-type JobAction = 'review' | 'reject' | 'retry' | 'cancel';
+type JobAction = DocumentJobAction;
 type ReviewResponse = {
   ok: boolean;
   status: string;
@@ -64,39 +106,9 @@ type ReviewResponse = {
   duplicates: number;
   review?: ReviewState;
 };
-
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const statusLabels: Record<string, string> = {
-  queued: 'Queued',
-  processing: 'Processing',
-  awaiting_review: 'Needs review',
-  accepted: 'Accepted',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-  rejected: 'Rejected',
-};
-const modeName = (mode: ProcessingMode) =>
-  mode === 'agentic' ? 'Agentic' : 'Classical workflow';
 const isActive = (job: ProcessingJob) =>
   job.status === 'queued' || job.status === 'processing';
-
-function statusTone(status: string) {
-  if (status === 'accepted') return 'success';
-  if (status === 'awaiting_review' || status === 'failed') return 'warning';
-  if (status === 'processing') return 'violet';
-  return 'neutral';
-}
-function timestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Date unavailable'
-    : date.toLocaleString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-}
 class ProcessingRequestError extends Error {
   constructor(
     message: string,
@@ -141,8 +153,16 @@ export function ProcessingView({
   const { data, reload } = useWorkspace();
   const [snapshot, setSnapshot] = useState<ProcessingResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialJobId);
+  const [detailsLoadedId, setDetailsLoadedId] = useState<string | null>(null);
+  const [recordTab, setRecordTab] = useState<DocumentRecordTab>('extracted');
+  const [stage, setStage] = useState('all');
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [listingStale, setListingStale] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -153,6 +173,11 @@ export function ProcessingView({
   const fileInput = useRef<HTMLInputElement>(null);
   const mutationLock = useRef(false);
   const responseEpoch = useRef(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     let disposed = false;
@@ -170,22 +195,35 @@ export function ProcessingView({
       setRefreshing(true);
       let delay = 15_000;
       try {
+        const params = new URLSearchParams({
+          limit: '50',
+          offset: String(offset),
+        });
+        if (selectedId) params.set('jobId', selectedId);
+        if (stage !== 'all') params.set('status', stage);
+        if (search) params.set('q', search);
         const result = await requestJson<ProcessingResponse>(
-          '/api/processing' +
-            (selectedId ? '?jobId=' + encodeURIComponent(selectedId) : ''),
+          '/api/processing?' + params,
           { signal: controller.signal },
         );
         if (
           !Array.isArray(result.jobs) ||
           !result.policy ||
-          !['workflow', 'agentic'].includes(result.policy.mode)
-        ) {
-          throw new Error('Invalid processing response');
-        }
+          !result.page ||
+          !Array.isArray(result.page.jobIds)
+        )
+          throw new Error('Invalid document response');
         if (!disposed && epoch === responseEpoch.current) {
           setSnapshot(result);
+          setDetailsLoadedId(selectedId);
+          setListingStale(false);
           setLoadError(null);
-          delay = result.jobs.some(isActive) ? 5000 : 15_000;
+          delay =
+            result.page.statusCounts.queued +
+              result.page.statusCounts.processing >
+            0
+              ? 5000
+              : 15_000;
         }
       } catch (error) {
         if (!disposed && epoch === responseEpoch.current) {
@@ -211,8 +249,7 @@ export function ProcessingView({
       clearTimeout(timer);
       controller?.abort();
     };
-  }, [refreshKey, selectedId]);
-
+  }, [refreshKey, selectedId, stage, search, offset]);
   async function mutate<T>(
     key: string,
     run: () => Promise<T>,
@@ -243,14 +280,50 @@ export function ProcessingView({
   }
 
   const jobs = snapshot?.jobs ?? [];
-  const selected = jobs.find((job) => job.id === selectedId) ?? jobs[0];
+  const selected = jobs.find((job) => job.id === selectedId);
+  const pageIds = new Set(snapshot?.page.jobIds ?? []);
+  const selectedStage = documentStages.find((item) => item.value === stage);
+  const rows = jobs.filter(
+    (job) =>
+      pageIds.has(job.id) &&
+      (stage === 'all' ||
+        selectedStage?.statuses.some((status) => status === job.status)),
+  );
   const canWrite = !!snapshot && snapshot.role !== 'viewer';
-  const canManage = snapshot?.role === 'owner' || snapshot?.role === 'admin';
-  const queuedCount = jobs.filter(isActive).length;
-  const reviewCount = jobs.filter(
-    (job) => job.status === 'awaiting_review',
+  const totals = listingStale ? undefined : snapshot?.page.statusCounts;
+  const allCount = totals
+    ? Object.values(totals).reduce((sum, count) => sum + count, 0)
+    : null;
+  const counts = rows.map(factCounts);
+  const extracted = counts.reduce(
+    (sum, item) => sum + (item?.extractedCount ?? 0),
+    0,
+  );
+  const accepted = counts.reduce(
+    (sum, item) => sum + (item?.acceptedCount ?? 0),
+    0,
+  );
+  const remaining = counts.reduce(
+    (sum, item) => sum + (item?.remainingCount ?? 0),
+    0,
+  );
+  const unavailable = rows.filter(
+    (job, index) => !counts[index] && !isActive(job),
   ).length;
-
+  function openRecord(job: ProcessingJob, action = false) {
+    setSelectedId(job.id);
+    setActionError(null);
+    setNotice(null);
+    setRecordTab(
+      action
+        ? job.status === 'awaiting_review'
+          ? 'review'
+          : ['failed', 'queued', 'processing', 'cancelled'].includes(job.status)
+            ? 'activity'
+            : 'extracted'
+        : 'extracted',
+    );
+  }
   function chooseFile(next: File | null) {
     setFileError(null);
     if (
@@ -283,31 +356,16 @@ export function ProcessingView({
           },
         ),
       (result) => {
+        setListingStale(true);
         setSelectedId(result.jobId);
+        setRecordTab('extracted');
+        setUploadOpen(false);
         setFile(null);
         if (fileInput.current) fileInput.current.value = '';
         setNotice(
           result.deduplicated
             ? 'Document recognized. Its processing job is available below.'
             : 'Document queued. You can review its results here when processing finishes.',
-        );
-      },
-    );
-  }
-  function changeMode(mode: ProcessingMode) {
-    if (!canManage || !snapshot || mode === snapshot.policy.mode) return;
-    void mutate(
-      'policy',
-      () =>
-        requestJson<ProcessingPolicy>('/api/processing', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode }),
-        }),
-      (policy) => {
-        setSnapshot((current) => (current ? { ...current, policy } : current));
-        setNotice(
-          modeName(policy.mode) + ' is now the default for new uploads.',
         );
       },
     );
@@ -340,6 +398,7 @@ export function ProcessingView({
           },
         ),
       (result) => {
+        setListingStale(true);
         setSnapshot((current) =>
           current
             ? {
@@ -350,6 +409,18 @@ export function ProcessingView({
                         ...item,
                         status: result.status,
                         review: result.review ?? item.review,
+                        summary: undefined,
+                        ...(action === 'retry'
+                          ? {
+                              result: null,
+                              review: null,
+                              timing: undefined,
+                              activity: {
+                                stage: 'queued' as const,
+                                availableAt: null,
+                              },
+                            }
+                          : {}),
                         errorCode: null,
                         updatedAt: new Date().toISOString(),
                       }
@@ -389,133 +460,442 @@ export function ProcessingView({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className={styles.pipeline}>
       <PageHeading
-        title="Document processing"
-        subtitle="Turn statements and correspondence into source-linked updates."
+        title="Document pipeline"
+        subtitle="Every source, the information it produced, and the next step."
       >
-        <Status
-          tone={snapshot?.policy.execution === 'cloud' ? 'warning' : 'success'}
+        <Link
+          href="/?view=connections&tab=engines"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
-          {snapshot?.policy.execution === 'cloud' ? <Cloud /> : <ShieldCheck />}
-          {snapshot
-            ? snapshot.policy.execution === 'cloud'
-              ? 'Cloud selected'
-              : 'Local selected'
-            : 'Loading policy'}
-        </Status>
-        {snapshot?.role === 'viewer' ? <Status>View only</Status> : null}
+          <Settings2 data-icon="inline-start" />
+          Engine settings
+        </Link>
         <Button
           variant="outline"
+          size="icon-sm"
+          aria-label="Refresh documents"
           disabled={!!busy || refreshing}
           onClick={() => setRefreshKey((value) => value + 1)}
         >
-          <RefreshCw
-            data-icon="inline-start"
-            className={cn(refreshing && 'animate-spin')}
-          />
-          Refresh
+          <RefreshCw className={cn(refreshing && 'animate-spin')} />
+        </Button>
+        <Button onClick={() => setUploadOpen(true)} disabled={!canWrite}>
+          <Upload data-icon="inline-start" />
+          Add document
         </Button>
       </PageHeading>
-
       {loadError || actionError ? (
         <Alert variant="destructive">
           <AlertCircle />
           <AlertTitle>
             {actionError
               ? 'Action could not be completed'
-              : 'Processing status is unavailable'}
+              : 'Documents could not be refreshed'}
           </AlertTitle>
           <AlertDescription>
             {actionError || loadError}
-            {loadError && snapshot
-              ? ' The last loaded results are still shown below.'
-              : ''}
+            {loadError && snapshot ? ' Showing the last loaded records.' : ''}
           </AlertDescription>
         </Alert>
       ) : null}
       {notice ? (
         <Alert aria-live="polite">
           <Check />
-          <AlertTitle>Workspace updated</AlertTitle>
+          <AlertTitle>Document updated</AlertTitle>
           <AlertDescription>{notice}</AlertDescription>
         </Alert>
       ) : null}
-
-      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
-        <Panel
-          title="Processing mode"
-          subtitle="One evidence standard. Two ways to read your documents."
-        >
-          <div className="flex flex-col gap-4 py-3">
-            {loading ? (
-              <Skeleton className="h-9 w-72 max-w-full" />
-            ) : (
-              <ToggleGroup
-                aria-label="Default processing mode"
-                value={snapshot ? [snapshot.policy.mode] : []}
-                onValueChange={(values) => {
-                  const value = values[0];
-                  if (value === 'workflow' || value === 'agentic')
-                    changeMode(value);
-                }}
-                variant="outline"
-                disabled={!canManage || !!busy}
-              >
-                <ToggleGroupItem
-                  value="workflow"
-                  aria-label="Classical workflow"
+      <section className={styles.register} aria-label="Document pipeline">
+        <div className={styles.stageBar}>
+          <Tabs
+            value={stage}
+            onValueChange={(value) => {
+              setStage(String(value));
+              setOffset(0);
+            }}
+          >
+            <TabsList variant="line" aria-label="Document stage">
+              {documentStages.map((item) => (
+                <TabsTrigger key={item.value} value={item.value}>
+                  {item.label}
+                  <span className={styles.tabCount}>
+                    {totals
+                      ? item.value === 'all'
+                        ? allCount
+                        : item.statuses.reduce(
+                            (sum, status) => sum + totals[status],
+                            0,
+                          )
+                      : '—'}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className={styles.toolbar}>
+          <InputGroup className="w-full sm:max-w-sm">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search document filenames"
+              placeholder="Search filenames…"
+              maxLength={200}
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setOffset(0);
+              }}
+            />
+            {query ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Clear document search"
+                  onClick={() => {
+                    setQuery('');
+                    setOffset(0);
+                  }}
                 >
-                  <GitBranch data-icon="inline-start" /> Classical workflow
-                </ToggleGroupItem>
-                <ToggleGroupItem value="agentic" aria-label="Agentic">
-                  <Bot data-icon="inline-start" /> Agentic
-                </ToggleGroupItem>
-              </ToggleGroup>
+                  <X />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+          <p className={styles.pageSummary} aria-live="polite">
+            {loading ? (
+              'Loading documents…'
+            ) : !snapshot ? (
+              'Document totals are unavailable.'
+            ) : listingStale ? (
+              loadError ? (
+                'Refresh to update document totals.'
+              ) : (
+                'Refreshing document totals…'
+              )
+            ) : (
+              <>
+                <strong>{extracted}</strong> facts · <strong>{accepted}</strong>{' '}
+                recorded · <strong>{remaining}</strong>{' '}
+                {remaining === 1 ? 'decision' : 'decisions'} left
+                <span>
+                  Across {rows.length} shown{' '}
+                  {rows.length === 1 ? 'document' : 'documents'}
+                  {unavailable
+                    ? ` · ${unavailable} without extraction counts`
+                    : ''}
+                </span>
+              </>
             )}
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {snapshot?.policy.mode === 'agentic'
-                ? 'Your selected model examines the document through bounded extraction steps.'
-                : 'Fixed stages classify and parse the document, with model extraction for unresolved fields.'}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <LockKeyhole className="size-3.5" /> No automatic provider
-                fallback
-              </span>
-              {snapshot ? (
-                <span>Policy revision {snapshot.policy.revision}</span>
-              ) : null}
-              {busy === 'policy' ? <output>Saving mode…</output> : null}
+          </p>
+        </div>
+        {loading ? (
+          <div
+            className="flex flex-col gap-5 p-6"
+            aria-label="Loading documents"
+          >
+            {[0, 1, 2, 3].map((index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : !snapshot ? (
+          <Empty className="min-h-80">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AlertCircle />
+              </EmptyMedia>
+              <EmptyTitle>Documents could not be loaded</EmptyTitle>
+              <EmptyDescription>
+                Your document count and records are not available yet. Try
+                refreshing.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button
+              variant="outline"
+              disabled={refreshing}
+              onClick={() => setRefreshKey((value) => value + 1)}
+            >
+              Refresh documents
+            </Button>
+          </Empty>
+        ) : rows.length ? (
+          <>
+            <div className={styles.desktopList}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[33%]">Document & source</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Extracted information</TableHead>
+                    <TableHead>Extraction time</TableHead>
+                    <TableHead className="text-right">Next step</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((job) => {
+                    const next = documentNextStep(job);
+                    return (
+                      <TableRow
+                        key={job.id}
+                        data-state={
+                          selectedId === job.id ? 'selected' : undefined
+                        }
+                      >
+                        <TableCell>
+                          <DocumentIdentity
+                            job={job}
+                            onOpen={() => openRecord(job)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className={styles.cellStack}>
+                            <Status tone={documentTone(job.status)}>
+                              {documentStage(job)}
+                            </Status>
+                            <small>
+                              Received {documentTimestamp(job.createdAt)}
+                            </small>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <ExtractionSummary job={job} />
+                        </TableCell>
+                        <TableCell>
+                          <DocumentTiming job={job} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className={styles.nextStep}>
+                            <Button
+                              variant={
+                                job.status === 'awaiting_review' ||
+                                job.status === 'failed'
+                                  ? 'outline'
+                                  : 'ghost'
+                              }
+                              size="sm"
+                              onClick={() => openRecord(job, true)}
+                            >
+                              {next.label}
+                              <ChevronRight data-icon="inline-end" />
+                            </Button>
+                            <small>
+                              {job.status === 'awaiting_review'
+                                ? 'Confirm the source and investment.'
+                                : next.detail}
+                            </small>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Changes apply to new uploads. Existing jobs keep their recorded
-              mode and engine. Choose a model in AI engines.
-              {snapshot && !canManage
-                ? ' A workspace owner or admin can change the default.'
-                : ''}
-            </p>
-            {snapshot?.policy.engine ? (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                New documents use {snapshot.policy.engine.model}.
-                {snapshot.policy.execution === 'cloud'
-                  ? ' Document content will be sent to the selected cloud provider.'
-                  : ' Inference runs on the configured local runtime.'}
-              </p>
+            <div className={styles.mobileList} aria-label="Document records">
+              {rows.map((job) => (
+                <article key={job.id} className={styles.mobileRecord}>
+                  <DocumentIdentity job={job} onOpen={() => openRecord(job)} />
+                  <div className={styles.mobileMeta}>
+                    <Status tone={documentTone(job.status)}>
+                      {documentStage(job)}
+                    </Status>
+                    <DocumentTiming job={job} />
+                  </div>
+                  <ExtractionSummary job={job} />
+                  <div className={styles.mobileAction}>
+                    <small>Received {documentTimestamp(job.createdAt)}</small>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openRecord(job, true)}
+                    >
+                      {documentNextStep(job).label}
+                      <ChevronRight data-icon="inline-end" />
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : (
+          <Empty className="min-h-80">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileText />
+              </EmptyMedia>
+              <EmptyTitle>
+                {query || stage !== 'all'
+                  ? 'No documents match this view'
+                  : 'Your document pipeline starts here'}
+              </EmptyTitle>
+              <EmptyDescription>
+                {query || stage !== 'all'
+                  ? 'Try another filename or stage.'
+                  : 'Connect a mailbox or folder, or add an email, report or statement. Its extracted information and review history will appear here.'}
+              </EmptyDescription>
+            </EmptyHeader>
+            {query || stage !== 'all' ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setQuery('');
+                  setStage('all');
+                  setOffset(0);
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : (
+              <Link
+                href="/?view=connections"
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                Connect a source
+              </Link>
+            )}
+          </Empty>
+        )}
+        <div className={styles.footer}>
+          <p>
+            {listingStale
+              ? 'Refresh to update the document list'
+              : snapshot
+                ? `${rows.length ? snapshot.page.offset + 1 : 0}–${rows.length ? Math.min(snapshot.page.offset + rows.length, snapshot.page.total) : 0} of ${snapshot.page.total} documents`
+                : loading
+                  ? 'Loading records'
+                  : 'Records unavailable'}
+            <span>
+              {refreshing ? ' · Updating…' : ' · Updates automatically'}
+            </span>
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!snapshot || offset === 0 || refreshing || listingStale}
+              onClick={() => setOffset(Math.max(0, offset - 50))}
+            >
+              <ChevronLeft data-icon="inline-start" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={
+                !snapshot?.page.hasMore ||
+                snapshot.page.nextOffset === null ||
+                refreshing ||
+                listingStale
+              }
+              onClick={() => {
+                if (snapshot?.page.nextOffset != null)
+                  setOffset(snapshot.page.nextOffset);
+              }}
+            >
+              Next
+              <ChevronRight data-icon="inline-end" />
+            </Button>
+          </div>
+        </div>
+        {snapshot?.page.hasMore && snapshot.page.nextOffset === null ? (
+          <p className="px-5 pb-4 text-sm text-muted-foreground">
+            Narrow the filename search to reach older documents.
+          </p>
+        ) : null}
+      </section>
+      <Sheet
+        open={selectedId !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setSelectedId(null);
+        }}
+      >
+        <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:max-w-[min(1080px,94vw)] gap-0">
+          <SheetHeader className="border-b pr-12">
+            <SheetTitle>Document record</SheetTitle>
+            <SheetDescription className="[overflow-wrap:anywhere]">
+              {selected?.filename ?? 'Loading the selected document…'}
+            </SheetDescription>
+          </SheetHeader>
+          <div className={styles.recordBody}>
+            {loadError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Document could not be refreshed</AlertTitle>
+                <AlertDescription>
+                  {loadError}{' '}
+                  {selected?.result ? 'Showing the last loaded record.' : ''}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={refreshing || !!busy}
+                    onClick={() => setRefreshKey((value) => value + 1)}
+                  >
+                    Refresh document
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {actionError || notice ? (
+              <Alert variant={actionError ? 'destructive' : 'default'}>
+                <AlertTitle>
+                  {actionError ? 'Action needs attention' : 'Saved'}
+                </AlertTitle>
+                <AlertDescription>{actionError || notice}</AlertDescription>
+              </Alert>
+            ) : null}
+            {selected ? (
+              <DocumentRecord
+                key={selected.id}
+                job={selected}
+                holdings={data.holdings}
+                canWrite={canWrite}
+                busy={!!busy}
+                loadingDetails={!loadError && detailsLoadedId !== selected.id}
+                tab={recordTab}
+                onTab={setRecordTab}
+                onAction={(action, selections, revision) =>
+                  reviewJob(selected, action, selections, revision)
+                }
+              />
+            ) : detailsLoadedId === selectedId && !loadError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Document unavailable</AlertTitle>
+                <AlertDescription>
+                  This document is no longer available in this office.
+                </AlertDescription>
+              </Alert>
+            ) : !loadError ? (
+              <Skeleton className="h-60 w-full" />
             ) : null}
           </div>
-        </Panel>
-        <Panel
-          title="Add a source document"
-          subtitle="Statements, fund notices and email correspondence."
-        >
-          <form onSubmit={upload} className="py-3">
+        </SheetContent>
+      </Sheet>
+      <Dialog
+        open={uploadOpen}
+        onOpenChange={(open) => {
+          if (busy !== 'upload') setUploadOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a document</DialogTitle>
+            <DialogDescription>
+              Upload an email, statement or manager update to this office’s
+              pipeline.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={upload}>
             <FieldGroup>
               <Field
                 data-invalid={!!fileError}
                 data-disabled={!canWrite || !!busy}
               >
-                <FieldLabel htmlFor="processing-document">Document</FieldLabel>
+                <FieldLabel htmlFor="processing-document">
+                  Source document
+                </FieldLabel>
                 <Input
                   ref={fileInput}
                   id="processing-document"
@@ -529,37 +909,22 @@ export function ProcessingView({
                   }
                 />
                 <FieldDescription id="processing-file-help">
-                  PDF, TXT or EML · Up to 10 MB per file
+                  PDF, TXT or EML · Up to 10 MB. Originals and results are
+                  retained encrypted.
                 </FieldDescription>
                 {fileError ? <FieldError>{fileError}</FieldError> : null}
               </Field>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-                  {file
-                    ? file.name +
-                      ' · ' +
-                      (file.size < 1024 * 1024
-                        ? Math.max(1, Math.round(file.size / 1024)) + ' KB'
-                        : (file.size / 1024 / 1024).toFixed(1) + ' MB')
-                    : canWrite
-                      ? 'The original and extracted results are stored encrypted.'
-                      : 'Upload access requires an analyst, admin or owner role.'}
-                </p>
-                {file ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove selected document"
-                    disabled={!!busy}
-                    onClick={() => {
-                      chooseFile(null);
-                      if (fileInput.current) fileInput.current.value = '';
-                    }}
-                  >
-                    <X />
-                  </Button>
-                ) : null}
+              <p className="text-sm text-muted-foreground">
+                {snapshot?.policy.engine?.model ?? 'Configured engine'} ·{' '}
+                {snapshot?.policy.mode === 'agentic'
+                  ? 'Agentic'
+                  : 'Classical workflow'}{' '}
+                ·{' '}
+                {snapshot?.policy.execution === 'cloud'
+                  ? 'Document content goes to the selected cloud provider.'
+                  : 'Local inference'}
+              </p>
+              <div className="flex justify-end">
                 <Button type="submit" disabled={!file || !canWrite || !!busy}>
                   {busy === 'upload' ? (
                     <Loader2
@@ -569,482 +934,119 @@ export function ProcessingView({
                   ) : (
                     <Upload data-icon="inline-start" />
                   )}
-                  {busy === 'upload' ? 'Uploading…' : 'Upload & process'}
+                  {busy === 'upload' ? 'Uploading…' : 'Upload & extract'}
                 </Button>
               </div>
             </FieldGroup>
           </form>
-        </Panel>
-      </div>
-
-      <section
-        className="flex min-w-0 flex-col gap-3"
-        aria-labelledby="processing-jobs-title"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 id="processing-jobs-title" className="text-base font-medium">
-              Processing queue
-            </h2>
-            {reviewCount ? (
-              <Status tone="warning">{reviewCount} to review</Status>
-            ) : null}
-            {queuedCount ? (
-              <Status tone="violet">{queuedCount} in progress</Status>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            {loading
-              ? 'Loading documents…'
-              : jobs.length +
-                ' recent ' +
-                (jobs.length === 1 ? 'job' : 'jobs') +
-                ' · Updates automatically'}
-          </p>
-        </div>
-        <div className="grid min-w-0 overflow-hidden rounded-lg border border-border bg-background lg:grid-cols-[minmax(230px,0.72fr)_minmax(0,1.6fr)]">
-          <div className="min-w-0 border-b border-border lg:border-r lg:border-b-0">
-            {loading ? (
-              <div
-                className="flex flex-col gap-5 p-5"
-                aria-label="Loading processing jobs"
-              >
-                {[0, 1, 2].map((index) => (
-                  <div className="flex flex-col gap-3" key={index}>
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-3 w-3/5" />
-                    <Skeleton className="h-5 w-24" />
-                  </div>
-                ))}
-              </div>
-            ) : jobs.length ? (
-              <div
-                className="max-h-[620px] overflow-y-auto lg:max-h-[900px]"
-                aria-label="Recent processing jobs"
-              >
-                {jobs.map((job) => (
-                  <button
-                    key={job.id}
-                    type="button"
-                    aria-pressed={selected?.id === job.id}
-                    onClick={() => setSelectedId(job.id)}
-                    className={cn(
-                      'flex w-full min-w-0 flex-col gap-3 border-b border-border px-5 py-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]',
-                      selected?.id === job.id &&
-                        'bg-accent/50 shadow-[inset_3px_0_0_var(--primary)]',
-                    )}
-                  >
-                    <div className="flex min-w-0 items-start gap-2.5">
-                      <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 break-words text-sm font-medium">
-                        {job.filename}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Status tone={statusTone(job.status)}>
-                        {statusLabels[job.status] ?? job.status}
-                      </Status>
-                      <span className="text-xs text-muted-foreground">
-                        {modeName(job.mode)}
-                      </span>
-                    </div>
-                    <time
-                      dateTime={job.createdAt}
-                      className="text-xs text-muted-foreground"
-                    >
-                      {timestamp(job.createdAt)}
-                    </time>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Empty className="min-h-64">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <FileText />
-                  </EmptyMedia>
-                  <EmptyTitle>No documents yet</EmptyTitle>
-                  <EmptyDescription>
-                    Upload your first statement or email to begin.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-          <div className="min-w-0 p-5 sm:p-6">
-            {selected ? (
-              <JobDetail
-                key={selected.id}
-                job={selected}
-                holdings={data.holdings}
-                canWrite={canWrite}
-                busy={!!busy}
-                loadingResult={
-                  !selected.result &&
-                  !isActive(selected) &&
-                  ['awaiting_review', 'accepted', 'rejected'].includes(
-                    selected.status,
-                  ) &&
-                  !loadError
-                }
-                onAction={(action, selections, expectedRevision) =>
-                  reviewJob(selected, action, selections, expectedRevision)
-                }
-              />
-            ) : loading ? (
-              <div className="flex flex-col gap-5">
-                <Skeleton className="h-6 w-2/3" />
-                <Skeleton className="h-4 w-4/5" />
-                <Skeleton className="h-40 w-full" />
-                <Skeleton className="h-40 w-full" />
-              </div>
-            ) : (
-              <Empty className="min-h-80">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <FileSearch />
-                  </EmptyMedia>
-                  <EmptyTitle>Every update starts with its source</EmptyTitle>
-                  <EmptyDescription>
-                    Open a document to inspect extracted facts, page evidence
-                    and the processing trace before accepting changes.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-        </div>
-      </section>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function JobDetail({
+function DocumentIdentity({
   job,
-  holdings,
-  canWrite,
-  busy,
-  loadingResult,
-  onAction,
+  onOpen,
 }: {
   job: ProcessingJob;
-  holdings: Holding[];
-  canWrite: boolean;
-  busy: boolean;
-  loadingResult: boolean;
-  onAction: (
-    action: JobAction,
-    selections?: ReviewSelection[],
-    expectedRevision?: number,
-  ) => Promise<boolean>;
+  onOpen: () => void;
 }) {
-  const result = job.result;
-  const failure =
-    job.errorCode === 'PROCESSOR_HTTP_422'
-      ? {
-          title: 'Input needs attention',
-          description:
-            'The processor could not read or validate this input. Open the original and check for protected or unreadable content. Check the selected engine configuration before retrying.',
-        }
-      : job.errorCode === 'PROCESSOR_HTTP_413'
-        ? {
-            title: 'Input exceeds the processing limit',
-            description:
-              'This input exceeded a processing size limit. Review the original and provide a supported smaller source before retrying.',
-          }
-        : job.errorCode === 'PROCESSOR_HTTP_504'
-          ? {
-              title: 'Processing timed out',
-              description:
-                'The processor exceeded its time limit. Check engine responsiveness and the source document before retrying.',
-            }
-          : {
-              title: 'Processing did not finish',
-              description:
-                'Check the source document and the selected processor and engine configuration before retrying.',
-            };
-  const unreadableSource = result?.trace.some(
-    (entry) => entry.stage === 'input_coverage' && entry.status === 'warning',
-  );
-  const partiallyUnreadableSource = result?.warnings.some((warning) =>
-    /has no native text|local OCR (?:failed|found no readable text)|Attachment \d+ skipped|Email body part skipped/i.test(
-      warning,
-    ),
-  );
+  const names = job.summary?.investmentNames ?? [];
+  const kind = job.source?.kind;
   return (
-    <div className="flex min-w-0 flex-col gap-6">
-      <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Status tone={statusTone(job.status)}>
-            {statusLabels[job.status] ?? job.status}
-          </Status>
-          <Status>{modeName(job.mode)}</Status>
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            {job.engine?.execution === 'cloud' ||
-            result?.execution === 'cloud' ? (
-              <Cloud className="size-3" />
-            ) : (
-              <LockKeyhole className="size-3" />
-            )}
-            {job.engine?.execution === 'cloud' || result?.execution === 'cloud'
-              ? 'Cloud execution'
-              : 'Local execution'}
-          </span>
-        </div>
-        <h3 className="break-words text-lg font-medium tracking-tight">
-          {job.filename}
-        </h3>
-        {job.engineLegacy ? (
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {job.engine
-              ? 'Legacy job: this engine was recorded when processing resumed. Earlier attempts did not record an engine profile.'
-              : 'Legacy job: no engine profile was recorded. A retry will capture the deployment-local default at worker pickup.'}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Received {timestamp(job.createdAt)} · Policy {job.policyRevision}
-            {job.engine
-              ? ` · ${job.engine.model} · Engine revision ${job.engine.revision}`
-              : ''}
-          </p>
-          <a
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
-            href={'/api/documents/' + encodeURIComponent(job.documentId)}
-            download
-          >
-            <ArrowDownToLine data-icon="inline-start" /> Download original
-          </a>
-        </div>
+    <div className={styles.identity}>
+      <div className={styles.sourceIcon}>
+        {kind === 'folder' ? (
+          <FolderOpen />
+        ) : kind === 'mailbox' || /\.eml$/i.test(job.filename) ? (
+          <Mail />
+        ) : (
+          <FileText />
+        )}
       </div>
-
-      {isActive(job) ? (
-        <Alert aria-live="polite">
-          {job.status === 'processing' ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <GitBranch />
-          )}
-          <AlertTitle>
-            {job.status === 'processing'
-              ? 'Reading the document'
-              : 'Waiting for a document worker'}
-          </AlertTitle>
-          <AlertDescription>
-            {job.status === 'processing'
-              ? 'Results will appear here when extraction finishes. You can leave this screen while the job runs.'
-              : 'This document is queued. Its selected mode, engine and source are retained until a worker is available.'}
-          </AlertDescription>
-        </Alert>
+      <div className={styles.identityText}>
+        <button type="button" className={styles.documentLink} onClick={onOpen}>
+          {job.filename}
+        </button>
+        <span>
+          {names.length
+            ? names.slice(0, 2).join(' · ')
+            : (job.summary?.documentType?.replaceAll('_', ' ') ??
+              'Information pending extraction')}
+        </span>
+        <small>
+          {job.source?.displayName ??
+            (kind === 'folder'
+              ? 'Folder import'
+              : kind === 'mailbox'
+                ? 'Mailbox import'
+                : 'Direct upload')}
+          {job.source?.familyNames.length
+            ? ` · ${job.source.familyContext === 'source_path' ? 'Folder hint: ' : ''}${job.source.familyNames.join(', ')}`
+            : ''}
+        </small>
+      </div>
+    </div>
+  );
+}
+function ExtractionSummary({ job }: { job: ProcessingJob }) {
+  const counts = factCounts(job);
+  if (!counts)
+    return (
+      <div className={styles.cellStack}>
+        <span>{isActive(job) ? 'Waiting for results' : 'Not available'}</span>
+        <small>
+          {isActive(job)
+            ? 'Counts appear after extraction'
+            : job.status === 'failed'
+              ? 'Input requires attention'
+              : 'Open the record for details'}
+        </small>
+      </div>
+    );
+  return (
+    <div className={styles.cellStack}>
+      <span>
+        <strong>{counts.extractedCount}</strong> extracted ·{' '}
+        <strong>{counts.acceptedCount}</strong> recorded
+      </span>
+      <small>
+        {counts.remainingCount
+          ? `${counts.remainingCount} ${counts.remainingCount === 1 ? 'decision' : 'decisions'} left${counts.deferredCount ? ` · ${counts.deferredCount} deferred` : ''}`
+          : counts.legacyCount
+            ? `${counts.legacyCount} older decisions unavailable`
+            : counts.rejectedCount
+              ? `${counts.rejectedCount} dismissed`
+              : 'No fact decisions remaining'}
+      </small>
+      {job.summary?.factTypes.length ? (
+        <small>{job.summary.factTypes.map(factTypeLabel).join(' · ')}</small>
       ) : null}
-      {job.status === 'failed' ? (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertTitle>{failure.title}</AlertTitle>
-          <AlertDescription>
-            {failure.description}
-            {job.errorCode ? (
-              <p className="mt-2 break-words text-xs">
-                Reference: {job.errorCode}
-              </p>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {job.status === 'accepted' ? (
-        <Alert aria-live="polite">
-          <CheckCheck />
-          <AlertTitle>Review closed</AlertTitle>
-          <AlertDescription>
-            Every current fact decision is retained below. Accepted values and
-            any amendments have their own review history.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {job.status === 'rejected' || job.status === 'cancelled' ? (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {job.status === 'rejected'
-            ? 'This review was rejected. No extracted facts were applied.'
-            : 'This job was cancelled. The original document remains available.'}
-        </p>
-      ) : null}
-
-      {canWrite &&
-      (isActive(job) || ['failed', 'cancelled'].includes(job.status)) ? (
-        <div className="flex justify-start">
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => onAction(isActive(job) ? 'cancel' : 'retry')}
-          >
-            {isActive(job) ? (
-              <X data-icon="inline-start" />
-            ) : (
-              <RefreshCw data-icon="inline-start" />
-            )}
-            {isActive(job) ? 'Cancel job' : 'Retry processing'}
-          </Button>
-        </div>
-      ) : null}
-
-      {loadingResult ? (
-        <div className="flex flex-col gap-3" aria-live="polite">
-          <p className="text-sm text-muted-foreground">
-            Loading this document’s extraction…
-          </p>
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-40 w-full" />
-        </div>
-      ) : null}
-      {result && !isActive(job) ? (
-        <>
-          <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">
-                Document type
-              </span>
-              <span className="break-words">
-                {result.documentType.replaceAll('_', ' ')}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">
-                Extracted facts
-              </span>
-              <span>{result.facts.length}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">
-                Relevance score
-              </span>
-              <span>{Math.round(result.confidence * 100)}%</span>
-              <span className="text-xs text-muted-foreground">
-                Uncalibrated classifier probability
-              </span>
-            </div>
-          </div>
-
-          {unreadableSource || partiallyUnreadableSource ? (
-            <Alert>
-              <AlertCircle />
-              <AlertTitle>
-                {unreadableSource
-                  ? 'Source could not be read'
-                  : 'Source could only be read in part'}
-              </AlertTitle>
-              <AlertDescription>
-                Open the original document and check its contents, including
-                attachments. Supply readable copies of any skipped content
-                before relying on the extraction result.
-              </AlertDescription>
-            </Alert>
-          ) : !result.relevant ? (
-            <Alert>
-              <FileSearch />
-              <AlertTitle>Classified as not investment-related</AlertTitle>
-              <AlertDescription>
-                Check the original source before deciding whether to keep any
-                extracted information.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          {result.warnings.length ? (
-            <Alert>
-              <AlertCircle />
-              <AlertTitle>
-                {result.warnings.length} processing{' '}
-                {result.warnings.length === 1 ? 'warning' : 'warnings'}
-              </AlertTitle>
-              <AlertDescription>
-                <ul className="ml-4 flex list-disc flex-col gap-2">
-                  {result.warnings.map((warning, index) => (
-                    <li key={index} className="break-words">
-                      {warning}
-                    </li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {result.facts.length ? (
-            <ReviewWorkbench
-              job={job}
-              holdings={holdings}
-              canWrite={canWrite}
-              busy={busy}
-              onReview={(decisions, revision) =>
-                onAction('review', decisions, revision)
-              }
-            />
-          ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <FileSearch />
-                </EmptyMedia>
-                <EmptyTitle>No supported facts found</EmptyTitle>
-                <EmptyDescription>
-                  Check the original source and warnings. No facts have been
-                  posted.
-                </EmptyDescription>
-              </EmptyHeader>
-              {canWrite && job.status === 'awaiting_review' ? (
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void onAction('reject')}
-                >
-                  Close empty review
-                </Button>
-              ) : null}
-            </Empty>
-          )}
-
-          <details className="rounded-lg border border-border p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              Processing trace · {result.trace.length} steps
-            </summary>
-            <div className="mt-4 flex flex-col gap-4">
-              {result.model ? (
-                <p className="break-words text-xs text-muted-foreground">
-                  Model: {result.model}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  No model identifier returned
-                </p>
-              )}
-              {result.trace.length ? (
-                <ol className="flex flex-col gap-4">
-                  {result.trace.map((step, index) => (
-                    <li key={index} className="flex min-w-0 gap-3">
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <div className="flex min-w-0 flex-col gap-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="break-words text-xs font-medium">
-                            {step.stage.replaceAll('_', ' ')}
-                          </h4>
-                          <Status>{step.status}</Status>
-                        </div>
-                        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
-                          {step.detail}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  No trace steps were returned.
-                </p>
-              )}
-            </div>
-          </details>
-        </>
-      ) : null}
+    </div>
+  );
+}
+function DocumentTiming({ job }: { job: ProcessingJob }) {
+  const active = job.status === 'processing';
+  return (
+    <div className={styles.cellStack}>
+      <span className={styles.duration}>
+        {durationLabel(
+          active
+            ? job.timing?.elapsedProcessingMs
+            : job.timing?.processingDurationMs,
+        )}
+        {active && job.timing?.elapsedProcessingMs != null ? ' elapsed' : ''}
+      </span>
+      <small>
+        {job.timing?.processingDurationMs != null
+          ? 'Extraction attempt'
+          : active
+            ? 'Currently extracting'
+            : job.status === 'queued'
+              ? 'Not started'
+              : 'Historical timing unavailable'}
+      </small>
     </div>
   );
 }

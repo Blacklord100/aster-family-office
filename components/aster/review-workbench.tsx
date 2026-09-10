@@ -136,7 +136,12 @@ export function ReviewWorkbench({
 }: Props) {
   const { data, reload } = useWorkspace();
   const [filter, setFilter] = useState('all');
-  const [selectedIndex, setSelected] = useState(0);
+  const [selectedIndex, setSelected] = useState(() => {
+    const next = job.review?.facts.find(
+      (fact) => fact.status === 'pending' || fact.status === 'deferred',
+    );
+    return next?.factIndex ?? 0;
+  });
   const [drafts, setDrafts] = useState<Record<number, ReviewDecision>>({});
   const [editRevision, setEditRevision] = useState<number | null>(null);
   const [opened, setOpened] = useState(false);

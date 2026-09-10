@@ -1,9 +1,12 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   ArrowRight,
   CheckCheck,
+  Cpu,
   FileText,
+  FolderOpen,
   History,
   Mail,
   Pause,
@@ -11,6 +14,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Unplug,
+  Plug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,6 +38,10 @@ import { useWorkspace } from './workspace-context';
 import { PageHeading, Panel, Status, Metric, Picker } from './primitives';
 import { IntegrationAccess } from './integration-access';
 import { FolderConnections } from './folder-connections';
+import {
+  isConnectionTab,
+  type ConnectionTab,
+} from '@/lib/workspace-navigation';
 import styles from './connections.module.css';
 
 import type {
@@ -84,7 +92,20 @@ const stamp = (value: string | null) =>
       })
     : 'Not yet';
 
-export function ConnectionsView() {
+const EnginesView = dynamic(
+  () => import('./engines-view').then((module) => module.EnginesView),
+  { loading: () => <Skeleton className="h-52 w-full" /> },
+);
+
+export function ConnectionsView({
+  tab,
+  onTabChange,
+  onDocuments,
+}: {
+  tab: ConnectionTab;
+  onTabChange: (tab: ConnectionTab) => void;
+  onDocuments: () => void;
+}) {
   const { state } = useWorkspace();
   const [data, setData] = useState<ConnectionsData | null>(null),
     [error, setError] = useState(''),
@@ -109,6 +130,7 @@ export function ConnectionsView() {
         throw new Error(
           payload.message ?? 'Could not load mailbox connections.',
         );
+      if (signal?.aborted) return;
       setData(payload);
       setError('');
     } catch (e) {
@@ -121,6 +143,7 @@ export function ConnectionsView() {
     }
   }, []);
   useEffect(() => {
+    if (tab !== 'mailboxes') return;
     const controller = new AbortController();
     // oxlint-disable-next-line react/react-compiler -- Remote state updates occur after awaiting the network response.
     void load(controller.signal);
@@ -131,7 +154,7 @@ export function ConnectionsView() {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [load, refresh]);
+  }, [load, refresh, tab]);
   useEffect(() => {
     const url = new URL(window.location.href);
     const message = url.searchParams.get('mailbox');
@@ -146,6 +169,7 @@ export function ConnectionsView() {
       });
       url.searchParams.delete('mailbox');
       url.searchParams.delete('code');
+      url.searchParams.set('tab', 'mailboxes');
       window.history.replaceState({}, '', url.toString());
     }
   }, []);
@@ -235,23 +259,53 @@ export function ConnectionsView() {
     <>
       <PageHeading
         title="Connections"
-        subtitle="Bring emails, documents and investment updates into one workspace."
+        subtitle="Connect your sources, choose your AI and manage app access."
       >
-        <Button
-          variant="outline"
-          onClick={() => setRefresh((value) => value + 1)}
-          disabled={!!busy}
-        >
-          <RefreshCw data-icon="inline-start" />
-          Refresh
+        {tab === 'mailboxes' || tab === 'folders' ? (
+          <Button
+            variant="outline"
+            onClick={() => setRefresh((value) => value + 1)}
+            disabled={!!busy}
+          >
+            <RefreshCw data-icon="inline-start" />
+            Refresh
+          </Button>
+        ) : null}
+        <Button variant="outline" onClick={onDocuments}>
+          <FileText data-icon="inline-start" />
+          Open Documents
         </Button>
       </PageHeading>
-      <Tabs defaultValue="folders" className="gap-6">
-        <TabsList variant="line">
-          <TabsTrigger value="folders">Folders</TabsTrigger>
-          <TabsTrigger value="mailboxes">Mailboxes</TabsTrigger>
-          <TabsTrigger value="tools">Apps & agents</TabsTrigger>
-        </TabsList>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (isConnectionTab(value)) onTabChange(value);
+        }}
+        className="gap-6"
+      >
+        <div className="overflow-x-auto pb-1.5">
+          <TabsList variant="line" aria-label="Connection settings">
+            <TabsTrigger value="mailboxes">
+              <Mail />
+              Mailboxes
+            </TabsTrigger>
+            <TabsTrigger value="folders">
+              <FolderOpen />
+              Folders
+            </TabsTrigger>
+            <TabsTrigger value="engines">
+              <Cpu />
+              AI engines
+            </TabsTrigger>
+            <TabsTrigger value="tools">
+              <Plug />
+              Apps & agents
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="engines">
+          {tab === 'engines' ? <EnginesView /> : null}
+        </TabsContent>
         <TabsContent value="folders">
           <FolderConnections refresh={refresh} />
         </TabsContent>
@@ -399,16 +453,6 @@ export function ConnectionsView() {
           <Panel
             title="Your connected accounts"
             subtitle="Import history, monitor progress and manage access."
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.location.assign('?view=agents')}
-              >
-                Open Processing
-                <ArrowRight data-icon="inline-end" />
-              </Button>
-            }
           >
             {!data ? (
               <Skeleton className="h-28" />
@@ -421,7 +465,7 @@ export function ConnectionsView() {
                   <EmptyTitle>Your first connection starts here</EmptyTitle>
                   <EmptyDescription>
                     Connect an account above. Until then, you can upload PDF
-                    reports and exported emails in Processing.
+                    reports and exported emails in Documents.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

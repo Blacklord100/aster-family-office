@@ -51,6 +51,21 @@ describe('tenant transactions', () => {
     expect(mocked.query.mock.calls.at(-1)).toEqual(['ROLLBACK']);
     expect(mocked.release).toHaveBeenCalledWith(false);
   });
+  it('opts a multi-query read into one read-only snapshot before tenant setup', async () => {
+    await withTenant(
+      org,
+      async (client) => {
+        await client.query('SELECT tenant_data');
+      },
+      { readOnlySnapshot: true },
+    );
+    expect(mocked.query.mock.calls).toEqual([
+      ['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'],
+      ["SELECT set_config('app.organization_id', $1, true)", [org]],
+      ['SELECT tenant_data'],
+      ['COMMIT'],
+    ]);
+  });
   it('discards connection if rollback itself fails', async () => {
     mocked.query.mockImplementation(async (sql: string) => {
       if (sql === 'ROLLBACK') throw new Error('lost connection');

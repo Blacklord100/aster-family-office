@@ -62,6 +62,7 @@ export const isOrganizationId = (value: string): boolean =>
 export async function withTenant<T>(
   organizationId: string,
   fn: (client: PoolClient) => Promise<T>,
+  options: { readOnlySnapshot?: boolean } = {},
 ): Promise<T> {
   if (!isOrganizationId(organizationId))
     throw new Error('Invalid organization ID.');
@@ -69,7 +70,11 @@ export async function withTenant<T>(
   const client = await pool.connect();
   let failed = false;
   try {
-    await client.query('BEGIN');
+    await client.query(
+      options.readOnlySnapshot
+        ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'
+        : 'BEGIN',
+    );
     await client.query("SELECT set_config('app.organization_id', $1, true)", [
       organizationId,
     ]);

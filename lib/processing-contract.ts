@@ -56,6 +56,69 @@ export const ExtractionSchema = z
 export type Extraction = z.infer<typeof ExtractionSchema>;
 export type ExtractedFact = z.infer<typeof FactSchema>;
 export type ProcessingMode = 'workflow' | 'agentic';
+export const ProcessingStatusSchema = z.enum([
+  'queued',
+  'processing',
+  'awaiting_review',
+  'accepted',
+  'failed',
+  'cancelled',
+  'rejected',
+]);
+export type ProcessingStatus = z.infer<typeof ProcessingStatusSchema>;
+export type ProcessingSummary = {
+  availability: 'available' | 'not_extracted' | 'size_limit' | 'unavailable';
+  extractedCount: number | null;
+  acceptedCount: number | null;
+  deferredCount: number | null;
+  rejectedCount: number | null;
+  pendingCount: number | null;
+  /** Older accepted jobs have no individual decision receipts. */
+  legacyCount: number | null;
+  /** Pending plus deferred decisions; this is not an estimate of undiscovered facts. */
+  remainingCount: number | null;
+  investmentNames: string[];
+  factTypes: ExtractedFact['kind'][];
+  documentType: string | null;
+  warningCount: number | null;
+  warnings: string[];
+  warningsTruncated: boolean;
+};
+export type ProcessingTiming = {
+  startedAt: string | null;
+  completedAt: string | null;
+  failedAt: string | null;
+  /** Latest recorded attempt, not queue time or human review time. */
+  processingDurationMs: number | null;
+  elapsedProcessingMs: number | null;
+  source: 'worker_audit';
+  /** Recorded worker starts; older attempts without start receipts are unknown. */
+  attemptCount: number | null;
+};
+export type ProcessingActivity = {
+  stage: ProcessingStatus | 'waiting_for_capacity';
+  availableAt: string | null;
+};
+export type ProcessingSource = {
+  kind: 'folder' | 'mailbox' | 'upload';
+  displayName: string | null;
+  relativePath: string | null;
+  familyNames: string[];
+  /** Folder path matches are hints, never an authorization or reviewed identity. */
+  familyContext: 'reviewed' | 'source_path' | 'unknown';
+};
+export type ProcessingPage = {
+  limit: number;
+  offset: number;
+  total: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+  maxOffset: number;
+  /** jobs may also contain the selected deep link outside this page. */
+  jobIds: string[];
+  /** Counts across the filename search, before the status filter. */
+  statusCounts: Record<ProcessingStatus, number>;
+};
 export type ProcessingJob = {
   id: string;
   documentId: string;
@@ -70,6 +133,10 @@ export type ProcessingJob = {
   engine?: EngineSnapshot | null;
   engineLegacy?: boolean;
   review?: import('./review-contract').ReviewState | null;
+  summary?: ProcessingSummary;
+  timing?: ProcessingTiming;
+  activity?: ProcessingActivity;
+  source?: ProcessingSource;
 };
 export type ProcessingPolicy = {
   mode: ProcessingMode;

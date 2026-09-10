@@ -129,7 +129,7 @@ export function OperationsView() {
               {
                 name: 'Failed jobs',
                 value: data.queue.failed,
-                sub: 'Review the processing queue',
+                sub: 'Review the Documents pipeline',
                 icon: ShieldCheck,
               },
             ].map((card) => (

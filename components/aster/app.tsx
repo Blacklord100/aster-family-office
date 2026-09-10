@@ -9,7 +9,7 @@ import { Overview } from './overview';
 import { InvestmentsView, InvestmentDetail } from './investments';
 import { TimelineView } from './timeline';
 import { InboxView } from './inbox';
-import { ConnectionsView } from './agents';
+import { ConnectionsView } from './connections-view';
 import { ProcessingView } from './processing-view';
 import { TeamSettings } from './team-settings';
 import { ReportsView, PrintableReport, downloadHoldings } from './reports';
@@ -57,17 +57,24 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  canonicalWorkspaceView,
+  connectionTabFor,
+  type ConnectionTab,
+} from '@/lib/workspace-navigation';
 type Route = {
   view: View;
   family: string;
   holding: string | null;
   jobId: string | null;
+  connectionsTab: ConnectionTab;
 };
 const DEFAULT_ROUTE: Route = {
   view: 'overview',
   family: 'all',
   holding: null,
   jobId: null,
+  connectionsTab: 'folders',
 };
 const ReportingCalendarView = dynamic(() =>
   import('./reporting-calendar').then((module) => module.ReportingCalendarView),
@@ -90,9 +97,6 @@ const OperationsView = dynamic(() =>
 const RiskView = dynamic(() =>
   import('./risk-view').then((module) => module.RiskView),
 );
-const EnginesView = dynamic(() =>
-  import('./engines-view').then((module) => module.EnginesView),
-);
 export function AsterApp() {
   const searchQuery = useSearchParams().toString();
   const [route, setRoute] = useState<Route>(DEFAULT_ROUTE),
@@ -109,6 +113,8 @@ export function AsterApp() {
     [savedReport, setSavedReport] = useState<SavedReport | null>(null),
     [reportRange, setReportRange] = useState('YTD');
   const canAdmin = ['owner', 'admin'].includes(state.identity?.role ?? '');
+  const identityRole = state.identity?.role;
+  const hasDataScope = Boolean(state.identity?.dataScope);
   const data = useMemo(() => deriveWorkspace(state), [state]);
   const loadInFlight = useRef(false);
   const stateEpoch = useRef(0);
@@ -204,16 +210,20 @@ export function AsterApp() {
   useEffect(() => {
     function read() {
       const p = new URLSearchParams(searchQuery);
-      const v = p.get('view') ?? 'overview';
+      const v = canonicalWorkspaceView(
+        p.get('view') ?? 'overview',
+        identityRole ? { role: identityRole, dataScope: hasDataScope } : null,
+      );
       setRoute({
         view: navigation.some((n) => n.id === v) ? (v as View) : 'overview',
         family: p.get('family') ?? 'all',
         holding: p.get('holding'),
         jobId: p.get('jobId'),
+        connectionsTab: connectionTabFor(p),
       });
     }
     read();
-  }, [searchQuery]);
+  }, [searchQuery, identityRole, hasDataScope]);
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -227,20 +237,31 @@ export function AsterApp() {
   const changeRoute = useCallback(
     (changes: Partial<Route>) => {
       const next = { ...route, ...changes };
+      if (next.view === 'engines') {
+        next.view = 'connections';
+        next.connectionsTab = 'engines';
+      }
+      next.view = canonicalWorkspaceView(next.view, state.identity) as View;
       const params = new URLSearchParams({
         view: next.view,
         family: next.family,
       });
       if (next.holding) params.set('holding', next.holding);
       if (next.view === 'agents' && next.jobId) params.set('jobId', next.jobId);
+      if (next.view === 'connections') params.set('tab', next.connectionsTab);
       window.history.pushState(null, '', '?' + params.toString());
       setRoute(next);
       window.scrollTo({ top: 0, behavior: 'instant' });
     },
-    [route],
+    [route, state.identity],
   );
   const navigate = (view: View) =>
-    changeRoute({ view, holding: null, jobId: null });
+    changeRoute({
+      view,
+      holding: null,
+      jobId: null,
+      connectionsTab: 'folders',
+    });
   const family = (family: string) => changeRoute({ family, holding: null });
   const openHolding = (id: string) => {
     setSource(null);
@@ -359,7 +380,7 @@ export function AsterApp() {
                 onSource={openSource}
               />
             ) : null}
-            {route.view === 'inbox' ? (
+            {route.view === 'inbox' && state.identity?.dataScope ? (
               <InboxView
                 family={route.family}
                 onFamily={family}
@@ -393,7 +414,7 @@ export function AsterApp() {
             {route.view === 'operations' && canAdmin ? (
               <OperationsView />
             ) : null}
-            {route.view === 'agents' && !state.identity?.dataScope ? (
+            {route.view === 'agents' && state.identity && !hasDataScope ? (
               <ProcessingView
                 key={route.jobId ?? 'processing'}
                 initialJobId={route.jobId}
@@ -402,11 +423,14 @@ export function AsterApp() {
             {route.view === 'risk' ? (
               <RiskView family={route.family} onFamily={family} />
             ) : null}
-            {route.view === 'engines' && !state.identity?.dataScope ? (
-              <EnginesView />
-            ) : null}
-            {route.view === 'connections' && !state.identity?.dataScope ? (
-              <ConnectionsView />
+            {route.view === 'connections' && state.identity && !hasDataScope ? (
+              <ConnectionsView
+                tab={route.connectionsTab}
+                onTabChange={(connectionsTab) =>
+                  changeRoute({ connectionsTab })
+                }
+                onDocuments={() => navigate('agents')}
+              />
             ) : null}
             {route.view === 'reports' ? (
               <>

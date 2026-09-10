@@ -459,7 +459,7 @@ export function Overview({
                 <p>
                   {holdings.length
                     ? 'Recorded marks do not establish a complete valuation and external cash-flow history.'
-                    : 'Add an opening holding in Investments, then import a report in Processing.'}
+                    : 'Add an opening holding in Investments, then import a report in Documents.'}
                 </p>
                 {!holdings.length ? (
                   <Button

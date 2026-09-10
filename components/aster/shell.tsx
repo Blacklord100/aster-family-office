@@ -8,7 +8,7 @@ import {
   Clock3,
   Mail,
   ChartNoAxesCombined,
-  Bot,
+  Files,
   Link2,
   Search,
   Sparkles,
@@ -17,7 +17,6 @@ import {
   PanelLeft,
   ArrowUpRight,
   Activity,
-  Cpu,
   BookOpen,
   Network,
   ShieldCheck,
@@ -40,6 +39,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useWorkspace } from './workspace-context';
+import {
+  canonicalWorkspaceView,
+  workspaceViewAvailable,
+} from '@/lib/workspace-navigation';
 
 export type View =
   | 'ledger'
@@ -63,31 +66,18 @@ export const navigation = [
   { id: 'intelligence', label: 'Knowledge & managers', icon: Network },
   { id: 'risk', label: 'Exposure & stress', icon: Activity },
   { id: 'timeline', label: 'Timeline', icon: Clock3 },
-  { id: 'inbox', label: 'Inbox', icon: Mail },
+  { id: 'inbox', label: 'Source library', icon: Mail },
   { id: 'exceptions', label: 'Exceptions', icon: CircleAlert },
   { id: 'calendar', label: 'Reporting calendar', icon: CalendarDays },
   { id: 'reports', label: 'Reports', icon: ChartNoAxesCombined },
-  { id: 'agents', label: 'Processing', icon: Bot },
-  { id: 'engines', label: 'AI engines', icon: Cpu },
+  { id: 'agents', label: 'Documents', icon: Files },
   { id: 'connections', label: 'Connections', icon: Link2 },
   { id: 'operations', label: 'Operations', icon: ShieldCheck },
 ] as const;
 export function navigationFor(
   identity?: { role: string; dataScope?: unknown } | null,
 ) {
-  return navigation.filter(
-    (n) =>
-      (n.id !== 'operations' ||
-        ['owner', 'admin'].includes(identity?.role ?? '')) &&
-      (!identity?.dataScope ||
-        ![
-          'agents',
-          'engines',
-          'connections',
-          'intelligence',
-          'operations',
-        ].includes(n.id)),
-  );
+  return navigation.filter((item) => workspaceViewAvailable(item.id, identity));
 }
 type Props = {
   view: View;
@@ -143,7 +133,9 @@ function Navigation({
             {navigationFor(state.identity).map((n) => (
               <SidebarMenuItem key={n.id}>
                 <SidebarMenuButton
-                  isActive={view === n.id}
+                  isActive={
+                    canonicalWorkspaceView(view, state.identity) === n.id
+                  }
                   onClick={() => go(n.id)}
                   className="nav-item"
                 >
@@ -225,6 +217,7 @@ function Topbar({
   title,
 }: Pick<Props, 'view' | 'onAsk' | 'onSearch' | 'title'>) {
   const { toggleSidebar } = useSidebar();
+  const { state } = useWorkspace();
   return (
     <header className="topbar">
       <div className="breadcrumb">
@@ -239,7 +232,13 @@ function Topbar({
         </Button>
         <span>Workspace</span>
         <span className="slash">/</span>
-        <span>{navigation.find((n) => n.id === view)?.label}</span>
+        <span>
+          {
+            navigation.find(
+              (n) => n.id === canonicalWorkspaceView(view, state.identity),
+            )?.label
+          }
+        </span>
         {title ? (
           <>
             <span className="slash">/</span>

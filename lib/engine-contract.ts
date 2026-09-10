@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ProcessingPolicy } from './processing-contract';
 
 export const EngineProviderSchema = z.enum(['ollama', 'openai', 'anthropic']);
 export type EngineProvider = z.infer<typeof EngineProviderSchema>;
@@ -49,6 +50,7 @@ export type EngineModel = { name: string; size: number; digest: string };
 export type EnginesResponse = {
   profiles: EngineProfile[];
   active: EngineSnapshot;
+  policy: ProcessingPolicy;
   canManage: boolean;
   cloudAllowed: boolean;
   cloudReadinessReason: string | null;

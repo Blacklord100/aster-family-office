@@ -13,12 +13,12 @@ export function AgentsView({
   return (
     <>
       <PageHeading
-        title="Processing"
+        title="Document pipeline"
         subtitle="Local document extraction with a reviewable record of each step."
       />
       <Panel title="Review before recording">
         <p className="method-note">
-          Import a document in Processing, inspect the extracted candidates, and
+          Import a document in Documents, inspect the extracted candidates, and
           link accepted updates to a holding.
         </p>
         <Button variant="outline" onClick={onTimeline}>

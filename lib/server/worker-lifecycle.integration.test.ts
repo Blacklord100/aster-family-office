@@ -60,6 +60,7 @@ const behavior = new Map<string, 'hold' | 'fail' | 'busy' | 'success'>();
 let admin: Pool, server: Server, temp: string;
 let db: typeof import('./db');
 let review: typeof import('../../app/api/processing/[id]/route');
+let processing: typeof import('../../app/api/processing/route');
 type PendingRequest = {
   response: ServerResponse;
   disconnected: boolean;
@@ -262,6 +263,7 @@ suite('real durable worker lifecycle', () => {
     });
     db = await import('./db');
     review = await import('../../app/api/processing/[id]/route');
+    processing = await import('../../app/api/processing/route');
     const role = await db.pool.query(
       'SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user',
     );
@@ -405,12 +407,83 @@ suite('real durable worker lifecycle', () => {
       'shutdown processor disconnect',
     );
     const audits = await admin.query(
-      'SELECT action FROM app_audit WHERE organization_id=$1 AND resource_id=$2',
+      'SELECT action,details FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
       [org, job.id],
     );
-    expect(audits.rows).toEqual([]);
+    expect(audits.rows.map((row) => row.action)).toEqual([
+      'processing.started',
+      'processing.requeued',
+    ]);
+    expect(audits.rows[1].details).toMatchObject({
+      attemptId: audits.rows[0].details.attemptId,
+      reason: 'shutdown',
+    });
+    expect(audits.rows[1].details.durationMs).toBeGreaterThanOrEqual(0);
     expect(worker.stderrBytes).toBe(0);
   }, 20000);
+
+  it('keeps pipeline counts and row summaries in the same read-only snapshot during a concurrent status change', async () => {
+    const job = await fixture();
+    const { listProcessingJobs, processingListQuery } =
+      await import('./processing-list');
+    await db.withTenant(
+      org,
+      async (client) => {
+        // Establish the snapshot before a separate writer commits a new stage.
+        expect(
+          (
+            await client.query(
+              'SELECT status FROM app_jobs WHERE organization_id=$1 AND id=$2',
+              [org, job.id],
+            )
+          ).rows[0].status,
+        ).toBe('queued');
+        await admin.query(
+          "UPDATE app_jobs SET status='processing' WHERE organization_id=$1 AND id=$2",
+          [org, job.id],
+        );
+        const listing = await listProcessingJobs(
+          client,
+          {
+            organizationId: org,
+            user: {
+              id: user,
+              name: 'Fixture',
+              email: 'fixture@example.invalid',
+            },
+            role: 'owner',
+            sessionId: 'fixture',
+          },
+          processingListQuery(
+            new URL(
+              'http://localhost:3000/api/processing?status=queued&jobId=' +
+                job.id,
+            ),
+          ),
+        );
+        expect(listing.page.statusCounts.queued).toBeGreaterThan(0);
+        expect(listing.page.jobIds).toContain(job.id);
+        expect(listing.jobs.find((row) => row.id === job.id)).toMatchObject({
+          status: 'queued',
+          summary: { availability: 'not_extracted' },
+        });
+      },
+      { readOnlySnapshot: true },
+    );
+    expect((await state(job.id)).status).toBe('processing');
+    await expect(
+      db.withTenant(
+        org,
+        async (client) => {
+          await client.query(
+            "UPDATE app_jobs SET status='queued' WHERE organization_id=$1 AND id=$2",
+            [org, job.id],
+          );
+        },
+        { readOnlySnapshot: true },
+      ),
+    ).rejects.toMatchObject({ code: '25006' });
+  });
 
   it('cancels through the real review route, aborts the active request, and never stores its result', async () => {
     const job = await fixture(),
@@ -435,10 +508,13 @@ suite('real durable worker lifecycle', () => {
     });
     await stopWorker(worker);
     const audits = await admin.query(
-      'SELECT action FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
+      'SELECT action,details FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
       [org, job.id],
     );
-    expect(audits.rows).toEqual([{ action: 'processing.cancel' }]);
+    expect(audits.rows.map((row) => row.action)).toEqual([
+      'processing.started',
+      'processing.cancel',
+    ]);
     expect(worker.stderrBytes).toBe(0);
   }, 40000);
 
@@ -482,10 +558,47 @@ suite('real durable worker lifecycle', () => {
     );
     expect(result.facts[0].summary).toBe('fresh worker result');
     const audits = await admin.query(
-      'SELECT action FROM app_audit WHERE organization_id=$1 AND resource_id=$2',
+      'SELECT action,details FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
       [org, job.id],
     );
-    expect(audits.rows).toEqual([{ action: 'processing.completed' }]);
+    expect(audits.rows.map((row) => row.action)).toEqual([
+      'processing.started',
+      'processing.started',
+      'processing.completed',
+    ]);
+    // The fenced claimant has no terminal receipt. Only the replacement's
+    // attempt identity may own the completed result and measured duration.
+    expect(audits.rows[0].details.attemptId).not.toBe(
+      audits.rows[1].details.attemptId,
+    );
+    expect(audits.rows[2].details.attemptId).toBe(
+      audits.rows[1].details.attemptId,
+    );
+    expect(audits.rows[2].details.durationMs).toBeGreaterThanOrEqual(0);
+    const pipelineResponse = await processing.GET(
+      new Request('http://localhost:3000/api/processing?jobId=' + job.id, {
+        headers: { 'x-test-user': user },
+      }),
+    );
+    expect(pipelineResponse.status).toBe(200);
+    const pipeline = await pipelineResponse.json();
+    const selected = pipeline.jobs.find(
+      (row: { id: string }) => row.id === job.id,
+    );
+    expect(selected.summary).toMatchObject({
+      extractedCount: 1,
+      pendingCount: 1,
+      remainingCount: 1,
+    });
+    expect(selected.timing).toMatchObject({
+      attemptCount: 2,
+      processingDurationMs: audits.rows[2].details.durationMs,
+    });
+    expect(selected.timing.startedAt).not.toBeNull();
+    expect(selected.timing.completedAt).not.toBeNull();
+    expect(
+      pipeline.jobs.filter((row: { result: unknown }) => row.result !== null),
+    ).toHaveLength(1);
     expect(oldWorker.stderrBytes + newWorker.stderrBytes).toBe(0);
   }, 20000);
 
@@ -542,14 +655,40 @@ suite('real durable worker lifecycle', () => {
     );
     await stopWorker(worker);
     const audits = await admin.query(
-      'SELECT action FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
+      'SELECT action,details FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
       [org, job.id],
     );
-    expect(audits.rows).toEqual([
-      { action: 'processing.failed' },
-      { action: 'processing.retry' },
-      { action: 'processing.completed' },
+    expect(audits.rows.map((row) => row.action)).toEqual([
+      'processing.started',
+      'processing.requeued',
+      'processing.started',
+      'processing.requeued',
+      'processing.started',
+      'processing.failed',
+      'processing.retry',
+      'processing.started',
+      'processing.completed',
     ]);
+    const starts = audits.rows.filter(
+      (row) => row.action === 'processing.started',
+    );
+    expect(new Set(starts.map((row) => row.details.attemptId)).size).toBe(4);
+    for (const [startIndex, endIndex] of [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+      [7, 8],
+    ]) {
+      expect(audits.rows[endIndex].details.attemptId).toBe(
+        audits.rows[startIndex].details.attemptId,
+      );
+      expect(
+        Number.isSafeInteger(audits.rows[endIndex].details.durationMs),
+      ).toBe(true);
+      expect(audits.rows[endIndex].details.durationMs).toBeGreaterThanOrEqual(
+        0,
+      );
+    }
     expect(worker.stderrBytes).toBe(0);
   }, 30000);
 

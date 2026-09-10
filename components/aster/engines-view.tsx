@@ -60,7 +60,7 @@ import type {
   ProcessingPolicy,
   ProcessingMode,
 } from '@/lib/processing-contract';
-import { PageHeading, Panel, Picker, Status } from './primitives';
+import { Panel, Picker, Status } from './primitives';
 import styles from './engines.module.css';
 
 const providerName: Record<EngineProvider, string> = {
@@ -129,13 +129,10 @@ export function EnginesView() {
   const inspectionRequest = useRef<AbortController | null>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const load = useCallback(async () => {
-    const [engines, processing] = await Promise.all([
-      api<EnginesResponse>('/api/engines'),
-      api<{ policy: ProcessingPolicy }>('/api/processing'),
-    ]);
+    const engines = await api<EnginesResponse>('/api/engines');
     setSnapshot(engines);
     setInspection(null);
-    setPolicy(processing.policy);
+    setPolicy(engines.policy);
     setLoadedAt(
       new Date().toLocaleTimeString('en-GB', {
         hour: '2-digit',
@@ -149,14 +146,11 @@ export function EnginesView() {
   }, []);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      api<EnginesResponse>('/api/engines'),
-      api<{ policy: ProcessingPolicy }>('/api/processing'),
-    ])
-      .then(([engines, processing]) => {
+    api<EnginesResponse>('/api/engines')
+      .then((engines) => {
         if (!cancelled) {
           setSnapshot(engines);
-          setPolicy(processing.policy);
+          setPolicy(engines.policy);
           setLoadedAt(
             new Date().toLocaleTimeString('en-GB', {
               hour: '2-digit',
@@ -386,25 +380,28 @@ export function EnginesView() {
   );
   return (
     <div className={styles.page}>
-      <PageHeading
-        title="Your intelligence, your choice."
-        subtitle="Choose where AI runs and how it works. Keep one evidence and review standard."
-      >
-        <Button
-          variant="outline"
-          disabled={!!busy}
-          onClick={() => void action('refresh', load)}
-        >
-          <RefreshCw data-icon="inline-start" />
-          Refresh
-        </Button>
-        {canManage && (
-          <Button disabled={!!busy} onClick={() => edit()}>
-            <Plus data-icon="inline-start" />
-            Add engine
+      <header className={styles.heading}>
+        <div>
+          <h2>AI engines</h2>
+          <p>Choose the model and default workflow for new documents.</p>
+        </div>
+        <div className={styles.actions}>
+          <Button
+            variant="outline"
+            disabled={!!busy}
+            onClick={() => void action('refresh', load)}
+          >
+            <RefreshCw data-icon="inline-start" />
+            Refresh
           </Button>
-        )}
-      </PageHeading>
+          {canManage && (
+            <Button disabled={!!busy} onClick={() => edit()}>
+              <Plus data-icon="inline-start" />
+              Add engine
+            </Button>
+          )}
+        </div>
+      </header>
       {error && (
         <Alert variant="destructive">
           <AlertTitle>Action unavailable</AlertTitle>

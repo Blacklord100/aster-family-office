@@ -162,7 +162,7 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
             ? 'Folder disconnected. Imported sources remain in the workspace.'
             : action === 'retry'
               ? 'Failed imports are scheduled for another attempt.'
-              : 'Folder scan scheduled. New source files will enter Processing automatically.',
+              : 'Folder scan scheduled. New source files will enter Documents automatically.',
       );
       await load();
       reload();
@@ -229,7 +229,7 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
           </div>
           <div
             className={styles.flow}
-            aria-label="Folder to processing to portfolio"
+            aria-label="Folder to document pipeline to portfolio"
           >
             <span>
               <FolderOpen />
@@ -238,7 +238,7 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
             <ArrowRight />
             <span>
               <Bot />
-              Processing
+              Documents
             </span>
             <ArrowRight />
             <span>
@@ -258,14 +258,14 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
             <EmptyTitle>No intake folder configured</EmptyTitle>
             <EmptyDescription>
               Your administrator can add a local intake folder. You can also
-              upload emails and PDFs directly in Processing.
+              upload emails and PDFs directly in Documents.
             </EmptyDescription>
           </EmptyHeader>
           <Link
             className={buttonVariants({ variant: 'outline' })}
             href="?view=agents"
           >
-            Open Processing
+            Open Documents
           </Link>
         </Empty>
       ) : null}
@@ -466,7 +466,7 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
                                     size: 'sm',
                                   })}
                                 >
-                                  View processing
+                                  View document
                                 </Link>
                               ) : null}
                             </div>
@@ -556,7 +556,7 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
                 href="?view=agents"
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
               >
-                Open Processing
+                Open Documents
                 <ArrowRight data-icon="inline-end" />
               </Link>
             </CardFooter>

@@ -178,7 +178,7 @@ export function InvestmentsView({
             <p>
               {scoped.length
                 ? 'Try a different name, entity or asset class.'
-                : 'Create an opening position in EUR, then link incoming reports to it in Processing.'}
+                : 'Create an opening position in EUR, then link incoming reports to it in Documents.'}
             </p>
             {!scoped.length ? (
               <Button

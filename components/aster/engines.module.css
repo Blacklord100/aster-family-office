@@ -4,8 +4,23 @@
   gap: 24px;
   min-width: 0;
 }
-.page :global(.page-heading) {
-  margin-bottom: 0;
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.heading h2 {
+  font-size: 18px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+}
+.heading p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted-foreground);
 }
 .loading {
   display: flex;

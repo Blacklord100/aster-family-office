@@ -4,7 +4,12 @@ const f = vi.hoisted(() => ({
   tenant: '00000000-0000-4000-8000-000000000001',
   writes: vi.fn(),
   query: vi.fn(),
+  documentDecrypt: vi.fn(),
+  listDocuments: vi.fn(),
+  scoped: false,
 }));
+vi.mock('./crypto', () => ({ decrypt: f.documentDecrypt }));
+vi.mock('./processing-list', () => ({ listProcessingJobs: f.listDocuments }));
 vi.mock('./access', () => {
   class AccessError extends Error {
     constructor(
@@ -19,6 +24,12 @@ vi.mock('./access', () => {
     AccessError,
     roleAllows: (role: string) => role === 'owner',
     requireWorkspace: async (_r: Request, permission: string) => {
+      if (f.scoped)
+        throw new AccessError(
+          403,
+          'SCOPED_ACCESS',
+          'Selected family records only.',
+        );
       if (permission === 'admin' && f.role !== 'owner')
         throw new AccessError(403, 'FORBIDDEN', 'Denied');
       return {
@@ -40,6 +51,7 @@ vi.mock('./db', () => ({
 vi.mock('./engine-store', () => ({
   listEngines: async () => [],
   activeEngine: async () => ({
+    config: { apiKey: 'private-engine-secret' },
     snapshot: {
       provider: 'ollama',
       model: 'fixture',
@@ -73,6 +85,23 @@ describe('engine HTTP permissions', () => {
   beforeEach(() => {
     f.role = 'viewer';
     f.writes.mockReset();
+    f.query.mockReset();
+    f.documentDecrypt.mockReset();
+    f.listDocuments.mockReset();
+    f.scoped = false;
+    f.query.mockImplementation(async (sql: string, values: unknown[]) => {
+      expect(sql).toBe(
+        'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1',
+      );
+      expect(values).toEqual([f.tenant]);
+      return { rows: [{ processing_mode: 'agentic', policy_revision: 7 }] };
+    });
+    f.documentDecrypt.mockImplementation(() => {
+      throw new Error('CORRUPT_DOCUMENT');
+    });
+    f.listDocuments.mockImplementation(() => {
+      throw new Error('SOURCE_LIST_UNAVAILABLE');
+    });
   });
   it('allows viewer metadata and denies every management, discovery or test endpoint before provider/SQL work', async () => {
     const response = await GET(new Request('http://localhost/api/engines'));
@@ -93,5 +122,32 @@ describe('engine HTTP permissions', () => {
     ])
       expect((await action()).status).toBe(403);
     expect(f.writes).not.toHaveBeenCalled();
+  });
+  it('returns the mode and active engine without loading or decrypting document results', async () => {
+    f.role = 'owner';
+    const response = await GET(new Request('http://localhost/api/engines'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.policy).toEqual({
+      mode: 'agentic',
+      revision: 7,
+      execution: 'local',
+      engine: body.active,
+      externalFallback: false,
+    });
+    expect(body.canManage).toBe(true);
+    expect(f.query).toHaveBeenCalledTimes(1);
+    expect(f.documentDecrypt).not.toHaveBeenCalled();
+    expect(f.listDocuments).not.toHaveBeenCalled();
+    expect(JSON.stringify(body)).not.toMatch(
+      /private-engine-secret|apiKey|"jobs"|"result"/,
+    );
+  });
+  it('keeps engine policy unavailable to scoped accounts before tenant SQL', async () => {
+    f.scoped = true;
+    const response = await GET(new Request('http://localhost/api/engines'));
+    expect(response.status).toBe(403);
+    expect(f.query).not.toHaveBeenCalled();
+    expect(f.documentDecrypt).not.toHaveBeenCalled();
   });
 });

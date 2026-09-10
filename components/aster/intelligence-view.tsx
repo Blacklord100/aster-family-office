@@ -382,7 +382,7 @@ export function IntelligenceView({ family = 'all' }: { family?: string }) {
                 <aside className={styles.panel}>
                   <h2>Original documents</h2>
                   <p className={styles.muted}>
-                    Upload in Processing, then index here. OCR and skipped-page
+                    Upload in Documents, then index here. OCR and skipped-page
                     warnings remain visible.
                   </p>
                   {snapshot.documentListTruncated ? (
@@ -436,7 +436,7 @@ export function IntelligenceView({ family = 'all' }: { family?: string }) {
                   ) : (
                     <Blank
                       title="No originals yet"
-                      description="Upload an investment PDF, email or text file in Processing."
+                      description="Upload an investment PDF, email or text file in Documents."
                     />
                   )}
                 </aside>

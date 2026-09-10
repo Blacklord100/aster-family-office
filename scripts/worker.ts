@@ -80,6 +80,8 @@ while (!stopping) {
   const requestController = new AbortController();
   activeRequest = requestController;
   if (stopping) requestController.abort(new Error('WORKER_STOPPING'));
+  const attemptId = randomUUID();
+  let attemptStartedAt: number | null = null;
   let renewing = false;
   const renewal = setInterval(() => {
     if (renewing) return;
@@ -132,6 +134,15 @@ while (!stopping) {
         "UPDATE app_jobs SET status='processing',error_code=NULL,updated_at=now() WHERE id=$1",
         [queue.id],
       );
+      await audit(
+        c,
+        queue.organization_id,
+        'worker',
+        'processing.started',
+        queue.id,
+        { attemptId },
+      );
+      attemptStartedAt = performance.now();
       return r.rows[0];
     });
     if (!document) {
@@ -206,7 +217,16 @@ while (!stopping) {
           'worker',
           'processing.completed',
           queue.id,
-          { mode: result.mode, facts: result.facts.length },
+          {
+            mode: result.mode,
+            facts: result.facts.length,
+            attemptId,
+            ...(attemptStartedAt === null
+              ? {}
+              : {
+                  durationMs: Math.round(performance.now() - attemptStartedAt),
+                }),
+          },
         );
       await c.query(
         'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2',
@@ -244,6 +264,24 @@ while (!stopping) {
         queue.attempts,
         queue.capacity_deferrals,
       );
+      if (decision !== 'fail') {
+        await audit(
+          c,
+          queue.organization_id,
+          'worker',
+          'processing.requeued',
+          queue.id,
+          {
+            attemptId,
+            reason: decision,
+            ...(attemptStartedAt === null
+              ? {}
+              : {
+                  durationMs: Math.round(performance.now() - attemptStartedAt),
+                }),
+          },
+        );
+      }
       if (decision === 'shutdown') {
         // A service shutdown requeues owned work without consuming a failure attempt.
         await c.query(
@@ -287,7 +325,15 @@ while (!stopping) {
           'worker',
           'processing.failed',
           queue.id,
-          { code },
+          {
+            code,
+            attemptId,
+            ...(attemptStartedAt === null
+              ? {}
+              : {
+                  durationMs: Math.round(performance.now() - attemptStartedAt),
+                }),
+          },
         );
       }
     }).catch(() => console.error('Worker could not persist job outcome.'));

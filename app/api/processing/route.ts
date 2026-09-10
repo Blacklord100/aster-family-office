@@ -8,95 +8,41 @@ import {
 } from '@/lib/server/access';
 import { json, parseJson } from '@/lib/server/http';
 import { audit } from '@/lib/server/audit';
-import { decrypt } from '@/lib/server/crypto';
-import { ExtractionSchema } from '@/lib/processing-contract';
 import { activeEngine } from '@/lib/server/engine-store';
-import { readReview } from '@/lib/server/review-store';
-import { EngineSnapshotSchema } from '@/lib/engine-contract';
+import {
+  listProcessingJobs,
+  processingListQuery,
+} from '@/lib/server/processing-list';
 export async function GET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
-    const selectedId = new URL(request.url).searchParams.get('jobId');
-    if (selectedId !== null && !z.uuid().safeParse(selectedId).success)
-      throw new AccessError(
-        400,
-        'INVALID_JOB',
-        'Choose a valid processing job.',
-      );
-    return await withTenant(ctx.organizationId, async (client) => {
-      const [{ rows: org }, { rows: jobs }] = await Promise.all([
-        client.query(
-          'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1',
-          [ctx.organizationId],
-        ),
-        client.query(
-          'SELECT j.id,j.document_id,j.mode,j.status,j.created_at,j.updated_at,j.policy_revision,j.error_code,j.engine_snapshot,j.engine_legacy,j.review_revision,d.filename FROM app_jobs j JOIN app_documents d ON j.document_id=d.id AND d.organization_id=j.organization_id WHERE j.organization_id=$1 ORDER BY (j.id=$2::uuid) DESC,j.created_at DESC,j.id DESC LIMIT 100',
-          [ctx.organizationId, selectedId],
-        ),
-      ]);
-      // List metadata is bounded; decrypt only the selected (or newest) job.
-      const selected = selectedId
-        ? jobs.find((j) => j.id === selectedId)
-        : jobs[0];
-      if (selectedId && !selected)
-        throw new AccessError(
-          404,
-          'JOB_NOT_FOUND',
-          'The selected source review is not available in this office.',
-        );
-      const stored = selected
-        ? await client.query(
-            'SELECT result,review_state FROM app_jobs WHERE id=$1 AND organization_id=$2',
-            [selected.id, ctx.organizationId],
-          )
-        : null;
-      const result = stored?.rows[0]?.result
-        ? ExtractionSchema.parse(
-            JSON.parse(
-              decrypt(
-                stored.rows[0].result,
-                'result:' + ctx.organizationId + ':' + selected.id,
-              ).toString(),
-            ),
-          )
-        : null;
-      const list = jobs.map((j) => ({
-        id: j.id,
-        documentId: j.document_id,
-        filename: j.filename,
-        mode: j.mode,
-        status: j.status,
-        createdAt: j.created_at,
-        updatedAt: j.updated_at,
-        policyRevision: j.policy_revision,
-        errorCode: j.error_code,
-        result: j.id === selected?.id ? result : null,
-        engine: j.engine_snapshot
-          ? EngineSnapshotSchema.parse(j.engine_snapshot)
-          : null,
-        engineLegacy: j.engine_legacy,
-        review:
-          j.id === selected?.id && result
-            ? readReview(
-                { ...j, review_state: stored?.rows[0]?.review_state },
-                ctx.organizationId,
-                result,
-              )
-            : null,
-      }));
-      const engine = (await activeEngine(client, ctx.organizationId)).snapshot;
-      return json({
-        policy: {
-          mode: org[0].processing_mode,
-          revision: org[0].policy_revision,
-          execution: engine.execution,
-          engine,
-          externalFallback: false,
-        },
-        jobs: list,
-        role: ctx.role,
-      });
-    });
+    const input = processingListQuery(new URL(request.url));
+    return await withTenant(
+      ctx.organizationId,
+      async (client) => {
+        const [{ rows: org }, listing] = await Promise.all([
+          client.query(
+            'SELECT processing_mode,policy_revision FROM app_organizations WHERE id=$1',
+            [ctx.organizationId],
+          ),
+          listProcessingJobs(client, ctx, input),
+        ]);
+        const engine = (await activeEngine(client, ctx.organizationId))
+          .snapshot;
+        return json({
+          policy: {
+            mode: org[0].processing_mode,
+            revision: org[0].policy_revision,
+            execution: engine.execution,
+            engine,
+            externalFallback: false,
+          },
+          ...listing,
+          role: ctx.role,
+        });
+      },
+      { readOnlySnapshot: true },
+    );
   } catch (e) {
     return errorResponse(e);
   }
