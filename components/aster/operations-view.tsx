@@ -352,7 +352,11 @@ function ScopedOperationsView() {
           </section>
         </>
       ) : (
-        <p>Loading operations…</p>
+        <p>
+          {error
+            ? 'Operations data is unavailable. Refresh to try again.'
+            : 'Loading operations…'}
+        </p>
       )}
     </div>
   );

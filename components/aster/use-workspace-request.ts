@@ -25,6 +25,7 @@ export function useWorkspaceRequest() {
   ]);
   const requests = useRef(new Set<AbortController>());
   const context = useRef({ key, mounted: false });
+  const generation = useRef(0);
   useEffect(() => {
     context.current = { key, mounted: true };
     const active = requests.current;
@@ -41,8 +42,13 @@ export function useWorkspaceRequest() {
       format: 'json' | 'blob' = 'json',
       timeoutMs = 20_000,
     ): Promise<T> => {
+      const startedGeneration = generation.current;
       const assertCurrent = () => {
-        if (!context.current.mounted || context.current.key !== key)
+        if (
+          !context.current.mounted ||
+          context.current.key !== key ||
+          startedGeneration !== generation.current
+        )
           throw new DOMException(
             'This office selection is no longer active.',
             'AbortError',
@@ -81,6 +87,23 @@ export function useWorkspaceRequest() {
           cache: 'no-store',
           redirect: 'error',
         });
+        signal.throwIfAborted();
+        assertCurrent();
+        if (response.status === 401 || response.status === 403) {
+          const denied = new WorkspaceRequestError(
+            response.status === 401
+              ? 'Your session is no longer available. Sign in again.'
+              : 'Your access is no longer available. Reload to check your current permissions.',
+            response.status,
+          );
+          // The status is authoritative without an error body. Invalidate every
+          // older response immediately; later explicit retries get a new generation.
+          generation.current += 1;
+          for (const sibling of requests.current)
+            if (sibling !== controller) sibling.abort(denied);
+          void response.body?.cancel().catch(() => {});
+          throw denied;
+        }
         const body =
           format === 'blob' && response.ok
             ? await response.blob()

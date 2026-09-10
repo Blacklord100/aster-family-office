@@ -8,6 +8,7 @@ import {
   closeRestoreDatabase,
   nativeRecoverySource,
 } from './recovery-connection.mjs';
+import { recoveryFailureSummary } from './recovery-diagnostics.mjs';
 import {
   encryptedTables,
   decrypt,
@@ -49,6 +50,7 @@ const order = [
   'aster_migrations',
 ];
 let stage = 'configuration';
+let restoringTable = null;
 const quote = (value) => '"' + value.replaceAll('"', '""') + '"';
 async function dumpTable(client, name) {
   const keys = await client.query(
@@ -159,11 +161,14 @@ async function main() {
       );
       const content = JSON.parse(recovered.toString());
       stage = 'record-restore';
-      for (const name of order)
+      for (const name of order) {
+        restoringTable = name;
         await target.query(
           `INSERT INTO ${quote(name)} SELECT * FROM json_populate_recordset(NULL::${quote(name)},$1::json)`,
           [content[name]],
         );
+      }
+      restoringTable = null;
       await target.query(
         "SELECT setval(pg_get_serial_sequence('app_audit','sequence'),GREATEST(COALESCE((SELECT max(sequence) FROM app_audit),0),1),EXISTS(SELECT 1 FROM app_audit))",
       );
@@ -219,11 +224,7 @@ async function main() {
   }
   console.log(JSON.stringify({ ...report, elapsedMs: Date.now() - started }));
 }
-main().catch(() => {
-  console.error(
-    'Native recovery drill failed at ' +
-      stage +
-      '; credentials and record contents suppressed.',
-  );
+main().catch((error) => {
+  console.error(recoveryFailureSummary(stage, restoringTable, error));
   process.exitCode = 1;
 });

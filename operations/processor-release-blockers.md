@@ -1,10 +1,14 @@
 # Processor release blockers
 
-## Reverified 10 September 2026
+## Candidate `c9beb14` verified 10 September 2026
 
-The latest completed [release run 34447324893](https://github.com/Blacklord100/aster-family-office/actions/runs/34447324893), commit `dc2c654`, passed the application job, both image builds, nonroot/read-only probes, network-disabled processor tests, web-image scan and repository secret scan. Its retained processor scan, created at `2026-09-10T07:02:54.833984113Z`, still reports exactly the three HIGH findings below with no `FixedVersion`; the package-coverage validator remains failed because these findings remain open. This is evidence for that commit, not for later local changes.
+The latest completed [release run 34527904114](https://github.com/Blacklord100/aster-family-office/actions/runs/34527904114), commit `c9beb1454063ce5740ab3c2044f4c0770691ac01`, passed both image builds, nonroot/read-only probes, network-disabled app startup and authenticated processor OCR, **606 processor tests in the built runtime without network**, the web-image scan and repository secret scan. The processor image-security gate remains blocked.
 
-Current primary records still list Debian 13 TIFF as vulnerable for [36849](https://security-tracker.debian.org/tracker/CVE-2026-36849) and [52490](https://security-tracker.debian.org/tracker/CVE-2026-52490), while the unstable/testing release has fixed packages. The [Tesseract tracker](https://security-tracker.debian.org/tracker/CVE-2026-73066) still lists Debian packages as unfixed; the [upstream advisory](https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-7j76-5rq5-5jg8) continues to identify 5.5.3 as patched. Switching the production base to a development distribution is not an established remediation.
+The retained scan was created at `2026-09-10T20:50:29.714103455Z` for image `sha256:43dbebebf79f8b6be3de7e2a950faa0d66d42b37d73601b66e33aa855fcca460` (`aster-processor:verify`, Debian 13.6). Independent replay of the package-coverage validator reports exactly the same **three HIGH findings** in the table below: two against `libtiff6 4.7.2-1+aster1`, one against `tesseract-ocr 5.5.3-1+aster1`, each without a `FixedVersion`. All 27 retained native package identities are covered within 34 scanned OS packages, and all 32 locked Linux Python packages are covered. No missing package identity caused the validator failure; its only error is the three outstanding HIGH findings.
+
+The application job separately passed lint, typecheck, unit tests, production build and migrations, then failed the database lifecycle/isolation step. Its subsequent host processor tests, npm audit and SBOM steps were skipped. Container success does not qualify that failed application step. This record applies only to `c9beb14`; later local request-race, ledger UI and recovery follow-ups require their own CI run.
+
+The earlier [run 34447324893](https://github.com/Blacklord100/aster-family-office/actions/runs/34447324893), commit `dc2c654`, passed its then-configured application job and retained the same three processor findings. Primary records checked on 10 September list Debian 13 TIFF as vulnerable for [36849](https://security-tracker.debian.org/tracker/CVE-2026-36849) and [52490](https://security-tracker.debian.org/tracker/CVE-2026-52490), while unstable/testing has fixed packages. The [Tesseract tracker](https://security-tracker.debian.org/tracker/CVE-2026-73066) lists Debian packages as unfixed; the [upstream advisory](https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-7j76-5rq5-5jg8) identifies 5.5.3 as patched. The new scan contains no different advisories. Switching the production base to a development distribution is not an established remediation.
 
 The local host has no Docker, Trivy, Grype or Syft executable, so no new local Linux image scan was claimed. No findings, statuses, component identities or security gates were suppressed. A new candidate must still pass the qualification requirements below.
 
@@ -39,8 +43,8 @@ At verification, the [NVD API for 73066](https://services.nvd.nist.gov/rest/json
 
 Before release:
 
-1. Preserve and repeat the authenticated source, native linkage, superseded-payload removal and functional evidence for each new image revision. These checks passed for `c9864ee`.
-2. Retain truthful upstream source/SBOM identities and complete Debian dependency inventories; verify every retained component remains covered. Inventory coverage passed for `c9864ee`.
+1. Preserve and repeat the authenticated source, native linkage, superseded-payload removal and functional evidence for each new image revision. The latest built-runtime checks passed for `c9beb14`; the original authenticated-source evidence is retained below.
+2. Retain truthful upstream source/SBOM identities and complete Debian dependency inventories; verify every retained component remains covered. Retained runtime inventory coverage passed for `c9beb14`, while the separate application SBOM step was skipped.
 3. Resolve the outstanding advisory/coverage qualification and pass the image-security gate. Require scanner canaries that detect the known vulnerable versions, plus explicit evidence for the official fixes. Missing coverage keeps the gate blocked; no release exception is granted by this record.
 
 Do not clear findings through exclusions, ignored statuses, deleted metadata, or version-only relabeling.

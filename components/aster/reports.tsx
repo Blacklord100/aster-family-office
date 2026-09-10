@@ -25,6 +25,10 @@ import { currentReportHoldings, reportValue } from '@/lib/report-value';
 import type { Holding } from '@/data';
 import type { SavedReport } from '@/lib/workspace';
 import { ValueChart, makeHistory } from './charts';
+const familyLabel = (id: string, families: { id: string; name: string }[]) =>
+  id === 'all'
+    ? 'All families'
+    : (families.find((family) => family.id === id)?.name ?? `Family ID: ${id}`);
 export function downloadHoldings(holdings: Holding[], family: string) {
   const cells = (v: string | number) => {
     const text = String(v ?? '');
@@ -37,7 +41,7 @@ export function downloadHoldings(holdings: Holding[], family: string) {
   const rows = [
     [
       'Investment',
-      'Family',
+      'Family ID',
       'Asset class',
       'Currency',
       'Value EUR',
@@ -96,6 +100,7 @@ export function ReportsView({
   onPreview: (r: SavedReport | null, range?: string) => void;
 }) {
   const { state, data, mutate } = useWorkspace();
+  const selectedFamilyName = familyLabel(family, data.families);
   const [range, setRange] = useState('YTD'),
     [saving, setSaving] = useState(false);
   const asOf =
@@ -118,9 +123,8 @@ export function ReportsView({
       family,
       range,
       name:
-        (family === 'all'
-          ? 'Consolidated'
-          : family[0].toUpperCase() + family.slice(1)) + ' portfolio report',
+        (family === 'all' ? 'Consolidated' : selectedFamilyName) +
+        ' portfolio report',
     });
     setSaving(false);
   }
@@ -155,9 +159,7 @@ export function ReportsView({
               review.
             </h2>
             <p>
-              {family === 'all'
-                ? 'Consolidated portfolio'
-                : family[0].toUpperCase() + family.slice(1) + ' family'}
+              {family === 'all' ? 'Consolidated portfolio' : selectedFamilyName}
             </p>
           </div>
           <div className="report-cover-bottom">
@@ -284,6 +286,7 @@ export function PrintableReport({
   const performanceAvailable = saved?.synthetic ?? currentPerformanceAvailable;
   const containsSampleRecords = saved?.synthetic ?? state.sampleData;
   const scope = saved?.family ?? family;
+  const selectedFamilyName = familyLabel(scope, data.families);
   const current = currentReportHoldings(
     data.holdings.filter((h) => scope === 'all' || h.familyId === scope),
     state.historyLifecycle,
@@ -335,10 +338,13 @@ export function PrintableReport({
           · {containsSampleRecords ? 'Sample records' : 'Workspace records'}
         </span>
       </header>
-      <h1>{saved?.name ?? 'Consolidated portfolio report'}</h1>
+      <h1>
+        {saved?.name ??
+          `${scope === 'all' ? 'Consolidated' : selectedFamilyName} portfolio report`}
+      </h1>
       <p>
-        {scope === 'all' ? 'All families' : scope + ' family'} · EUR · Latest
-        recorded marks for the selected position cohort
+        {selectedFamilyName} · EUR · Latest recorded marks for the selected
+        position cohort
       </p>
       <p className="saved-snapshot-note">
         {ownershipBasis

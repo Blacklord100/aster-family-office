@@ -20,6 +20,19 @@
 .root :global(.heading-actions) {
   flex-wrap: wrap;
 }
+.root :global(.metric-label),
+.root :global(.metric-note) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.root :global(.metric-note) {
+  display: block;
+  line-height: 1.6;
+}
+.root :global(.metric-value) {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 .stack {
   display: flex;
   flex-direction: column;

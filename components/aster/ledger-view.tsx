@@ -76,7 +76,6 @@ import {
   Panel,
   Picker,
   dateLabel,
-  money,
 } from './primitives';
 import { useWorkspace } from './workspace-context';
 import styles from './ledger.module.css';
@@ -96,6 +95,8 @@ const nativeMoney = (amount: string | number, currency: string) =>
     currency,
     maximumFractionDigits: 2,
   }).format(Number(amount));
+const eurMoney = (amount: number) =>
+  Number.isFinite(amount) ? nativeMoney(amount, 'EUR') : '—';
 const titles: Record<LedgerCommand['type'], string> = {
   createFamily: 'Add a family',
   createEntity: 'Register a legal entity',
@@ -1058,7 +1059,9 @@ function LedgerForm({
                     {tx ? nativeMoney(tx.amount, tx.currency) : ''}
                   </AlertTitle>
                   <AlertDescription>
-                    {tx ? money(tx.amountEUR) + ' EUR recorded amount. ' : ''}
+                    {tx
+                      ? eurMoney(tx.amountEUR) + ' EUR recorded amount. '
+                      : ''}
                     Original review and source references will remain in the
                     ledger.
                   </AlertDescription>
@@ -1106,7 +1109,7 @@ function LedgerForm({
                       'text',
                       currentHolding
                         ? 'Latest holding value: ' +
-                            money(currentHolding.valueEUR) +
+                            eurMoney(currentHolding.valueEUR) +
                             '. Confirm the mark for the correction date.'
                         : undefined,
                     )}
@@ -1140,7 +1143,7 @@ function LedgerForm({
                       'eur-' + h.id,
                       'Statement / evidenced converted balance (EUR)',
                       'text',
-                      'Recorded: ' + money(h.valueEUR),
+                      'Recorded: ' + eurMoney(h.valueEUR),
                     )}
                   </FieldGroup>
                 ))}
@@ -1550,7 +1553,7 @@ export function LedgerView({
                             h.valuationStatus === 'unknown',
                         )
                       ? 'Incomplete'
-                      : money(
+                      : eurMoney(
                           holdings
                             .filter((h) => h.assetClass === 'Cash')
                             .reduce((sum, h) => sum + h.valueEUR, 0),
@@ -1560,7 +1563,7 @@ export function LedgerView({
               />
               <Metric
                 label="Reviewed cash outflows"
-                value={money(outflows)}
+                value={eurMoney(outflows)}
                 note={`${reviewed.length} unsettled transactions · no payment initiated`}
               />
               <Metric
@@ -1568,7 +1571,7 @@ export function LedgerView({
                 value={
                   holdings.some((h) => h.unfundedStatus === 'unknown')
                     ? 'Incomplete'
-                    : money(
+                    : eurMoney(
                         holdings.reduce(
                           (sum, h) => sum + h.unfundedCommitmentEUR,
                           0,
@@ -2124,7 +2127,7 @@ export function LedgerView({
                           <TableCell className={styles.number}>
                             {h.valuationStatus === 'unknown'
                               ? 'Not reported'
-                              : money(h.valueEUR)}
+                              : eurMoney(h.valueEUR)}
                           </TableCell>
                           <TableCell>
                             {h.valuationMethod}
@@ -2133,7 +2136,7 @@ export function LedgerView({
                                 ? 'Valuation required'
                                 : dateLabel(h.valuationDate)}
                               {finance.holdings[h.id]?.pendingCapitalEUR
-                                ? ` · Capital bridge ${money(finance.holdings[h.id].pendingCapitalEUR)}`
+                                ? ` · Capital bridge ${eurMoney(finance.holdings[h.id].pendingCapitalEUR)}`
                                 : ''}
                             </small>
                           </TableCell>
@@ -2225,7 +2228,7 @@ export function LedgerView({
                             </TableCell>
                             <TableCell className={styles.number}>
                               {nativeMoney(tx.amount, tx.currency)}
-                              <small>{money(tx.amountEUR)}</small>
+                              <small>{eurMoney(tx.amountEUR)}</small>
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -2359,16 +2362,16 @@ export function LedgerView({
                                   )?.name
                                 }
                                 : {post.valueEURDelta >= 0 ? '+' : ''}
-                                {money(post.valueEURDelta)}
+                                {eurMoney(post.valueEURDelta)}
                                 {post.commitmentEURDelta
-                                  ? ` · Unfunded ${post.commitmentEURDelta >= 0 ? '+' : ''}${money(post.commitmentEURDelta)}`
+                                  ? ` · Unfunded ${post.commitmentEURDelta >= 0 ? '+' : ''}${eurMoney(post.commitmentEURDelta)}`
                                   : ''}
                               </p>
                             ))}
                           </div>
                           <Badge variant="outline">
                             {event.externalFlowEUR
-                              ? `${money(event.externalFlowEUR)} external flow`
+                              ? `${eurMoney(event.externalFlowEUR)} external flow`
                               : 'Internal / no external flow'}
                           </Badge>
                         </div>
@@ -2431,7 +2434,7 @@ export function LedgerView({
                               </small>
                             </TableCell>
                             <TableCell className={styles.number}>
-                              {money(v.valueEUR)}
+                              {eurMoney(v.valueEUR)}
                             </TableCell>
                             <TableCell>
                               {v.correctionOf ? (

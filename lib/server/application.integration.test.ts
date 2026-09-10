@@ -152,12 +152,17 @@ suite('real application database and worker boundaries', () => {
       const c = await admin.connect();
       try {
         await c.query('BEGIN');
-        // Only the positively guarded disposable fixture administrator may
-        // remove its own append-only test history during teardown.
+        // Disable immutability only for this fixture's append-only reviews.
+        // Restore normal FK/CASCADE enforcement before deleting any parent:
+        // otherwise sessions and organization queues survive as orphan rows.
         await c.query("SET LOCAL session_replication_role = 'replica'");
+        await c.query(
+          'DELETE FROM app_review_versions WHERE organization_id=ANY($1::uuid[])',
+          [[orgA, orgB]],
+        );
+        await c.query("SET LOCAL session_replication_role = 'origin'");
         for (const table of [
           'app_job_queue',
-          'app_review_versions',
           'app_accepted_facts',
           'app_audit',
           'app_jobs',
@@ -177,6 +182,22 @@ suite('real application database and worker boundaries', () => {
         await c.query('DELETE FROM auth_user WHERE id=ANY($1::text[])', [
           [userA, userB, viewer, administrator],
         ]);
+        expect(
+          (
+            await c.query(
+              'SELECT count(*)::int AS count FROM auth_session WHERE "userId"=ANY($1::text[])',
+              [[userA, userB, viewer, administrator]],
+            )
+          ).rows[0].count,
+        ).toBe(0);
+        expect(
+          (
+            await c.query(
+              'SELECT count(*)::int AS count FROM app_report_obligations_queue WHERE organization_id=ANY($1::uuid[])',
+              [[orgA, orgB]],
+            )
+          ).rows[0].count,
+        ).toBe(0);
         await c.query('COMMIT');
       } catch (e) {
         await c.query('ROLLBACK');
