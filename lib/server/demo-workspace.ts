@@ -2,7 +2,12 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { mkdir, realpath, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
-import type { DemoResponse, DemoRun } from '../demo-contract';
+import {
+  DEMO_DATASETS,
+  type DemoDataset,
+  type DemoResponse,
+  type DemoRun,
+} from '../demo-contract';
 import { initialWorkspace, type PortfolioRecords } from '../workspace';
 import { AccessError, type WorkspaceContext } from './access';
 import { pool, withTenant } from './db';
@@ -48,7 +53,16 @@ export async function listDemoRuns(
   };
 }
 
-export async function createDemoRun(ctx: WorkspaceContext) {
+export async function createDemoRun(
+  ctx: WorkspaceContext,
+  dataset: DemoDataset = 'mailroom-v1',
+) {
+  if (!DEMO_DATASETS.includes(dataset))
+    throw new AccessError(
+      400,
+      'DEMO_DATASET_INVALID',
+      'Choose an installed demonstration dataset.',
+    );
   if (!demoEnabled())
     throw new AccessError(
       409,
@@ -72,7 +86,7 @@ export async function createDemoRun(ctx: WorkspaceContext) {
         'Please wait before starting another demo run.',
       );
   });
-  const catalog = await loadDemoCatalog();
+  const catalog = await loadDemoCatalog(dataset);
   const originals: {
     document: (typeof catalog.documents)[number];
     bytes: Buffer;
@@ -80,7 +94,7 @@ export async function createDemoRun(ctx: WorkspaceContext) {
   let totalBytes = 0;
   // Sequential bounded reads cap aggregate memory rather than allocating 100 files in parallel.
   for (const document of catalog.documents) {
-    const bytes = await readDemoSource(document);
+    const bytes = await readDemoSource(document, dataset);
     totalBytes += bytes.length;
     if (totalBytes > 64 * 1024 * 1024)
       throw new AccessError(
@@ -92,7 +106,9 @@ export async function createDemoRun(ctx: WorkspaceContext) {
   }
   const organizationId = randomUUID(),
     startedAt = new Date().toISOString();
-  const name = 'Aster demo · ' + startedAt.slice(0, 16).replace('T', ' ');
+  const name =
+    (dataset === 'history-v1' ? 'Aster history demo · ' : 'Aster demo · ') +
+    startedAt.slice(0, 16).replace('T', ' ');
   let ownedDirectory: string | null = null;
   const colors = ['#557b6c', '#8676ae', '#b48954'];
   const portfolio: PortfolioRecords = {
@@ -179,13 +195,13 @@ export async function createDemoRun(ctx: WorkspaceContext) {
         path.join(organizationDirectory, 'Demo setup.md'),
         [
           '# Aster source-derived demonstration',
-          '100 synthetic emails from three fictional families and nine fictional mailboxes. Their 57 PDF attachments are preserved inside the original MIME emails and are decoded by the processor. Do not separately import attachment copies: that would add redundant sources.',
+          `Dataset: ${dataset}. 100 synthetic emails from three fictional families and nine fictional mailboxes. PDF attachments are preserved inside the original MIME emails and decoded by the processor. Do not separately import attachment copies: that would add redundant sources.`,
           'The portfolio starts with no holdings or values. Source-backed supported facts are published by the explicitly named demo agent after processing. New or changed files outside the checked demonstration corpus remain for human review.',
           'FX assumptions for every demonstration valuation date (EUR per source currency): ' +
             JSON.stringify(DEMO_FX_POLICY.ratesToEUR) +
             '. These are illustrative scenario assumptions, not market data. Each posted FX conversion carries that label.',
           'Families, owner entities and private investment accounts are declared demonstration routing. Asset classes are inferred from investment names and are labeled accordingly. Liquidity, cost basis, commitments and ownership remain unknown unless supported by sources. No settled cash flow or look-through weight is invented.',
-          'Conflicts, missing currencies/dates, image-only evidence and encrypted attachments remain visible in Processing. Capital-call/distribution notices never settle cash.',
+          'Conflicts, missing currencies/dates, image-only evidence and encrypted attachments remain visible in Documents. Capital-call/distribution notices create drafts and never settle cash. History acquisition certificates and bank confirmations require explicit reviewed lifecycle and settlement actions.',
         ].join('\n\n'),
         { flag: 'wx', mode: 0o600 },
       );
@@ -209,6 +225,7 @@ export async function createDemoRun(ctx: WorkspaceContext) {
         officeName: name,
         portfolio,
         demo: {
+          dataset,
           runId: organizationId,
           name,
           startedAt,
@@ -239,6 +256,7 @@ export async function createDemoRun(ctx: WorkspaceContext) {
         {
           sourceFiles: originals.length,
           families: 3,
+          dataset,
           autoPublishSyntheticSources: true,
         },
       );
@@ -251,6 +269,7 @@ export async function createDemoRun(ctx: WorkspaceContext) {
       organizationId,
       runId: organizationId,
       sourceFiles: originals.length,
+      dataset,
       folderConnectionId: connection.id,
     };
   } catch (error) {

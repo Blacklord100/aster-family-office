@@ -1,7 +1,8 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { WorkspaceState } from '../workspace';
 import type { WorkspaceContext } from './access';
-import { initialWorkspace } from '../workspace';
+import { initialWorkspace, deriveWorkspace } from '../workspace';
+import { postReviewedCashNotice } from '../ledger';
 import { emptyFinanceState, type LedgerRequest } from '../ledger-contract';
 import { scopeWorkspace } from '../data-scope';
 
@@ -260,5 +261,96 @@ describe('ledger HTTP authorization, tenant persistence and revisions', () => {
     ).toEqual([allowed]);
     expect(output.finance.receipts).toEqual([]);
     expect(output.canWrite).toBe(false);
+  });
+  it('saves a sourced draft amendment exactly once with tenant-local revision and audit linkage', async () => {
+    const state = initialWorkspace(true),
+      data = deriveWorkspace(state),
+      holding = data.holdings.find((row) => row.assetClass !== 'Cash')!;
+    const portfolio = {
+      ...data,
+      evidence: [
+        {
+          ...data.evidence[0],
+          id: 'notice-source',
+          holdingId: holding.id,
+          familyId: holding.familyId,
+          status: 'Accepted' as const,
+        },
+      ],
+    };
+    state.portfolio = portfolio;
+    state.finance = postReviewedCashNotice(
+      portfolio,
+      undefined,
+      {
+        holdingId: holding.id,
+        sourceId: 'notice-source',
+        fingerprint: 'notice',
+        kind: 'capital_call',
+        amount: null,
+        currency: null,
+        effectiveDate: null,
+        dueDate: null,
+        importedAt: null,
+        summary: 'Notice missing details',
+        origin: 'accepted_fact',
+      },
+      { id: 'notice', actorId: 'reviewer', at: '2026-09-10T12:00:00Z' },
+    ).finance;
+    f.rows.set(org, { state, revision: 4 });
+    const body: LedgerRequest = {
+      expectedRevision: 4,
+      idempotencyKey: key,
+      command: {
+        type: 'amendObligation',
+        obligationId: 'notice',
+        amount: '125.43',
+        currency: 'EUR',
+        effectiveDate: '2026-09-01',
+        dueDate: '2026-09-15',
+        reason: 'Manager supplied the missing notice details',
+        source: {
+          sourceId: 'notice-source',
+          reference: 'Reviewed notice',
+          date: '2026-09-01',
+        },
+        evidenceVerified: true,
+      },
+    };
+    const responses = await Promise.all([
+      POST(request(body)),
+      POST(request(body)),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    const values = await Promise.all(
+      responses.map((response) => response.json()),
+    );
+    expect(values[1]).toMatchObject({ duplicate: true, revision: 5 });
+    expect(f.rows.get(org)?.state.finance?.obligations?.[0]).toMatchObject({
+      amount: '125.43',
+      original: { amount: null },
+      amendments: [{ after: { amount: '125.43' } }],
+    });
+    expect(f.rows.get(org)?.state.finance?.events).toEqual([]);
+    expect(f.rows.get(org)?.state.portfolio?.holdings).toEqual(
+      portfolio.holdings,
+    );
+    expect(f.rows.get(other)?.state.finance).toBeUndefined();
+    expect(f.audit).toHaveBeenCalledTimes(1);
+    expect(f.audit.mock.calls[0]).toEqual(
+      expect.arrayContaining([
+        'ledger.amendObligation',
+        expect.objectContaining({ obligationId: 'notice' }),
+      ]),
+    );
+    const stale = await POST(
+      request({
+        ...body,
+        idempotencyKey: '00000000-0000-4000-8000-000000000013',
+      }),
+    );
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).error).toBe('LEDGER_CHANGED');
+    expect(f.saves).toHaveBeenCalledTimes(1);
   });
 });

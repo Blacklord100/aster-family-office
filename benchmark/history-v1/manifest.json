@@ -1,0 +1,934 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "synthetic-history-v1",
+  "createdDate": "2026-09-10",
+  "emailCount": 100,
+  "uniqueSourceCount": 97,
+  "pdfAttachmentCount": 64,
+  "expectedFactCount": 111,
+  "files": [
+    {
+      "path": "fixtures/emails/001-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "5f9db6a645c0ee39669eb58888bbf99e24ed1611044ab3739b6b5164095f9879"
+    },
+    {
+      "path": "fixtures/emails/002-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "ce87faf34350b22fe79b7980fb3b0d9ba579fc8137944b79a0d8b3d5353753e0"
+    },
+    {
+      "path": "fixtures/emails/003-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "22b0255b7aa3f3cb50a80fe82e815c82b7451243f34848612fac76293ff660c6"
+    },
+    {
+      "path": "fixtures/emails/004-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "07b7443962ae79deb2b45d220deb551c005c769f111dfe8e3a50e31fff38a1c1"
+    },
+    {
+      "path": "fixtures/emails/005-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "56cc02394e437059d68ba24acbc182a3485ba60a441dcf8ad853555e5112bfd7"
+    },
+    {
+      "path": "fixtures/emails/006-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "ff8e7f1938bedf65c2a190d4d5077a3a7cae787007767acfb719a91acd2253bf"
+    },
+    {
+      "path": "fixtures/emails/007-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "19ee7e1d5079aac535bc7d106b98f347b2f3e8b008ef941bb05ae674c1c12c1e"
+    },
+    {
+      "path": "fixtures/emails/008-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "27af668250e9ba03e3d48b4f2044e7b240f99210b9e04c09c0ea465e11aed5db"
+    },
+    {
+      "path": "fixtures/emails/009-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "8500218118dc80ecd9629600d1867b7aa57b59d7322712a245c2aff9554b2f20"
+    },
+    {
+      "path": "fixtures/emails/010-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "9ef4204bd3e691198763eb4cfd21985a39401fb26d678b4a912000cf791bad62"
+    },
+    {
+      "path": "fixtures/emails/011-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "faf1e82c4177332e13bfc108ee344cb8e1afa0bcfa2e147c98ec70cb3c3270e0"
+    },
+    {
+      "path": "fixtures/emails/012-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9bef2ed986487764982877403e5cc54a59a4f391423630f8dd5a0e4166df1128"
+    },
+    {
+      "path": "fixtures/emails/013-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "e8020f8e10a095ec46c04cf8cd9d777b66438e48d4b1e8f0d5974bf8313ab5d0"
+    },
+    {
+      "path": "fixtures/emails/014-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "50d5873ef68da68a5b9e9d91e7b8e1e471784cad660d1af9e14d6c2b5c789284"
+    },
+    {
+      "path": "fixtures/emails/015-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "44a90af97be07952dc547f58eee81b625eff9f603e7638339551d59a20ee05bd"
+    },
+    {
+      "path": "fixtures/emails/016-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "14c472a2805bdd059c9b6d8cdf6937459a33b0aea5fa720ba3629021d6ad04b2"
+    },
+    {
+      "path": "fixtures/emails/017-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "5402a7cfbf84060b293f1cd358bb27cf43a4dfbb306bd4ec2e27dff8af29f3d1"
+    },
+    {
+      "path": "fixtures/emails/018-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "392d9355b4a2f23485825f62a27ee5e5f8ed907d7beb21ec59d5638d8bfbc2c1"
+    },
+    {
+      "path": "fixtures/emails/019-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "e4bc432c92f8fcac2cdca5095c22aaad7034388d67ce75c3cbc605359984544b"
+    },
+    {
+      "path": "fixtures/emails/020-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "02c47dae0e306a3aa13e6d822f35205c79c2cdafe307c6c724ae9dd13f470e70"
+    },
+    {
+      "path": "fixtures/emails/021-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "e656da667fbd8d947ed19e6d845adc5437331ace86a0abb092e91c39defa4fb5"
+    },
+    {
+      "path": "fixtures/emails/022-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "447a979fccd7c280e80da25ea6c23d6096eae0c01faf8d43c78a9ed82af74878"
+    },
+    {
+      "path": "fixtures/emails/023-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "a63ef350ea6329a47ebf6a30a2c5e4b76eb5de1cb653121cf4b01b2fd4de5067"
+    },
+    {
+      "path": "fixtures/emails/024-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9269f826b7cb5b0e2cc40d99c162b8b93d412d88f651cb4007aee4e1219d44bb"
+    },
+    {
+      "path": "fixtures/emails/025-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "70b8a2e4f4bb784d4f7782d43efcd291d663e208bd83559d647a39580afc5b58"
+    },
+    {
+      "path": "fixtures/emails/026-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "412e24ed6a1033a4e6aec69351ba1cab7b9b84fbe02df9727fb25f92220fa931"
+    },
+    {
+      "path": "fixtures/emails/027-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "2f67c3fff65e241d70b2e424c2e39c83d068daa2461fd2ab7634e747a6254160"
+    },
+    {
+      "path": "fixtures/emails/028-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "4d159f83b30a94bd918af20c37237d9d7cf9aa099fd810319084b9640a2ea2a8"
+    },
+    {
+      "path": "fixtures/emails/029-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "76a1590362a37df6b40bab8e1fd0a8ee38783ef726ecfd8ce450eab54f0473c0"
+    },
+    {
+      "path": "fixtures/emails/030-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "86354dd7632d1db200cc99c5f3ec496b8b869e08ee93d882b2eacddaadecd7dd"
+    },
+    {
+      "path": "fixtures/emails/031-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "73ccef24e653af8c9f4482560692e4b514bfcfb9bd7f918ad8b2b6a57f85d2ab"
+    },
+    {
+      "path": "fixtures/emails/032-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2c263ba29a22d9362bee479c387e4826373e1755cfd0034ac1820e3002fe48c4"
+    },
+    {
+      "path": "fixtures/emails/033-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "4f8f9c84a29e92b2cfeed133582f2f45a19274a6e5714195416ddb32cfce3644"
+    },
+    {
+      "path": "fixtures/emails/034-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "8bd9e62a51cd61650dacc828974c8b53d0f84eea7f62b3c9ea6959e80cce86c4"
+    },
+    {
+      "path": "fixtures/emails/035-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "b59b9d6211d211d06d62bf5754f39512447aba1cd13ce72baba99f75a75c9a2f"
+    },
+    {
+      "path": "fixtures/emails/036-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7c8e37cfd99bbf6c831e0f022878868bc988285f6100fcb1fde934dbcedd2415"
+    },
+    {
+      "path": "fixtures/emails/037-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "57f603238a2f735a85324b8e9ec881e4f9eea44fb6eb0268c473e7586311de57"
+    },
+    {
+      "path": "fixtures/emails/038-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2c0d0dbe7d007d95f0a33d262a9123278c4aecdd7a9a0fcda311a4d9bf673f2a"
+    },
+    {
+      "path": "fixtures/emails/039-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "95b68839a1658ac94659bd975a3d10a92679af2550f839457c4d871ca27bf1ef"
+    },
+    {
+      "path": "fixtures/emails/040-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "36c5533274affb45fb4808802a668a33f59598b662c68ae5eb2edd05d11faeb7"
+    },
+    {
+      "path": "fixtures/emails/041-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "177ecc6f91728c2d1fd4e35f39a07b857fe22d64b3c1602685d3a34a30b5c84c"
+    },
+    {
+      "path": "fixtures/emails/042-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "d0ff1ab663523a4a4bb3c0936fbbd09c25c4bcdedb7fab881f7e08a9f1407a09"
+    },
+    {
+      "path": "fixtures/emails/043-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "4df9ec91c7a92b559b73298d53859b12973a9c9cb5653eb413827fb41f533ceb"
+    },
+    {
+      "path": "fixtures/emails/044-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "a69a5ef64e3c96411dc25e70f850f3f7f3939b7f8e770061bbf49f03a83452c9"
+    },
+    {
+      "path": "fixtures/emails/045-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "ce0e548cbe0c51d5301548971b7fca4b6d58d62257a39acd1479965805088ef2"
+    },
+    {
+      "path": "fixtures/emails/046-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "f942102ef22337f205d1e9ed78818c99ada0031c356ff5acf667c83078e53596"
+    },
+    {
+      "path": "fixtures/emails/047-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "1929dbcb0985074b64d628ca94383486e90288a2cfb15009adeac2e1bc42928f"
+    },
+    {
+      "path": "fixtures/emails/048-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "dee14a8617ae2306698596e7b900bbf635d9bd663323cb03d1f4adf18733c513"
+    },
+    {
+      "path": "fixtures/emails/049-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "dbd78c92f23881684beda6838cdab11e031a218757b4aa7620efe16cdeaaeec8"
+    },
+    {
+      "path": "fixtures/emails/050-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2cef99d676322618132d1ca4206a65d7942297cf9394a91d2992991f6c79c686"
+    },
+    {
+      "path": "fixtures/emails/051-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "46036391bb17ad050fa79c9dc0c5d4502ebb477b94629ddc26c38f0cc1707c10"
+    },
+    {
+      "path": "fixtures/emails/052-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "6e50b160ed77c2e33213f684b10c5cef9bf159bc00d7c757be22a1f873b3e151"
+    },
+    {
+      "path": "fixtures/emails/053-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "2e8096f2a477965e20c4cae32ba0849678b2dd118e36f8cc00d3ca07b11b9363"
+    },
+    {
+      "path": "fixtures/emails/054-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "bcdb8941cecc72b832fbdb2d4867f6d74779ea3848f7d8e9319a15e7261fbe2c"
+    },
+    {
+      "path": "fixtures/emails/055-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9f7dfadb5f6ea52cccfe69653b960b987bff99745e9fe76d5574cda16b0465e2"
+    },
+    {
+      "path": "fixtures/emails/056-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "09b7d69e389b6d7954e26f6ddb20aa6ca6ff755eb7a173745379fad0b1552a7c"
+    },
+    {
+      "path": "fixtures/emails/057-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "7de51235f8b09dfd52b40c97b1939de9b3c4324b3a47ce463cf14ae7cb550f1f"
+    },
+    {
+      "path": "fixtures/emails/058-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "c20137c20417d2fe6851c7701d2f9830e80786410e4dd5abed125e2f8415684a"
+    },
+    {
+      "path": "fixtures/emails/059-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "b676a61c4c8e62737c1b537e87efaf34fd88ce7df5b7a80356727deddc0c0b98"
+    },
+    {
+      "path": "fixtures/emails/060-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7447ff74ddcde3d92c328239bc36ceafbbe338587707abe35dd126bbbbc89162"
+    },
+    {
+      "path": "fixtures/emails/061-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "350ec623da99382475d642843dd3dcac9a260071f8ca9b14b9ed19e2ce3b60e2"
+    },
+    {
+      "path": "fixtures/emails/062-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "bbe6041b3a5378e4c0ccaa01d6b57dfc46ed73153b433b2967754ab4b0e8dda2"
+    },
+    {
+      "path": "fixtures/emails/063-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "553b4f63bf0645f95368fe4483d1209ba5a766c8577ac3fb9bdf98ecfd07f302"
+    },
+    {
+      "path": "fixtures/emails/064-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "7d4338ed0e95ed69a4a92f07ee9528584bb4a5938aca67919e5f184bf7cfc8ad"
+    },
+    {
+      "path": "fixtures/emails/065-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "6c332cbb6abd66d6e594d0e8001094a9894facfc8de028412cab5ba51c83a8a7"
+    },
+    {
+      "path": "fixtures/emails/066-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "0a387fdac8f70b6a5f01059346fbc9dc2e62fab58e2b1213a318034f571eadd9"
+    },
+    {
+      "path": "fixtures/emails/067-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "5d6c979b3075d3c60a0aa1472f634c0cb6cee564457cf42e866b1a7eadd70a89"
+    },
+    {
+      "path": "fixtures/emails/068-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "280552568abd3f8f0ac4c3c13d51797000e36f966270b90b389906fb3ad85034"
+    },
+    {
+      "path": "fixtures/emails/069-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "89bdcf20b543c24c1b89d9f90327605018bd93020455ed61123f40d55a1464b7"
+    },
+    {
+      "path": "fixtures/emails/070-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "fca937c6381ced2f3d745d45d1d73c671662fa1c16e0c78a3c42632974482c36"
+    },
+    {
+      "path": "fixtures/emails/071-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "422dd929f978dfa1bc795b1c8ff0ca07134fbf2c1edaf2bc18948b9251d21b26"
+    },
+    {
+      "path": "fixtures/emails/072-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9dd9b3eaf5f4caf73b7fc70e0a871e4ac0302c01fc7b54a5771dd3e46e75bf7d"
+    },
+    {
+      "path": "fixtures/emails/073-harbor-family-late_archive_report.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "524355a9ce1a49b4f02f781e1bfffba40a7897e3845538b0a496707112ed8ea7"
+    },
+    {
+      "path": "fixtures/emails/074-maple-family-late_archive_report.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "410aef3b02ed532e2f4b87fa8e17d1f98e1f30c88d93de8a7dd36d64f650646b"
+    },
+    {
+      "path": "fixtures/emails/075-willow-family-late_archive_report.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "659fe82289e7f7b5879e29c54e23afcbd66fd6e476076d2d9d98a703093f2ba1"
+    },
+    {
+      "path": "fixtures/emails/076-harbor-family-corrected_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "f31ece52a8f248c5378522040c1a32976ec17a7ccd321203bf81291508e0fda0"
+    },
+    {
+      "path": "fixtures/emails/077-maple-family-corrected_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "10d1f930a7f9f9be7b104e0cd7b927210afcc77827404d4fdbde9a1ce567db50"
+    },
+    {
+      "path": "fixtures/emails/078-willow-family-corrected_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "ea422ed72683cd30750f0d7c2ca46eb436c6a9f90fbcf6c1dd3591a15f828544"
+    },
+    {
+      "path": "fixtures/emails/079-harbor-family-capital_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9d9c75f1735a3d8be73358b82f8ab8a043feaa6bc63d1144b646004c292f1fc8"
+    },
+    {
+      "path": "fixtures/emails/080-harbor-family-distribution.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "258df9ebee87ca3ebf21a52b9faafd0e1353322b6f64505e887d16bbac9dbd56"
+    },
+    {
+      "path": "fixtures/emails/081-maple-family-capital_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "57a4d9cc62b2d5d6605f710fa950273a8789979efb7d6b7bd30e6fa1bfed9c5a"
+    },
+    {
+      "path": "fixtures/emails/082-maple-family-distribution.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "b78640e26a904b4f986be709ba4e541517f72fd2f5dd615b44f6116e3ee4d8cf"
+    },
+    {
+      "path": "fixtures/emails/083-willow-family-capital_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "0ac9b5597236d7985f4c8ae299259535fa3e772d0bdce4874ea4684c9c6dde84"
+    },
+    {
+      "path": "fixtures/emails/084-willow-family-distribution.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "47960fa99e1624e69582268f543912b20394fba66b771c94279cd7c8244dbc55"
+    },
+    {
+      "path": "fixtures/emails/085-harbor-family-duplicate_forward.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9d9c75f1735a3d8be73358b82f8ab8a043feaa6bc63d1144b646004c292f1fc8"
+    },
+    {
+      "path": "fixtures/emails/086-maple-family-duplicate_forward.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "57a4d9cc62b2d5d6605f710fa950273a8789979efb7d6b7bd30e6fa1bfed9c5a"
+    },
+    {
+      "path": "fixtures/emails/087-willow-family-duplicate_forward.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "0ac9b5597236d7985f4c8ae299259535fa3e772d0bdce4874ea4684c9c6dde84"
+    },
+    {
+      "path": "fixtures/emails/088-harbor-family-bank_statement.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "217e08c38aeb71180ab1e3d4cd25e8d030c869f347c751d6a165d6da00851cf4"
+    },
+    {
+      "path": "fixtures/emails/089-maple-family-bank_statement.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "f77368457d27d820f0a3527c3f7bcdf2480902347b7053d2036f5943dd76e7d1"
+    },
+    {
+      "path": "fixtures/emails/090-willow-family-bank_statement.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7bd60e969cb80191abf3e3fd772882edc9deebe02c7eb0f9c970ca158e5d8ce1"
+    },
+    {
+      "path": "fixtures/emails/091-harbor-family-acquisition_certificate.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9bc9c71c6690eae05ab56a89d3a66aeb087755754a441f506fddfb4a868ff3e3"
+    },
+    {
+      "path": "fixtures/emails/092-maple-family-acquisition_certificate.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "842fc2fa6973856e14f75e30dc6c88e75e2016cae4bb676f610d2977e163b742"
+    },
+    {
+      "path": "fixtures/emails/093-willow-family-acquisition_certificate.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "4e51ad4911a4f73f801f686f867bb8b452067ccdf85e4d4079df9aeaa4238688"
+    },
+    {
+      "path": "fixtures/emails/094-harbor-family-incomplete_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "702af61b1092956f41370d328134a6cc498e53ab9d1b0f660630f9a5eda10a6e"
+    },
+    {
+      "path": "fixtures/emails/095-maple-family-incomplete_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "78062a6d0896d910b563d503d56520c946c8ef4dea3afb51cfefb3c53aeae361"
+    },
+    {
+      "path": "fixtures/emails/096-willow-family-incomplete_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "1d274674e0b17accc37aff83b28fcf5e04854bffcb01faec4e1c501622617c54"
+    },
+    {
+      "path": "fixtures/emails/097-harbor-family-office_administration.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "11c8f61771953a8f6f3446b98b1808e47ceb504138fe483df1c7caee89f53ae6"
+    },
+    {
+      "path": "fixtures/emails/098-maple-family-office_administration.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "3994f39bf7b225da7c6547b3c3032267775dc9b891c1e60c6214d9c037052d60"
+    },
+    {
+      "path": "fixtures/emails/099-willow-family-office_administration.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "654603ab3a92002f2830530927834bee3f4696d7e1a947f4848dc950e73d5623"
+    },
+    {
+      "path": "fixtures/emails/100-harbor-family-shared_consolidation.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "2b8ca30e96d66531d9712d17e3dee6417cef9a97d3a08ed935736c3e8919169a"
+    },
+    {
+      "path": "fixtures/attachments/history-007-quarterly_nav.pdf",
+      "sha256": "09535429bc15bbebf850d18d3ec3e4a895c4d2ea7d8f87afcd37fe0068eb5c55",
+      "caseId": "history-007"
+    },
+    {
+      "path": "fixtures/attachments/history-008-quarterly_nav.pdf",
+      "sha256": "f1c7db12b8dcc582666ec62f5c0b9c14c29a2c7ce84eb38803d1a8684fedd51a",
+      "caseId": "history-008"
+    },
+    {
+      "path": "fixtures/attachments/history-009-quarterly_nav.pdf",
+      "sha256": "7fbcc1452bbc6a8d656c611abebdea0a925f932b9ef51b3f03281cf4d484cf44",
+      "caseId": "history-009"
+    },
+    {
+      "path": "fixtures/attachments/history-010-quarterly_nav.pdf",
+      "sha256": "5c35321cb390e627a309b266c5e744569c4a0f39c330d733afb8e6051e162929",
+      "caseId": "history-010"
+    },
+    {
+      "path": "fixtures/attachments/history-011-quarterly_nav.pdf",
+      "sha256": "d188d2ce459f4a84a988d69a98dd92a7783833a90b19e52bc804fad152ea6418",
+      "caseId": "history-011"
+    },
+    {
+      "path": "fixtures/attachments/history-012-quarterly_nav.pdf",
+      "sha256": "5ab566065b26cf45fbdac7a0597378faacda5fa5ead27795469216ae405aaa97",
+      "caseId": "history-012"
+    },
+    {
+      "path": "fixtures/attachments/history-013-quarterly_nav.pdf",
+      "sha256": "5a0f0e3a029a1dcbc04767100d6c20997f86093a43126de981af8c10a2d2e8a5",
+      "caseId": "history-013"
+    },
+    {
+      "path": "fixtures/attachments/history-014-quarterly_nav.pdf",
+      "sha256": "5eb21b69dc46bc0f5827d7fbc7635ad9a0daad4c16c8fa300cd32af973fd6c1c",
+      "caseId": "history-014"
+    },
+    {
+      "path": "fixtures/attachments/history-015-quarterly_nav.pdf",
+      "sha256": "951e7f6f3e8c5cf5311dccedd4e734979e839a79c7f4eb8504197d67db457ae3",
+      "caseId": "history-015"
+    },
+    {
+      "path": "fixtures/attachments/history-016-quarterly_nav.pdf",
+      "sha256": "c0f14b68f7b07275dadb4350dfe9141f88814a79fbc4ffd2fbe0991e4bdc3593",
+      "caseId": "history-016"
+    },
+    {
+      "path": "fixtures/attachments/history-017-quarterly_nav.pdf",
+      "sha256": "cd82070470c17dfe18078dfc05302fc8fba6e6ffbd5dac96e01de0a6f6919c47",
+      "caseId": "history-017"
+    },
+    {
+      "path": "fixtures/attachments/history-018-quarterly_nav.pdf",
+      "sha256": "cd5492ee018ab0588391ea7d54345ba9e2da660c67878f28e0ab87535e42ba7e",
+      "caseId": "history-018"
+    },
+    {
+      "path": "fixtures/attachments/history-025-quarterly_nav.pdf",
+      "sha256": "a415d9ddaba772ea52b8240dbef50fb5e310702690e2ecc58015c3c71c444e9e",
+      "caseId": "history-025"
+    },
+    {
+      "path": "fixtures/attachments/history-026-quarterly_nav.pdf",
+      "sha256": "4bb1d59877eb0f47fcb828326979f672f6dace769fcb0a738f2e3728d0a7f214",
+      "caseId": "history-026"
+    },
+    {
+      "path": "fixtures/attachments/history-027-quarterly_nav.pdf",
+      "sha256": "81afea4029899aa5962638aa2dba4eb37dbbe025c168804ebc78d880f899ca62",
+      "caseId": "history-027"
+    },
+    {
+      "path": "fixtures/attachments/history-028-quarterly_nav.pdf",
+      "sha256": "692a0473c27b513843791ef112a08828e908f209755e912fa2404e8d3f39e96a",
+      "caseId": "history-028"
+    },
+    {
+      "path": "fixtures/attachments/history-029-quarterly_nav.pdf",
+      "sha256": "dfa9dc70d566cf8d9e2d57776958c7129f5c0b730e93d0fe03bd613563bec77b",
+      "caseId": "history-029"
+    },
+    {
+      "path": "fixtures/attachments/history-030-quarterly_nav.pdf",
+      "sha256": "9b1de39065bc7640516068144bd281332525a2cae2de9529ac2388e0b5102ffc",
+      "caseId": "history-030"
+    },
+    {
+      "path": "fixtures/attachments/history-031-quarterly_nav.pdf",
+      "sha256": "d48dd911001ee3bab5d898feb22331b145eb562be87c64da0d8d8d1c13896fb5",
+      "caseId": "history-031"
+    },
+    {
+      "path": "fixtures/attachments/history-032-quarterly_nav.pdf",
+      "sha256": "23ece3b0e8d730c5285104d8378cf015609ed293dca42d3dd9c7c2260ab4e799",
+      "caseId": "history-032"
+    },
+    {
+      "path": "fixtures/attachments/history-033-quarterly_nav.pdf",
+      "sha256": "d6e15386fe785cd95ada2af22da90143b479dbfe5dba78158efd1b0b0dc19e18",
+      "caseId": "history-033"
+    },
+    {
+      "path": "fixtures/attachments/history-034-quarterly_nav.pdf",
+      "sha256": "073ba413520fcea10d69c87886ab992df291b5815373d66e5299f2da85becf27",
+      "caseId": "history-034"
+    },
+    {
+      "path": "fixtures/attachments/history-035-quarterly_nav.pdf",
+      "sha256": "85deb6c457f7ece68ba3ddc454b619a63d1a616b4ceafa4034e1c27b067e13a6",
+      "caseId": "history-035"
+    },
+    {
+      "path": "fixtures/attachments/history-036-quarterly_nav.pdf",
+      "sha256": "a303e1b5a1850c5fd3cfc3b3f5a3057bf39944658d2223321d06453b2c051c66",
+      "caseId": "history-036"
+    },
+    {
+      "path": "fixtures/attachments/history-043-quarterly_nav.pdf",
+      "sha256": "55ce33b90024ab993822c0e6448e248fbbaf88d91cd19d80c0a1a55fed99c3e2",
+      "caseId": "history-043"
+    },
+    {
+      "path": "fixtures/attachments/history-044-quarterly_nav.pdf",
+      "sha256": "0c02e3da161700407f2293c9cd8a4844bc25a73c6a575301973586b0fd6cb77c",
+      "caseId": "history-044"
+    },
+    {
+      "path": "fixtures/attachments/history-045-quarterly_nav.pdf",
+      "sha256": "e51915edf74405c9159571e7ff38ea7748f1165ffd5bfc5ea8fd24a7fafc1c29",
+      "caseId": "history-045"
+    },
+    {
+      "path": "fixtures/attachments/history-046-quarterly_nav.pdf",
+      "sha256": "886480a14c46e104a8225e28ce7af84f24d499b453751dc4a720387cd240ce5b",
+      "caseId": "history-046"
+    },
+    {
+      "path": "fixtures/attachments/history-047-quarterly_nav.pdf",
+      "sha256": "4272554e25a7af305343b5e543c7454d5cdc3f0e469b68d2390076a713f3227a",
+      "caseId": "history-047"
+    },
+    {
+      "path": "fixtures/attachments/history-048-quarterly_nav.pdf",
+      "sha256": "37ef67582aafa77177c3abdffa0c082784f2cb5170b9d8dd619728fbc3173cbc",
+      "caseId": "history-048"
+    },
+    {
+      "path": "fixtures/attachments/history-049-quarterly_nav.pdf",
+      "sha256": "6d43a785fe55f1fcdd664ccef6ee38a27a9439fc5501dac04c53c9f2bb6cf104",
+      "caseId": "history-049"
+    },
+    {
+      "path": "fixtures/attachments/history-050-quarterly_nav.pdf",
+      "sha256": "e314f6c1a5b86ba0a03c59306366116078763c9b46883b438fcd7af9ad6a7cfa",
+      "caseId": "history-050"
+    },
+    {
+      "path": "fixtures/attachments/history-051-quarterly_nav.pdf",
+      "sha256": "42c8eb3150fc5e35f8ee46d36f64c76f9637585a3a31d94e6321f3ecc61eed2c",
+      "caseId": "history-051"
+    },
+    {
+      "path": "fixtures/attachments/history-052-quarterly_nav.pdf",
+      "sha256": "9bb54d1e5e878db97202585ac81e53aa548cebcaff7c6d4c5c2c96525a9de701",
+      "caseId": "history-052"
+    },
+    {
+      "path": "fixtures/attachments/history-053-quarterly_nav.pdf",
+      "sha256": "d2ee449458560fa99a9fa25159236f63d603c10be23d61839cdaad1bc6d45b64",
+      "caseId": "history-053"
+    },
+    {
+      "path": "fixtures/attachments/history-054-quarterly_nav.pdf",
+      "sha256": "eba46488fb98b5273a15c826f60cb9edfc1ed35428d235e4332ae35a8c27a062",
+      "caseId": "history-054"
+    },
+    {
+      "path": "fixtures/attachments/history-061-quarterly_nav.pdf",
+      "sha256": "74f1d0b95293984a46a3da2867aa1816d4de12b91aa98a4de5a6f8d964242c14",
+      "caseId": "history-061"
+    },
+    {
+      "path": "fixtures/attachments/history-062-quarterly_nav.pdf",
+      "sha256": "47fba607d0a2d4e09c12501f6eae5a3922a36aa38f515f25ce486c82a76b2068",
+      "caseId": "history-062"
+    },
+    {
+      "path": "fixtures/attachments/history-063-quarterly_nav.pdf",
+      "sha256": "800488387b4664ea35ea27873452bbc16d543ce7c35dfae733cd94c4a7bf20a9",
+      "caseId": "history-063"
+    },
+    {
+      "path": "fixtures/attachments/history-064-quarterly_nav.pdf",
+      "sha256": "5dd0bd797b48b3c1fe1dec12533e05f0a112a28212d88752234c2715a6594b3f",
+      "caseId": "history-064"
+    },
+    {
+      "path": "fixtures/attachments/history-065-quarterly_nav.pdf",
+      "sha256": "72de0e02f6b5171e5db2b2bdd50993639756217d930f7f74d398c37cef3cf23c",
+      "caseId": "history-065"
+    },
+    {
+      "path": "fixtures/attachments/history-066-quarterly_nav.pdf",
+      "sha256": "14c02aad05379ce4da44c29be2b6b3ac5e50eff0493e5beb2681d337420dd81c",
+      "caseId": "history-066"
+    },
+    {
+      "path": "fixtures/attachments/history-067-quarterly_nav.pdf",
+      "sha256": "935ac6ce085335ff2fd0953f19a67a57d3cf08949fbe617fb3c83b492ccaf811",
+      "caseId": "history-067"
+    },
+    {
+      "path": "fixtures/attachments/history-068-quarterly_nav.pdf",
+      "sha256": "f2e69dc30a621ba3f981a189007502c7cd75333793e2bd786afe03041a6d954f",
+      "caseId": "history-068"
+    },
+    {
+      "path": "fixtures/attachments/history-069-quarterly_nav.pdf",
+      "sha256": "5c341cdb7cb7ffa94c8bb13a8248d383a7e8a12c446555570210d43401552900",
+      "caseId": "history-069"
+    },
+    {
+      "path": "fixtures/attachments/history-070-quarterly_nav.pdf",
+      "sha256": "7f430c75c686681939c3f96aac0693f92e60d1ca336cc0841e21fcdbe0ec31b1",
+      "caseId": "history-070"
+    },
+    {
+      "path": "fixtures/attachments/history-071-quarterly_nav.pdf",
+      "sha256": "fd648236838d2014f38486b72a5989e0f96fc5251fee8b4e4fbee7eded192456",
+      "caseId": "history-071"
+    },
+    {
+      "path": "fixtures/attachments/history-072-quarterly_nav.pdf",
+      "sha256": "90e855a4f1db04b80de4ad81a7068d6fe09e8e2d06c951f785efecc33ffff821",
+      "caseId": "history-072"
+    },
+    {
+      "path": "fixtures/attachments/history-073-late_archive_report.pdf",
+      "sha256": "c5d443b03bf1b5b2c48d702e7245dcbd8b19201714f6c86efb7c9903cdb2dea8",
+      "caseId": "history-073"
+    },
+    {
+      "path": "fixtures/attachments/history-074-late_archive_report.pdf",
+      "sha256": "b44b999647ecc81c61d38a064739d57ede89f5100799c33f5d2e788e601cd23f",
+      "caseId": "history-074"
+    },
+    {
+      "path": "fixtures/attachments/history-075-late_archive_report.pdf",
+      "sha256": "33d6168b3a4bcf83c5916b023d194c0f437bc5a5888e52f4c34f59b193acac29",
+      "caseId": "history-075"
+    },
+    {
+      "path": "fixtures/attachments/history-076-corrected_nav.pdf",
+      "sha256": "e84d949f85fe64dc7be5985fb3b422b96d1f17b30ced2defbc2f8e85d1656300",
+      "caseId": "history-076"
+    },
+    {
+      "path": "fixtures/attachments/history-077-corrected_nav.pdf",
+      "sha256": "9f494aeb0483105cafce6dd5dcd94502931f37c05dfd0cc743d454dffe7d376d",
+      "caseId": "history-077"
+    },
+    {
+      "path": "fixtures/attachments/history-078-corrected_nav.pdf",
+      "sha256": "190f53c448494ba08a3cf56de4bfa1ab31c6d2b78a76df914870cb6fc7a835e9",
+      "caseId": "history-078"
+    },
+    {
+      "path": "fixtures/attachments/history-080-distribution.pdf",
+      "sha256": "eaca40061d1010deff1ebf23c08a62cf0af37f92e9883cf244ab2f150ef5d76b",
+      "caseId": "history-080"
+    },
+    {
+      "path": "fixtures/attachments/history-082-distribution.pdf",
+      "sha256": "56582b96a8e87b8f3e86b5ee91ef2345017000a0fb875665526bcec0c9517296",
+      "caseId": "history-082"
+    },
+    {
+      "path": "fixtures/attachments/history-084-distribution.pdf",
+      "sha256": "a1d49bf0befb5bfbbd0ef35a65a430e46ff680525223973f5373c24cb46d5527",
+      "caseId": "history-084"
+    },
+    {
+      "path": "fixtures/attachments/history-088-bank_statement.pdf",
+      "sha256": "41bdfcce4b3cfe87dc606704b0d9f40a99a60c93d9a1dbc5f9ec3290f63cc8b0",
+      "caseId": "history-088"
+    },
+    {
+      "path": "fixtures/attachments/history-089-bank_statement.pdf",
+      "sha256": "58d66f56ae6de67faa43b0e0abbc723cbe24c38cefebedf71c5ce2872ba3413f",
+      "caseId": "history-089"
+    },
+    {
+      "path": "fixtures/attachments/history-090-bank_statement.pdf",
+      "sha256": "aba060c9519934bcc72a1a14da6ce336aa92fcb78b79897403683a7189a1acc3",
+      "caseId": "history-090"
+    },
+    {
+      "path": "fixtures/attachments/history-091-acquisition_certificate.pdf",
+      "sha256": "c28c6a126680b239b04f53ce42acc1b3a61f923f768bb9ae999bcf1573f4fb65",
+      "caseId": "history-091"
+    },
+    {
+      "path": "fixtures/attachments/history-092-acquisition_certificate.pdf",
+      "sha256": "11aeed88973efee6f782e8456266339a4ff1405e3fd15398925f468fbf7d78dd",
+      "caseId": "history-092"
+    },
+    {
+      "path": "fixtures/attachments/history-093-acquisition_certificate.pdf",
+      "sha256": "814afee5ebbe3030d9a03be35d0bec0f198a7ffc28ac47513e158d5eb4120caf",
+      "caseId": "history-093"
+    },
+    {
+      "path": "fixtures/attachments/history-100-shared_consolidation.pdf",
+      "sha256": "77545a9d7622dde39ec8a5b24f3409646b991486658abb2e1cc50894147e503c",
+      "caseId": "history-100"
+    }
+  ],
+  "goldSha256": "c3377f57ba9df3619f2e335a27eadda8d15215bef85d55e3e1d7792805cd4f15",
+  "expectedHistorySha256": "271581f2ab40e10dbd79e6a30073457c3c9ed6afaf3823aab6fc4749b0347202",
+  "catalogSha256": "090e430508232476ccb9e88bd70ad6f391e643c2466134a27271faad247d25a5"
+}

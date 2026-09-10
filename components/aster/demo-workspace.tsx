@@ -23,11 +23,16 @@ import {
 import { Picker } from './primitives';
 import styles from './connections.module.css';
 
-import type { DemoResponse, DemoWorkspaceState } from '@/lib/demo-contract';
+import type {
+  DemoDataset,
+  DemoResponse,
+  DemoWorkspaceState,
+} from '@/lib/demo-contract';
 
 async function demoAction(
   body:
-    | { action: 'start' | 'leave' }
+    | { action: 'start'; dataset?: DemoDataset }
+    | { action: 'leave' }
     | { action: 'select'; organizationId: string },
 ) {
   const response = await fetch('/api/demo', {
@@ -72,8 +77,9 @@ export function DemoWorkspaceBanner({ demo }: { demo: DemoWorkspaceState }) {
           Live demo
         </Badge>
         <span>
-          Fictional families · {demo.sourceFiles} source files · demo FX
-          assumptions
+          Fictional families ·{' '}
+          {demo.dataset === 'history-v1' ? '12-quarter history · ' : ''}
+          {demo.sourceFiles} source files · demo FX assumptions
         </span>
       </div>
       <Button
@@ -100,6 +106,7 @@ export function DemoLauncher() {
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [selected, setSelected] = useState('');
+  const [dataset, setDataset] = useState<DemoDataset>('mailroom-v1');
   const lock = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
@@ -133,7 +140,8 @@ export function DemoLauncher() {
   }, []);
   async function run(
     body:
-      | { action: 'start' | 'leave' }
+      | { action: 'start'; dataset?: DemoDataset }
+      | { action: 'leave' }
       | { action: 'select'; organizationId: string },
   ) {
     if (lock.current) return;
@@ -188,6 +196,25 @@ export function DemoLauncher() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <Picker
+                label="Demonstration dataset"
+                value={dataset}
+                onChange={(value) => {
+                  if (value === 'mailroom-v1' || value === 'history-v1')
+                    setDataset(value);
+                }}
+                options={[
+                  {
+                    value: 'mailroom-v1',
+                    label: 'Mailroom · varied reports, PDFs and updates',
+                  },
+                  {
+                    value: 'history-v1',
+                    label:
+                      'Portfolio history · 12 quarters, cash notices and corrections',
+                  },
+                ]}
+              />
               <p className={styles.disclosure}>
                 Supported source facts publish automatically inside the demo
                 sandbox. Ambiguous, conflicting and unreadable documents remain
@@ -239,7 +266,7 @@ export function DemoLauncher() {
                 onClick={() =>
                   snapshot.current
                     ? setConfirm(true)
-                    : void run({ action: 'start' })
+                    : void run({ action: 'start', dataset })
                 }
               >
                 <Play data-icon="inline-start" />
@@ -284,7 +311,7 @@ export function DemoLauncher() {
             </Button>
             <Button
               disabled={busy}
-              onClick={() => void run({ action: 'start' })}
+              onClick={() => void run({ action: 'start', dataset })}
             >
               {busy ? 'Preparing…' : 'Create new run'}
             </Button>

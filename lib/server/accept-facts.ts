@@ -7,7 +7,11 @@ import { readWorkspaceInTransaction, saveWorkspace } from '../workspace-store';
 import type { Extraction, ExtractedFact } from '../processing-contract';
 import { sha256 } from './crypto';
 import type { ReviewDecision } from '../review-contract';
-import { postReviewedValuation, convertToEUR } from '../ledger';
+import {
+  postReviewedValuation,
+  postReviewedCashNotice,
+  convertToEUR,
+} from '../ledger';
 import type { Currency } from '@/data/types';
 import {
   canonicalAmount,
@@ -218,6 +222,30 @@ export async function acceptFacts(
       // Use the reviewed conversion on the timeline while the valuation record retains source currency and FX provenance.
       const event = portfolio.events.find((row) => row.sourceId === sourceId);
       if (event) event.amountEUR = posted.valuation.valueEUR;
+    }
+    if (fact.kind === 'capital_call' || fact.kind === 'distribution') {
+      finance = postReviewedCashNotice(
+        portfolio,
+        finance,
+        {
+          holdingId: holding.id,
+          kind: fact.kind,
+          sourceId,
+          fingerprint: baseFingerprint,
+          documentId: job.document_id,
+          jobId: job.id,
+          factIndex: selection.factIndex,
+          reviewRevision: selection.reviewRevision,
+          amount: fact.amount === null ? null : canonicalAmount(fact.amount),
+          currency: fact.currency,
+          effectiveDate: fact.effectiveDate,
+          dueDate: fact.dueDate,
+          importedAt: provenance.rows[0]?.created_at ? receivedAt : null,
+          summary: fact.summary,
+          origin: 'accepted_fact',
+        },
+        { id: randomUUID(), actorId: ctx.user.id, at: now },
+      ).finance;
     }
     if (fact.kind === 'capital_call')
       portfolio.tasks.unshift({

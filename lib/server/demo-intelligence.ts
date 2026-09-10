@@ -268,7 +268,12 @@ export async function indexDemoJobSources(
   const ctx = context(organizationId);
   let documentId: string | null = null;
   try {
-    const catalog = await loadDemoCatalog();
+    const { state: initial } = await withTenant(organizationId, (c) =>
+      readWorkspaceInTransaction(c, organizationId),
+    );
+    if (!initial.demo?.autoPublish || initial.demo.runId !== organizationId)
+      return none;
+    const catalog = await loadDemoCatalog(initial.demo.dataset);
     const source = await withTenant(organizationId, (c) =>
       verifiedSource(c, ctx, jobId, catalog),
     );

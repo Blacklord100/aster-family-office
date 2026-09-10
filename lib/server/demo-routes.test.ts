@@ -86,5 +86,19 @@ describe('demo action authorization and bounds', () => {
     expect(response.headers.get('set-cookie')).toContain(ORG);
     expect(response.headers.get('set-cookie')).toContain('Secure');
     expect(response.headers.get('set-cookie')).toContain('HttpOnly');
+    expect(mocked.create).toHaveBeenCalledWith(
+      expect.anything(),
+      'mailroom-v1',
+    );
+  });
+  it('accepts only an enumerated dataset and passes it through the guarded creation path', async () => {
+    expect(
+      (await POST(request('{"action":"start","dataset":"../private"}'))).status,
+    ).toBe(400);
+    expect(mocked.create).not.toHaveBeenCalled();
+    expect(
+      (await POST(request('{"action":"start","dataset":"history-v1"}'))).status,
+    ).toBe(200);
+    expect(mocked.create).toHaveBeenCalledWith(expect.anything(), 'history-v1');
   });
 });

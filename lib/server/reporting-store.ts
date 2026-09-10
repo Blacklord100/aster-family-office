@@ -27,6 +27,11 @@ import { AccessError, roleAllows, type WorkspaceContext } from './access';
 import { withTenant } from './db';
 import { audit } from './audit';
 import { sha256 } from './crypto';
+import {
+  readPortfolioHistory,
+  assertHistoryAccess,
+  readHistoryWorkspace,
+} from './portfolio-history-store';
 
 export function snapshotIntegrity(snapshot: ReportingSnapshot): boolean {
   return (
@@ -37,9 +42,11 @@ export function snapshotIntegrity(snapshot: ReportingSnapshot): boolean {
 function summaries(state: WorkspaceState): SnapshotSummary[] {
   return (state.reporting?.snapshots ?? []).map((snapshot) => {
     const holdings =
-      snapshot.kind === 'period'
-        ? snapshot.inputs.portfolio.holdings
-        : snapshot.inputs.holdings;
+      snapshot.kind === 'history'
+        ? snapshot.result.positions
+        : snapshot.kind === 'period'
+          ? snapshot.inputs.portfolio.holdings
+          : snapshot.inputs.holdings;
     return {
       id: snapshot.id,
       kind: snapshot.kind,
@@ -114,13 +121,86 @@ export async function saveReporting(
   const input = reportingRequestSchema.parse(value),
     { expectedRevision: _revision, idempotencyKey: _key, ...intent } = input,
     digest = sha256(JSON.stringify(intent));
+  // Exact retries must remain available even if the live history has since
+  // lost source coverage or can no longer be recalculated within observation limits.
+  if (input.action === 'saveHistory') {
+    const prior = await withTenant(ctx.organizationId, async (client) => {
+      await assertHistoryAccess(client, ctx, true);
+      const { state, revision } = await readHistoryWorkspace(
+        client,
+        ctx.organizationId,
+        true,
+      );
+      const reporting = state.reporting ?? emptyReportingState();
+      const receipt = reporting.receipts.find(
+        (row) => row.key === input.idempotencyKey,
+      );
+      if (!receipt) return null;
+      if (receipt.digest !== digest)
+        throw new AccessError(
+          409,
+          'IDEMPOTENCY_CONFLICT',
+          'The snapshot request key was already used for different inputs.',
+        );
+      const snapshot = reporting.snapshots.find(
+        (row) => row.id === receipt.resultId,
+      );
+      if (!snapshot || !snapshotIntegrity(snapshot))
+        throw new AccessError(
+          409,
+          'SNAPSHOT_CHANGED',
+          'The original saved snapshot could not be verified.',
+        );
+      return {
+        revision,
+        canWrite: true,
+        snapshots: summaries(state),
+        snapshot,
+        resultId: receipt.resultId,
+        duplicate: true,
+      };
+    });
+    if (prior) return prior;
+  }
+  const history =
+    input.action === 'saveHistory'
+      ? await readPortfolioHistory(ctx, input.query)
+      : null;
+  const historyObservations = history
+    ? ([] as typeof history.observations)
+    : null;
+  if (history && historyObservations) {
+    // Pin the economic date and revision across bounded pages. A concurrent
+    // acceptance fails the save rather than mixing versions in a report.
+    for (let offset = 0; offset < history.page.total; offset += 100) {
+      const page = await readPortfolioHistory(ctx, {
+        ...history.query,
+        asOf: history.asOf,
+        observationId: undefined,
+        offset,
+        limit: 100,
+      });
+      if (
+        page.revision !== history.revision ||
+        page.page.total !== history.page.total
+      )
+        throw new AccessError(
+          409,
+          'REPORTING_CHANGED',
+          'The history changed while preparing the snapshot. Refresh and save again.',
+        );
+      historyObservations.push(...page.observations);
+    }
+  }
   try {
     return await withTenant(ctx.organizationId, async (client) => {
-      const { state, revision } = await readWorkspaceInTransaction(
-          client,
-          ctx.organizationId,
-          true,
-        ),
+      if (input.action === 'saveHistory')
+        await assertHistoryAccess(client, ctx, true);
+      const { state, revision } = await (
+          input.action === 'saveHistory'
+            ? readHistoryWorkspace
+            : readWorkspaceInTransaction
+        )(client, ctx.organizationId, true),
         reporting = state.reporting ?? emptyReportingState();
       const receipt = reporting.receipts.find(
         (row) => row.key === input.idempotencyKey,
@@ -174,7 +254,47 @@ export async function saveReporting(
         financeRevision: state.finance?.revision ?? 0,
       };
       let snapshot: ReportingSnapshot;
-      if (input.action === 'savePeriod') {
+      if (input.action === 'saveHistory') {
+        if (!history || history.revision !== revision)
+          throw new AccessError(
+            409,
+            'REPORTING_CHANGED',
+            'The history changed. Refresh the view before saving.',
+          );
+        if (!history.positions.length)
+          throw new AccessError(
+            400,
+            'NO_HOLDINGS',
+            'Select investments with retained history before saving.',
+          );
+        const inputs = {
+          query: { ...history.query, asOf: history.asOf },
+          observations: historyObservations!,
+          positions: history.positions,
+          points: history.points,
+          basis: history.basis,
+          projectionVersion: history.projectionVersion,
+          lifecycle: state.historyLifecycle
+            ? {
+                ...state.historyLifecycle,
+                records: state.historyLifecycle.records.filter((record) =>
+                  history.positions.some(
+                    (position) => position.holdingId === record.holdingId,
+                  ),
+                ),
+                receipts: [],
+              }
+            : null,
+        };
+        snapshot = {
+          ...base,
+          kind: 'history',
+          inputs,
+          result: history,
+          inputDigest: sha256(JSON.stringify(inputs)),
+          resultDigest: sha256(JSON.stringify(history)),
+        };
+      } else if (input.action === 'savePeriod') {
         const scoped = scopedReportingInputs(data, state.finance, input.query),
           inputs = { query: input.query, ...scoped },
           result = evaluatePeriod(

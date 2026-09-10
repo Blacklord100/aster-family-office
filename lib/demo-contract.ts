@@ -1,4 +1,8 @@
+export const DEMO_DATASETS = ['mailroom-v1', 'history-v1'] as const;
+export type DemoDataset = (typeof DEMO_DATASETS)[number];
 export type DemoWorkspaceState = {
+  /** Older retained demonstrations use mailroom-v1. Pinned at creation. */
+  dataset?: DemoDataset;
   runId: string;
   name: string;
   startedAt: string;

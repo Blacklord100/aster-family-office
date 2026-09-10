@@ -40,6 +40,7 @@ export function demoActionableWarnings(result: Pick<Extraction, 'warnings'>) {
   return result.warnings.filter((warning) => !informational.has(warning));
 }
 export function demoAssetClass(name: string): AssetClass {
+  if (/\bcash balance\b/i.test(name)) return 'Cash';
   if (/\b(?:credit|bond)\b/i.test(name)) return 'Fixed income';
   if (/\b(?:venture|ventures)\b/i.test(name)) return 'Venture capital';
   if (/\b(?:property|real estate)\b/i.test(name)) return 'Real estate';
@@ -164,7 +165,8 @@ async function evaluate(c: PoolClient, organizationId: string, jobId: string) {
     const config = openFolderConfig(item.config, organizationId, item.id);
     return config.isDemo && config.directory === 'Demo mails';
   });
-  const catalog = await loadDemoCatalog();
+  const { state } = await readWorkspaceInTransaction(c, organizationId, true);
+  const catalog = await loadDemoCatalog(state.demo?.dataset);
   const sources = catalog.documents.filter(
     (document) => document.sha256 === row.content_hash,
   );
@@ -205,7 +207,6 @@ async function evaluate(c: PoolClient, organizationId: string, jobId: string) {
       humanReview: false,
     },
   );
-  const { state } = await readWorkspaceInTransaction(c, organizationId, true);
   if (
     !state.demo?.autoPublish ||
     state.demo.runId !== organizationId ||
@@ -396,7 +397,8 @@ export async function retryDemoNewsJob(organizationId: string, jobId: string) {
     ).rows[0];
     if (!row || !(await hasDemoSourceVerification(c, ctx, row.document_id)))
       return none;
-    const catalog = await loadDemoCatalog();
+    const { state } = await readWorkspaceInTransaction(c, organizationId, true);
+    const catalog = await loadDemoCatalog(state.demo?.dataset);
     const sources = catalog.documents.filter(
       (source) => source.sha256 === row.content_hash,
     );
@@ -426,7 +428,6 @@ export async function retryDemoNewsJob(organizationId: string, jobId: string) {
     )
       throw new Error('DEMO_RESULT_MISMATCH');
     const review = readReview(row, organizationId, result);
-    const { state } = await readWorkspaceInTransaction(c, organizationId, true);
     if (
       !state.demo?.autoPublish ||
       state.demo.runId !== organizationId ||

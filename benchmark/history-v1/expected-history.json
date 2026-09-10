@@ -1,0 +1,485 @@
+{
+  "schemaVersion": 1,
+  "dates": [
+    "2023-09-30",
+    "2023-12-31",
+    "2024-03-31",
+    "2024-06-30",
+    "2024-09-30",
+    "2024-12-31",
+    "2025-03-31",
+    "2025-06-30",
+    "2025-09-30",
+    "2025-12-31",
+    "2026-03-31",
+    "2026-06-30"
+  ],
+  "scope": "Six declared investor positions; acquisition must be explicitly reviewed. No inferred cashflow completeness or investment returns.",
+  "valuationCount": 72,
+  "correctionsRequireReview": 3,
+  "openingCashRequiresReview": false,
+  "automaticSettlements": 0,
+  "positions": [
+    {
+      "familyId": "harbor-family",
+      "investmentName": "Harbor Meridian Infrastructure I",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1000123.45",
+          "currency": "EUR"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1038128.14",
+          "currency": "EUR"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1052129.87",
+          "currency": "EUR"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1024126.41",
+          "currency": "EUR"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1071132.21",
+          "currency": "EUR"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1114137.52",
+          "currency": "EUR"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1083133.70",
+          "currency": "EUR"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1162143.45",
+          "currency": "EUR"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1178145.42",
+          "currency": "EUR"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1131362.84",
+          "currency": "EUR",
+          "basis": "After explicit correction review"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "1224151.10",
+          "currency": "EUR"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "1257155.18",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "familyId": "harbor-family",
+      "investmentName": "Harbor Orchard Credit II",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1180123.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1224968.14",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1241489.87",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1208446.41",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1263912.21",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1314657.52",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1278073.70",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1371303.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1390185.42",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1344160.61",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "1444471.10",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "1483415.18",
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "familyId": "maple-family",
+      "investmentName": "Maple Meridian Infrastructure I",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1240123.45",
+          "currency": "GBP"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1287248.14",
+          "currency": "GBP"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1304609.87",
+          "currency": "GBP"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1269886.41",
+          "currency": "GBP"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1328172.21",
+          "currency": "GBP"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1381497.52",
+          "currency": "GBP"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1343053.70",
+          "currency": "GBP"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1441023.45",
+          "currency": "GBP"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1460865.42",
+          "currency": "GBP"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1404722.84",
+          "currency": "GBP",
+          "basis": "After explicit correction review"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "1517911.10",
+          "currency": "GBP"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "1558835.18",
+          "currency": "GBP"
+        }
+      ]
+    },
+    {
+      "familyId": "maple-family",
+      "investmentName": "Maple Orchard Credit II",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1420123.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1474088.14",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1493969.87",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1454206.41",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1520952.21",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1582017.52",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1537993.70",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1650183.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1672905.42",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1617520.61",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "1738231.10",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "1785095.18",
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "familyId": "willow-family",
+      "investmentName": "Willow Meridian Infrastructure I",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1480123.45",
+          "currency": "CHF"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1536368.14",
+          "currency": "CHF"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1557089.87",
+          "currency": "CHF"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1515646.41",
+          "currency": "CHF"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1585212.21",
+          "currency": "CHF"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1648857.52",
+          "currency": "CHF"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1602973.70",
+          "currency": "CHF"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1719903.45",
+          "currency": "CHF"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1743585.42",
+          "currency": "CHF"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1678082.84",
+          "currency": "CHF",
+          "basis": "After explicit correction review"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "1811671.10",
+          "currency": "CHF"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "1860515.18",
+          "currency": "CHF"
+        }
+      ]
+    },
+    {
+      "familyId": "willow-family",
+      "investmentName": "Willow Orchard Credit II",
+      "effectiveOpeningDateAfterReview": "2023-07-01",
+      "marks": [
+        {
+          "date": "2023-09-30",
+          "amount": "1660123.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2023-12-31",
+          "amount": "1723208.14",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-03-31",
+          "amount": "1746449.87",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-06-30",
+          "amount": "1699966.41",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-09-30",
+          "amount": "1777992.21",
+          "currency": "USD"
+        },
+        {
+          "date": "2024-12-31",
+          "amount": "1849377.52",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-03-31",
+          "amount": "1797913.70",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-06-30",
+          "amount": "1929063.45",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-09-30",
+          "amount": "1955625.42",
+          "currency": "USD"
+        },
+        {
+          "date": "2025-12-31",
+          "amount": "1890880.61",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-03-31",
+          "amount": "2031991.10",
+          "currency": "USD"
+        },
+        {
+          "date": "2026-06-30",
+          "amount": "2086775.18",
+          "currency": "USD"
+        }
+      ]
+    }
+  ],
+  "manualSettlementScenarios": [
+    {
+      "familyId": "harbor-family",
+      "investmentName": "Harbor Meridian Infrastructure I",
+      "cashName": "Harbor operating cash balance",
+      "currency": "EUR",
+      "openingCash": "500000.00",
+      "callAmount": "40000.25",
+      "distributionAmount": "12500.10",
+      "settlementDate": "2026-09-08",
+      "cashAfterExplicitSettlements": "472499.85",
+      "requires": [
+        "Confirm account classification and restriction state",
+        "Confirm FX and funded book cost",
+        "Confirm distribution carrying-value and commitment treatment",
+        "Review retained bank source for both settlements"
+      ],
+      "reconciled": false
+    },
+    {
+      "familyId": "maple-family",
+      "investmentName": "Maple Meridian Infrastructure I",
+      "cashName": "Maple operating cash balance",
+      "currency": "GBP",
+      "openingCash": "500000.00",
+      "callAmount": "40000.25",
+      "distributionAmount": "12500.10",
+      "settlementDate": "2026-09-08",
+      "cashAfterExplicitSettlements": "472499.85",
+      "requires": [
+        "Confirm account classification and restriction state",
+        "Confirm FX and funded book cost",
+        "Confirm distribution carrying-value and commitment treatment",
+        "Review retained bank source for both settlements"
+      ],
+      "reconciled": false
+    },
+    {
+      "familyId": "willow-family",
+      "investmentName": "Willow Meridian Infrastructure I",
+      "cashName": "Willow operating cash balance",
+      "currency": "CHF",
+      "openingCash": "500000.00",
+      "callAmount": "40000.25",
+      "distributionAmount": "12500.10",
+      "settlementDate": "2026-09-08",
+      "cashAfterExplicitSettlements": "472499.85",
+      "requires": [
+        "Confirm account classification and restriction state",
+        "Confirm FX and funded book cost",
+        "Confirm distribution carrying-value and commitment treatment",
+        "Review retained bank source for both settlements"
+      ],
+      "reconciled": false
+    }
+  ]
+}

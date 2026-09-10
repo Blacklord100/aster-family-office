@@ -305,5 +305,72 @@ describe('reviewed financial fact posting', () => {
     });
     expect(fixtures.state.portfolio?.holdings[0].valueEUR).toBe(90);
     expect(fixtures.state.portfolio?.tasks).toHaveLength(1);
+    expect(fixtures.state.finance?.obligations?.[0]).toMatchObject({
+      effectiveDate: null,
+      dueDate: null,
+      amount: '25.00',
+      currency: 'USD',
+      jobId: job.id,
+      documentId: job.document_id,
+      factIndex: 0,
+      importedAt: '2026-05-01T08:00:00.000Z',
+      origin: 'accepted_fact',
+    });
+    expect(fixtures.state.finance?.transactions).toEqual([]);
+    expect(fixtures.state.finance?.events).toEqual([]);
+  });
+  it('creates one obligation across agentic/workflow replay and a forwarded source without changing balances', async () => {
+    const fact = {
+      ...extraction.facts[0],
+      kind: 'distribution' as const,
+      amount: '25.01',
+      currency: null,
+      effectiveDate: null,
+      dueDate: null,
+    };
+    const before = structuredClone(fixtures.state.portfolio?.holdings);
+    await run({ ...extraction, mode: 'agentic', facts: [fact] }, [
+      { holdingId: holdings[0].id, factIndex: 0, reviewRevision: 3 },
+    ]);
+    const first = structuredClone(fixtures.state.finance?.obligations?.[0]);
+    expect(first).toMatchObject({
+      kind: 'distribution',
+      amount: '25.01',
+      currency: null,
+      dueDate: null,
+      effectiveDate: null,
+      reviewRevision: 3,
+    });
+    const replay = await acceptFacts(
+      client,
+      ctx,
+      { ...job, id: 'forwarded-job', document_id: 'forwarded-document' },
+      { ...extraction, mode: 'workflow', facts: [fact] },
+      [{ holdingId: holdings[0].id, factIndex: 0, reviewRevision: 1 }],
+    );
+    expect(replay).toMatchObject({ applied: 0, duplicates: 1 });
+    expect(fixtures.state.finance?.obligations).toEqual([first]);
+    expect(fixtures.state.portfolio?.holdings).toEqual(before);
+    expect(fixtures.state.finance?.transactions).toEqual([]);
+    expect(fixtures.state.finance?.events).toEqual([]);
+  });
+  it('preserves unsupported reported currencies as incomplete obligations without inventing FX', async () => {
+    await run({
+      ...extraction,
+      facts: [
+        {
+          ...extraction.facts[0],
+          kind: 'capital_call',
+          currency: 'JPY',
+          amount: null,
+        },
+      ],
+    });
+    expect(fixtures.state.finance?.obligations?.[0]).toMatchObject({
+      currency: 'JPY',
+      amount: null,
+    });
+    expect(fixtures.state.finance?.valuations).toEqual([]);
+    expect(fixtures.state.portfolio?.holdings[0].valueEUR).toBe(90);
   });
 });

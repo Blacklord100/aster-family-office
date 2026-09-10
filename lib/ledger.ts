@@ -17,6 +17,9 @@ import {
   type LedgerTransaction,
   type ReviewedValuationInput,
   type ValuationRecord,
+  type CashObligation,
+  type CashObligationTerms,
+  type ReviewedCashNoticeInput,
 } from './ledger-contract';
 
 export class LedgerError extends Error {
@@ -159,6 +162,288 @@ export function transactionStatus(
     finance.events.filter((event) => event.transactionId === id).at(-1)?.type ??
     'reviewed'
   );
+}
+const minorString = (value: bigint) =>
+  `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
+const noticeTerms = (value: CashObligationTerms): CashObligationTerms => ({
+  amount: value.amount,
+  currency: value.currency,
+  effectiveDate: value.effectiveDate,
+  dueDate: value.dueDate,
+});
+/** Similar notices are review candidates, never automatically merged or settled. */
+export function relatedCashObligations(
+  finance: FinanceState,
+  notice: CashObligation,
+): CashObligation[] {
+  return (finance.obligations ?? []).filter(
+    (other) =>
+      other.id !== notice.id &&
+      !other.cancellation &&
+      !notice.cancellation &&
+      other.holdingId === notice.holdingId &&
+      other.kind === notice.kind &&
+      !notice.distinctFrom.some(
+        (item) =>
+          item.obligationId === other.id &&
+          item.noticeRevision === notice.amendments.length &&
+          item.otherRevision === other.amendments.length,
+      ) &&
+      !other.distinctFrom.some(
+        (item) =>
+          item.obligationId === notice.id &&
+          item.noticeRevision === other.amendments.length &&
+          item.otherRevision === notice.amendments.length,
+      ) &&
+      ((!!notice.effectiveDate &&
+        notice.effectiveDate === other.effectiveDate) ||
+        (!!notice.dueDate && notice.dueDate === other.dueDate) ||
+        ((!notice.effectiveDate || !other.effectiveDate) &&
+          (!notice.dueDate || !other.dueDate) &&
+          notice.amount !== null &&
+          other.amount !== null &&
+          moneyMinor(notice.amount) === moneyMinor(other.amount) &&
+          notice.currency === other.currency)),
+  );
+}
+export type CashObligationSummary = {
+  status:
+    | 'needs_details'
+    | 'expected'
+    | 'ready'
+    | 'partially_settled'
+    | 'settled'
+    | 'cancelled';
+  settledAmount: string;
+  reviewedAmount: string;
+  remainingAmount: string | null;
+  unallocatedAmount: string | null;
+  missingDetails: string[];
+  relatedObligationIds: string[];
+  transactionIds: string[];
+  matchingTransactionIds: string[];
+};
+/** Exact original-currency amounts. Reversed/voided allocations release the reservation. */
+export function obligationSummary(
+  finance: FinanceState,
+  notice: CashObligation,
+): CashObligationSummary {
+  const transactions = finance.transactions.filter(
+    (tx) => tx.obligationId === notice.id,
+  );
+  let settled = 0n,
+    reviewed = 0n;
+  for (const tx of transactions) {
+    const status = transactionStatus(finance, tx.id);
+    if (status === 'settled') settled += moneyMinor(tx.amount);
+    if (status === 'reviewed') reviewed += moneyMinor(tx.amount);
+  }
+  const total = notice.amount === null ? null : moneyMinor(notice.amount);
+  const missingDetails: string[] = [];
+  if (total === null || total === 0n)
+    missingDetails.push('Positive notice amount');
+  if (!LEDGER_CURRENCIES.includes(notice.currency as Holding['currency']))
+    missingDetails.push('Supported source currency');
+  if (!notice.dueDate) missingDetails.push('Due / expected date');
+  const relatedObligationIds = relatedCashObligations(finance, notice).map(
+    (item) => item.id,
+  );
+  if (relatedObligationIds.length)
+    missingDetails.push('Resolve similar notices');
+  const matchingTransactionIds = finance.transactions
+    .filter(
+      (tx) =>
+        !tx.obligationId &&
+        tx.kind === notice.kind &&
+        tx.holdingId === notice.holdingId &&
+        tx.currency === notice.currency &&
+        tx.dueDate === notice.dueDate &&
+        ['reviewed', 'settled'].includes(transactionStatus(finance, tx.id)),
+    )
+    .map((tx) => tx.id);
+  if (matchingTransactionIds.length)
+    missingDetails.push('Match existing transactions');
+  // Invalid historical allocations are unavailable, never a negative or silently clamped remaining balance.
+  if (total !== null && settled + reviewed > total)
+    missingDetails.push('Allocated amount exceeds this notice');
+  const remaining = total !== null && total >= settled ? total - settled : null;
+  const available =
+    total !== null && total >= settled + reviewed
+      ? total - settled - reviewed
+      : null;
+  return {
+    status: notice.cancellation
+      ? 'cancelled'
+      : missingDetails.length
+        ? 'needs_details'
+        : remaining === 0n
+          ? 'settled'
+          : settled > 0n
+            ? 'partially_settled'
+            : reviewed > 0n
+              ? 'ready'
+              : 'expected',
+    settledAmount: minorString(settled),
+    reviewedAmount: minorString(reviewed),
+    remainingAmount: remaining === null ? null : minorString(remaining),
+    unallocatedAmount: available === null ? null : minorString(available),
+    missingDetails,
+    relatedObligationIds,
+    matchingTransactionIds,
+    transactionIds: transactions.map((tx) => tx.id),
+  };
+}
+/** Only registers an accepted notice. This function cannot append postings or change portfolio balances. */
+export function postReviewedCashNotice(
+  portfolio: PortfolioRecords,
+  current: FinanceState | undefined,
+  input: ReviewedCashNoticeInput,
+  meta: LedgerMeta,
+): { finance: FinanceState; obligation: CashObligation; duplicate: boolean } {
+  validMeta(meta);
+  const finance = structuredClone(current ?? emptyFinanceState());
+  finance.obligations ??= [];
+  const holding = findHolding(portfolio, input.holdingId);
+  const evidence = portfolio.evidence.find(
+    (row) =>
+      row.id === input.sourceId &&
+      row.holdingId === holding.id &&
+      row.familyId === holding.familyId &&
+      row.status === 'Accepted',
+  );
+  if (!evidence)
+    fail(
+      'SOURCE_NOT_FOUND',
+      'The accepted notice needs evidence linked to this holding.',
+    );
+  if (holding.assetClass === 'Cash')
+    fail(
+      'INVESTMENT_REQUIRED',
+      'Cash notices must link to an investment position.',
+    );
+  if (input.amount !== null) ledgerMoney.parse(input.amount);
+  if (input.effectiveDate) ledgerDate.parse(input.effectiveDate);
+  if (input.dueDate) ledgerDate.parse(input.dueDate);
+  if (input.currency !== null && !/^[A-Z]{3}$/.test(input.currency))
+    fail(
+      'CURRENCY_INVALID',
+      'Retain a reported three-letter currency code or leave it unknown.',
+    );
+  const prior = finance.obligations.find(
+    (row) =>
+      row.fingerprint === input.fingerprint ||
+      (row.sourceId === input.sourceId &&
+        row.holdingId === input.holdingId &&
+        row.kind === input.kind),
+  );
+  if (prior) return { finance, obligation: prior, duplicate: true };
+  if (finance.obligations.length >= 2000)
+    fail(
+      'LEDGER_LIMIT',
+      'This workspace has reached its bounded cash-notice limit.',
+      409,
+    );
+  const obligation: CashObligation = {
+    ...input,
+    id: meta.id,
+    acceptedAt: meta.at,
+    acceptedBy: meta.actorId,
+    original: noticeTerms(input),
+    amendments: [],
+    distinctFrom: [],
+  };
+  finance.obligations.push(obligation);
+  bump(finance);
+  return { finance, obligation, duplicate: false };
+}
+function findObligation(finance: FinanceState, id: string): CashObligation {
+  return (
+    (finance.obligations ?? []).find((row) => row.id === id) ??
+    fail(
+      'OBLIGATION_NOT_FOUND',
+      'Choose a cash obligation in this workspace.',
+      404,
+    )
+  );
+}
+function requireUnallocatedObligation(
+  finance: FinanceState,
+  notice: CashObligation,
+) {
+  if (notice.cancellation)
+    fail(
+      'OBLIGATION_CANCELLED',
+      'This notice has been cancelled; its retained history cannot be overwritten.',
+      409,
+    );
+  const summary = obligationSummary(finance, notice);
+  if (
+    moneyMinor(summary.reviewedAmount) > 0n ||
+    moneyMinor(summary.settledAmount) > 0n
+  )
+    fail(
+      'OBLIGATION_HAS_TRANSACTIONS',
+      'Void reviewed transactions and explicitly reverse settled amounts before amending or cancelling this notice.',
+      409,
+    );
+}
+function validateObligationAllocation(
+  finance: FinanceState,
+  tx: LedgerTransaction,
+  matchingExisting = false,
+) {
+  if (!tx.obligationId) {
+    if (
+      (finance.obligations ?? []).some(
+        (notice) =>
+          !notice.cancellation &&
+          notice.holdingId === tx.holdingId &&
+          notice.kind === tx.kind &&
+          notice.currency === tx.currency &&
+          notice.dueDate === tx.dueDate,
+      )
+    )
+      fail(
+        'OBLIGATION_LINK_REQUIRED',
+        'An accepted notice matches this investment, kind, currency and due date. Prepare the transaction from that notice to prevent duplicate obligations.',
+      );
+    return;
+  }
+  const notice = findObligation(finance, tx.obligationId),
+    summary = obligationSummary(finance, notice);
+  if (notice.cancellation)
+    fail(
+      'OBLIGATION_CANCELLED',
+      'A cancelled notice cannot receive transactions.',
+      409,
+    );
+  const missing = summary.missingDetails.filter(
+    (item) => !matchingExisting || item !== 'Match existing transactions',
+  );
+  if (missing.length)
+    fail(
+      'OBLIGATION_INCOMPLETE',
+      missing.join('; ') + '. Resolve these details before allocating cash.',
+    );
+  if (
+    notice.holdingId !== tx.holdingId ||
+    notice.kind !== tx.kind ||
+    notice.currency !== tx.currency ||
+    notice.dueDate !== tx.dueDate
+  )
+    fail(
+      'OBLIGATION_MISMATCH',
+      'The transaction investment, kind, currency and due date must match its accepted notice. Amend the notice explicitly if needed.',
+    );
+  if (
+    summary.unallocatedAmount === null ||
+    moneyMinor(tx.amount) > moneyMinor(summary.unallocatedAmount)
+  )
+    fail(
+      'OBLIGATION_OVERALLOCATED',
+      'This transaction exceeds the unallocated amount. Existing reviewed and settled amounts are already reserved.',
+      409,
+    );
 }
 /** Called by document review after its accepted EvidenceSource is inserted. No I/O or mutation of the caller. */
 export function postReviewedValuation(
@@ -685,6 +970,162 @@ export function applyLedgerAction(
     );
   const resultId = meta.id;
   switch (command.type) {
+    case 'linkTransactionObligation': {
+      const transaction =
+        finance.transactions.find((row) => row.id === command.transactionId) ??
+        fail('TRANSACTION_NOT_FOUND', 'Choose an existing transaction.', 404);
+      if (
+        transaction.obligationId ||
+        !['reviewed', 'settled'].includes(
+          transactionStatus(finance, transaction.id),
+        )
+      )
+        fail(
+          'TRANSACTION_CHANGED',
+          'Only an unlinked reviewed or settled transaction can be matched to a notice.',
+          409,
+        );
+      const notice = findObligation(finance, command.obligationId);
+      validateSource(
+        portfolio,
+        command.source,
+        findHolding(portfolio, notice.holdingId),
+      );
+      validateDate(command.source.date, meta);
+      validateObligationAllocation(
+        finance,
+        { ...transaction, obligationId: notice.id },
+        true,
+      );
+      transaction.obligationId = notice.id;
+      transaction.obligationLink = {
+        source: command.source,
+        actorId: meta.actorId,
+        at: meta.at,
+      };
+      break;
+    }
+    case 'registerNoticeObligation': {
+      const event = portfolio.events.find(
+        (item) => item.id === command.eventId,
+      );
+      if (
+        !event ||
+        !['Capital call', 'Distribution'].includes(event.type) ||
+        event.status !== 'Source reported' ||
+        event.financialEffect !== 'None' ||
+        event.holdingIds.length !== 1
+      )
+        fail(
+          'NOTICE_NOT_FOUND',
+          'Choose a retained source-reported cash notice with no financial effect.',
+          404,
+        );
+      const posted = postReviewedCashNotice(
+        portfolio,
+        finance,
+        {
+          holdingId: event.holdingIds[0],
+          kind: event.type === 'Capital call' ? 'capital_call' : 'distribution',
+          sourceId: event.sourceId,
+          fingerprint: 'legacy-event:' + event.id,
+          documentId: portfolio.evidence.find(
+            (row) => row.id === event.sourceId,
+          )?.documentId,
+          amount:
+            event.reportedAmount &&
+            ledgerMoney.safeParse(event.reportedAmount).success
+              ? event.reportedAmount
+              : null,
+          currency: event.reportedCurrency ?? null,
+          effectiveDate:
+            event.dateBasis === 'Source reported' ? event.date : null,
+          dueDate: null,
+          importedAt: null,
+          summary: event.summary,
+          origin: 'legacy_notice',
+        },
+        meta,
+      );
+      return {
+        portfolio,
+        finance: posted.finance,
+        resultId: posted.obligation.id,
+      };
+    }
+    case 'amendObligation':
+    case 'cancelObligation':
+    case 'confirmDistinctObligation': {
+      const notice = findObligation(finance, command.obligationId);
+      const holding = findHolding(portfolio, notice.holdingId);
+      validateSource(portfolio, command.source, holding);
+      validateDate(command.source.date, meta);
+      if (command.type === 'confirmDistinctObligation') {
+        const other = findObligation(finance, command.otherObligationId);
+        if (
+          !relatedCashObligations(finance, notice).some(
+            (row) => row.id === other.id,
+          )
+        )
+          fail(
+            'OBLIGATION_NOT_RELATED',
+            'Choose an unresolved similar notice for the same investment and event kind.',
+          );
+        notice.distinctFrom.push({
+          obligationId: other.id,
+          noticeRevision: notice.amendments.length,
+          otherRevision: other.amendments.length,
+          source: command.source,
+          reason: command.reason,
+          at: meta.at,
+          actorId: meta.actorId,
+        });
+      } else {
+        requireUnallocatedObligation(finance, notice);
+        if (command.type === 'cancelObligation') {
+          if (command.duplicateOf) {
+            const other = findObligation(finance, command.duplicateOf);
+            if (
+              other.id === notice.id ||
+              other.cancellation ||
+              other.holdingId !== notice.holdingId ||
+              other.kind !== notice.kind
+            )
+              fail(
+                'OBLIGATION_DUPLICATE_INVALID',
+                'The retained obligation must be active and belong to the same investment and event kind.',
+              );
+          }
+          notice.cancellation = {
+            source: command.source,
+            reason: command.reason,
+            duplicateOf: command.duplicateOf,
+            at: meta.at,
+            actorId: meta.actorId,
+          };
+        } else {
+          if (notice.amendments.length >= 100)
+            fail(
+              'LEDGER_LIMIT',
+              'This notice has reached its amendment-history limit.',
+              409,
+            );
+          const after = noticeTerms(command);
+          notice.amendments.push({
+            id: meta.id,
+            before: noticeTerms(notice),
+            after,
+            source: command.source,
+            reason: command.reason,
+            at: meta.at,
+            actorId: meta.actorId,
+          });
+          Object.assign(notice, after);
+          // Distinct-notice attestations remain immutable; their recorded term revisions prevent stale reuse.
+        }
+      }
+      break;
+    }
     case 'reviewAccount': {
       const account =
         portfolio.accounts.find((item) => item.id === command.accountId) ??
@@ -966,6 +1407,7 @@ export function applyLedgerAction(
         fail('POSITIVE_AMOUNT', 'Transactions require a positive amount.');
       const tx: LedgerTransaction = {
         id: meta.id,
+        obligationId: command.obligationId,
         kind: command.kind,
         holdingId: command.holdingId,
         cashHoldingId: command.cashHoldingId,
@@ -991,6 +1433,7 @@ export function applyLedgerAction(
         memo: command.memo,
       };
       validateTransaction(portfolio, finance, tx);
+      validateObligationAllocation(finance, tx);
       finance.transactions.push(tx);
       break;
     }
@@ -1047,6 +1490,19 @@ export function applyLedgerAction(
           );
         if (tx.fx && tx.fx.date > command.date)
           fail('FX_DATE_INVALID', 'The FX date cannot be after settlement.');
+        // Newly accepted conflicting notices can arrive after transaction review.
+        if (tx.obligationId) {
+          const notice = findObligation(finance, tx.obligationId);
+          if (
+            notice.cancellation ||
+            obligationSummary(finance, notice).missingDetails.length
+          )
+            fail(
+              'OBLIGATION_INCOMPLETE',
+              'Resolve the linked notice and similar-source conflicts before confirming settlement.',
+              409,
+            );
+        } else validateObligationAllocation(finance, tx);
         postings = settlementPostings(portfolio, finance, tx);
         externalFlowEUR =
           tx.kind === 'deposit'

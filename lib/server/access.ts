@@ -152,6 +152,7 @@ export async function requireWorkspace(
       ([
         '/api/workspace',
         '/api/ledger',
+        '/api/portfolio-history',
         '/api/reporting',
         '/api/report-obligations',
       ].includes(path) ||

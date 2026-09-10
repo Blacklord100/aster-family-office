@@ -23,21 +23,45 @@ import {
 } from '@/lib/pdf-preview';
 import styles from './pdf-preview.module.css';
 import { emailAttachmentPreviewPath } from '@/lib/email-preview-contract';
+import { useWorkspace } from './workspace-context';
 
-/** Canvas only: no annotation links, scripting manager, XFA, attachments or external asset URLs. */
-export function PdfPreview({
-  documentId,
-  onOpened,
-  expanded = false,
-  initialPage = 1,
-  attachmentIndex,
-}: {
+type PdfPreviewProps = {
   documentId: string;
   onOpened: () => void;
   expanded?: boolean;
   initialPage?: number;
   attachmentIndex?: number;
-}) {
+};
+/** Canvas only: no annotation links, scripting manager, XFA, attachments or external asset URLs. */
+export function PdfPreview(props: PdfPreviewProps) {
+  const { state } = useWorkspace();
+  const organizationId = state.identity?.organizationId;
+  if (!organizationId)
+    return (
+      <output>Choose an authenticated office to preview this original.</output>
+    );
+  return (
+    <ScopedPdfPreview
+      key={JSON.stringify([
+        organizationId,
+        state.identity?.dataScope,
+        props.documentId,
+        props.attachmentIndex,
+        props.initialPage,
+      ])}
+      {...props}
+      organizationId={organizationId}
+    />
+  );
+}
+function ScopedPdfPreview({
+  documentId,
+  onOpened,
+  expanded = false,
+  initialPage = 1,
+  attachmentIndex,
+  organizationId,
+}: PdfPreviewProps & { organizationId: string }) {
   const [page, setPage] = useState(initialPage),
     [count, setCount] = useState(0);
   const [wide, setWide] = useState(false);
@@ -98,6 +122,7 @@ export function PdfPreview({
             ? pdfPreviewPath(documentId)
             : emailAttachmentPreviewPath(documentId, attachmentIndex),
           {
+            headers: { 'x-aster-organization': organizationId },
             credentials: 'same-origin',
             cache: 'no-store',
             redirect: 'error',
@@ -198,7 +223,7 @@ export function PdfPreview({
         canvas.height = 0;
       }
     };
-  }, [documentId, attachmentIndex, page]);
+  }, [documentId, attachmentIndex, page, organizationId]);
   return (
     <div className={styles.preview} aria-label="PDF source preview">
       <div className={styles.toolbar}>

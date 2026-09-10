@@ -8,6 +8,8 @@ import { scopeWorkspace } from '../data-scope';
 import type { WorkspaceContext } from './access';
 import type { ReportingRequest } from '../reporting-contract';
 import { RISK_PRESETS } from '../risk-engine';
+import { projectPortfolioHistory } from '../portfolio-history';
+import { emptyFinanceState } from '../ledger-contract';
 const f = vi.hoisted(() => ({
   state: {} as WorkspaceState,
   revision: 0,
@@ -16,6 +18,14 @@ const f = vi.hoisted(() => ({
   tail: Promise.resolve(),
   role: 'analyst',
   scope: null as { familyIds: string[] } | null,
+  historyRead: vi.fn(),
+  historyAccess: vi.fn(),
+  historyWorkspace: vi.fn(),
+}));
+vi.mock('./portfolio-history-store', () => ({
+  readPortfolioHistory: f.historyRead,
+  assertHistoryAccess: f.historyAccess,
+  readHistoryWorkspace: f.historyWorkspace,
 }));
 vi.mock('server-only', () => ({}));
 vi.mock('./access', () => {
@@ -125,8 +135,108 @@ describe('immutable reporting snapshots', () => {
     f.role = 'analyst';
     f.scope = null;
     f.tail = Promise.resolve();
+    f.historyRead.mockReset();
+    f.historyAccess.mockReset();
+    f.historyWorkspace
+      .mockReset()
+      .mockImplementation(async (_client, _org, locked) => {
+        expect(locked).toBe(true);
+        return { state: structuredClone(f.state), revision: f.revision };
+      });
   });
   afterEach(() => vi.useRealTimers());
+  it('preserves every source observation across pagination and later corrections', async () => {
+    const portfolio = deriveWorkspace(f.state),
+      holding = portfolio.holdings[0];
+    f.state.sampleData = false;
+    f.state.portfolio = {
+      ...portfolio,
+      holdings: [holding],
+      evidence: [],
+      history: [],
+      events: [],
+      tasks: [],
+    };
+    f.state.finance = emptyFinanceState();
+    for (let index = 0; index < 155; index++) {
+      const date = new Date(Date.UTC(2025, 0, index + 1))
+          .toISOString()
+          .slice(0, 10),
+        sourceId = 'history-source-' + index;
+      f.state.portfolio.evidence.push({
+        id: sourceId,
+        holdingId: holding.id,
+        familyId: holding.familyId,
+        mailboxId: 'manual',
+        subject: 'Reviewed NAV',
+        sender: 'Test manager',
+        receivedAt: date + 'T12:00:00Z',
+        effectiveDate: date,
+        filename: 'nav-' + index + '.txt',
+        page: 1,
+        excerpt: 'NAV ' + (1000 + index),
+        status: 'Accepted',
+        synthetic: false,
+      });
+      f.state.finance.valuations.push({
+        id: 'valuation-' + index,
+        holdingId: holding.id,
+        amount: String(1000 + index) + '.00',
+        currency: 'EUR',
+        valueEUR: 1000 + index,
+        effectiveDate: date,
+        sourceId,
+        actorId: 'reviewer',
+        recordedAt: date + 'T12:00:00Z',
+        valuationMethod: 'Reported fund NAV',
+      });
+    }
+    f.historyRead.mockImplementation(async (_ctx, query) =>
+      projectPortfolioHistory(f.state.portfolio!, f.state.finance, query, {
+        revision: f.revision,
+        now: '2026-09-10T12:00:00Z',
+      }),
+    );
+    const historyRequest: ReportingRequest = {
+      action: 'saveHistory',
+      expectedRevision: 0,
+      idempotencyKey: '00000000-0000-4000-8000-000000000010',
+      name: 'History preserved',
+      query: {
+        currency: 'EUR',
+        knowledge: 'restated',
+        cohort: 'current',
+        includeSuperseded: false,
+        limit: 20,
+        offset: 0,
+      },
+    };
+    const result = await saveReporting(ctx, historyRequest);
+    const snapshot = result.snapshot!;
+    if (snapshot.kind !== 'history') throw new Error('Wrong snapshot kind');
+    expect(snapshot.inputs.observations).toHaveLength(155);
+    expect(snapshot.result.observations).toHaveLength(20);
+    expect(snapshot.result.summary.knownAmount).toBe('1154.00');
+    expect(f.historyAccess).toHaveBeenCalledWith(expect.anything(), ctx, true);
+    f.state.finance!.valuations.at(-1)!.valueEUR = 99999;
+    f.state.finance!.valuations.at(-1)!.amount = '99999.00';
+    const reopened = await readReporting(ctx, undefined, snapshot.id);
+    expect(reopened.snapshot?.kind).toBe('history');
+    expect(snapshotIntegrity(reopened.snapshot!)).toBe(true);
+    expect(
+      (reopened.snapshot as typeof snapshot).result.summary.knownAmount,
+    ).toBe('1154.00');
+    f.historyRead.mockRejectedValue(
+      new Error('Live projection unavailable after save'),
+    );
+    const retried = await saveReporting(ctx, historyRequest);
+    expect(retried.duplicate).toBe(true);
+    expect(retried.resultId).toBe(snapshot.id);
+    expect(f.saves).toHaveBeenCalledTimes(1);
+    await expect(
+      saveReporting(ctx, { ...historyRequest, name: 'Different intent' }),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
   it('pins selected holdings, current mapping, scenario, inputs and results independently of later workspace edits', async () => {
     const saved = await saveReporting(ctx, request()),
       snapshot = saved.snapshot!;

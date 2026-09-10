@@ -10,8 +10,14 @@ import {
 import { createDemoRun, listDemoRuns } from '@/lib/server/demo-workspace';
 import { auth, authEnvironment } from '@/lib/server/auth';
 import { parseJson } from '@/lib/server/http';
+import { DEMO_DATASETS } from '@/lib/demo-contract';
 const actionSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('start') }).strict(),
+  z
+    .object({
+      action: z.literal('start'),
+      dataset: z.enum(DEMO_DATASETS).default('mailroom-v1'),
+    })
+    .strict(),
   z.object({ action: z.literal('leave') }).strict(),
   z.object({ action: z.literal('select'), organizationId: z.uuid() }).strict(),
 ]);
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
     } else {
       const ctx = await requireWorkspace(request, 'admin');
       if (input.action === 'start') {
-        result = await createDemoRun(ctx);
+        result = await createDemoRun(ctx, input.dataset);
         organizationId = result.organizationId as string;
       } else {
         if (

@@ -88,6 +88,9 @@ export type AccountDetails = {
 };
 export type LedgerTransaction = {
   id: string;
+  /** Notice allocation only. Cash still changes exclusively through settlement events. */
+  obligationId?: string;
+  obligationLink?: { source: LedgerSource; actorId: string; at: string };
   kind: (typeof LEDGER_KINDS)[number];
   holdingId?: string;
   cashHoldingId: string;
@@ -107,6 +110,70 @@ export type LedgerTransaction = {
   reviewedAt: string;
   memo: string;
 };
+export type CashObligationTerms = {
+  amount: string | null;
+  /** Retain unsupported reported currencies; completing a transaction still requires a supported currency. */
+  currency: string | null;
+  effectiveDate: string | null;
+  dueDate: string | null;
+};
+export type CashObligation = CashObligationTerms & {
+  id: string;
+  holdingId: string;
+  kind: 'capital_call' | 'distribution';
+  sourceId: string;
+  fingerprint: string;
+  documentId?: string;
+  jobId?: string;
+  factIndex?: number;
+  reviewRevision?: number;
+  importedAt: string | null;
+  acceptedAt: string;
+  acceptedBy: string;
+  summary: string;
+  origin: 'accepted_fact' | 'legacy_notice';
+  original: CashObligationTerms;
+  amendments: {
+    id: string;
+    before: CashObligationTerms;
+    after: CashObligationTerms;
+    source: LedgerSource;
+    reason: string;
+    at: string;
+    actorId: string;
+  }[];
+  distinctFrom: {
+    obligationId: string;
+    noticeRevision: number;
+    otherRevision: number;
+    reason: string;
+    source: LedgerSource;
+    at: string;
+    actorId: string;
+  }[];
+  cancellation?: {
+    reason: string;
+    source: LedgerSource;
+    at: string;
+    actorId: string;
+    duplicateOf?: string;
+  };
+};
+export type ReviewedCashNoticeInput = CashObligationTerms &
+  Pick<
+    CashObligation,
+    | 'holdingId'
+    | 'kind'
+    | 'sourceId'
+    | 'fingerprint'
+    | 'documentId'
+    | 'jobId'
+    | 'factIndex'
+    | 'reviewRevision'
+    | 'importedAt'
+    | 'summary'
+    | 'origin'
+  >;
 export type LedgerEvent = {
   id: string;
   transactionId: string;
@@ -168,6 +235,8 @@ export type FinanceState = {
   holdings: Record<string, HoldingDetails>;
   accounts: Record<string, AccountDetails>;
   transactions: LedgerTransaction[];
+  /** Optional for existing encrypted workspace envelopes. */
+  obligations?: CashObligation[];
   events: LedgerEvent[];
   valuations: ValuationRecord[];
   coverage: CashflowCoverage[];
@@ -180,6 +249,7 @@ export const emptyFinanceState = (): FinanceState => ({
   holdings: {},
   accounts: {},
   transactions: [],
+  obligations: [],
   events: [],
   valuations: [],
   coverage: [],
@@ -271,6 +341,7 @@ export const ledgerCommandSchema = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('recordTransaction'),
+      obligationId: ledgerId.optional(),
       kind: z.enum(LEDGER_KINDS),
       holdingId: ledgerId.optional(),
       cashHoldingId: ledgerId,
@@ -283,6 +354,54 @@ export const ledgerCommandSchema = z.discriminatedUnion('type', [
       commitmentEffect: z.enum(['none', 'reduce', 'increase']),
       commitmentAmountEUR: ledgerMoney,
       memo: z.string().max(1000).default(''),
+      ...sourceFields,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('registerNoticeObligation'),
+      eventId: ledgerId,
+      evidenceVerified: z.literal(true),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('linkTransactionObligation'),
+      obligationId: ledgerId,
+      transactionId: ledgerId,
+      ...sourceFields,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('amendObligation'),
+      obligationId: ledgerId,
+      amount: ledgerMoney.nullable(),
+      currency: z
+        .string()
+        .regex(/^[A-Z]{3}$/)
+        .nullable(),
+      effectiveDate: ledgerDate.nullable(),
+      dueDate: ledgerDate.nullable(),
+      reason: ledgerLabel,
+      ...sourceFields,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('cancelObligation'),
+      obligationId: ledgerId,
+      duplicateOf: ledgerId.optional(),
+      reason: ledgerLabel,
+      ...sourceFields,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('confirmDistinctObligation'),
+      obligationId: ledgerId,
+      otherObligationId: ledgerId,
+      reason: ledgerLabel,
       ...sourceFields,
     })
     .strict(),

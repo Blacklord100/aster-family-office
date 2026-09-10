@@ -15,6 +15,11 @@ import {
   type StressResult,
 } from './risk-contract';
 import type { PortfolioRecords } from './workspace';
+import {
+  PortfolioHistoryQuerySchema,
+  type PortfolioHistoryQuery,
+  type PortfolioHistoryResponse,
+} from './portfolio-history-contract';
 const ids = z
   .array(ledgerId)
   .min(1)
@@ -160,7 +165,26 @@ export type StressSnapshot = SnapshotBase & {
   };
   result: { exposure: TotalExposure; stress: StressResult };
 };
-export type ReportingSnapshot = PeriodSnapshot | StressSnapshot;
+export type HistorySnapshot = SnapshotBase & {
+  kind: 'history';
+  inputs: {
+    query: PortfolioHistoryQuery;
+    /** Exact accepted observations and version references used by this view. */
+    observations: PortfolioHistoryResponse['observations'];
+    positions: PortfolioHistoryResponse['positions'];
+    points: PortfolioHistoryResponse['points'];
+    basis: PortfolioHistoryResponse['basis'];
+    projectionVersion: PortfolioHistoryResponse['projectionVersion'];
+    lifecycle:
+      | import('./portfolio-history-lifecycle-contract').HistoryLifecycleState
+      | null;
+  };
+  result: PortfolioHistoryResponse;
+};
+export type ReportingSnapshot =
+  | PeriodSnapshot
+  | StressSnapshot
+  | HistorySnapshot;
 export type SnapshotSummary = Omit<
   SnapshotBase,
   'inputDigest' | 'resultDigest'
@@ -186,6 +210,13 @@ const write = {
   name: ledgerLabel,
 };
 export const reportingRequestSchema = z.discriminatedUnion('action', [
+  z
+    .object({
+      action: z.literal('saveHistory'),
+      ...write,
+      query: PortfolioHistoryQuerySchema,
+    })
+    .strict(),
   z
     .object({
       action: z.literal('savePeriod'),

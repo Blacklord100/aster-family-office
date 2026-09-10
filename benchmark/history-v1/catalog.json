@@ -1,0 +1,693 @@
+{
+  "corpusVersion": "synthetic-history-v1",
+  "offices": [
+    {
+      "id": "harbor-family",
+      "name": "Harbor Family Office",
+      "currency": "EUR",
+      "names": [
+        "Harbor Meridian Infrastructure I",
+        "Harbor Orchard Credit II",
+        "Harbor operating cash balance"
+      ]
+    },
+    {
+      "id": "maple-family",
+      "name": "Maple Family Office",
+      "currency": "GBP",
+      "names": [
+        "Maple Meridian Infrastructure I",
+        "Maple Orchard Credit II",
+        "Maple operating cash balance"
+      ]
+    },
+    {
+      "id": "willow-family",
+      "name": "Willow Family Office",
+      "currency": "CHF",
+      "names": [
+        "Willow Meridian Infrastructure I",
+        "Willow Orchard Credit II",
+        "Willow operating cash balance"
+      ]
+    }
+  ],
+  "mailboxes": [
+    {
+      "id": "harbor-family-principal",
+      "office_id": "harbor-family",
+      "address": "principal@harbor-family.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "harbor-family-controller",
+      "office_id": "harbor-family",
+      "address": "controller@harbor-family.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "harbor-family-investment",
+      "office_id": "harbor-family",
+      "address": "investment@harbor-family.example.invalid",
+      "persona": "Investment team"
+    },
+    {
+      "id": "maple-family-principal",
+      "office_id": "maple-family",
+      "address": "principal@maple-family.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "maple-family-controller",
+      "office_id": "maple-family",
+      "address": "controller@maple-family.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "maple-family-investment",
+      "office_id": "maple-family",
+      "address": "investment@maple-family.example.invalid",
+      "persona": "Investment team"
+    },
+    {
+      "id": "willow-family-principal",
+      "office_id": "willow-family",
+      "address": "principal@willow-family.example.invalid",
+      "persona": "Principal"
+    },
+    {
+      "id": "willow-family-controller",
+      "office_id": "willow-family",
+      "address": "controller@willow-family.example.invalid",
+      "persona": "Controller"
+    },
+    {
+      "id": "willow-family-investment",
+      "office_id": "willow-family",
+      "address": "investment@willow-family.example.invalid",
+      "persona": "Investment team"
+    }
+  ],
+  "documents": [
+    {
+      "path": "fixtures/emails/001-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "5f9db6a645c0ee39669eb58888bbf99e24ed1611044ab3739b6b5164095f9879"
+    },
+    {
+      "path": "fixtures/emails/002-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "ce87faf34350b22fe79b7980fb3b0d9ba579fc8137944b79a0d8b3d5353753e0"
+    },
+    {
+      "path": "fixtures/emails/003-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "22b0255b7aa3f3cb50a80fe82e815c82b7451243f34848612fac76293ff660c6"
+    },
+    {
+      "path": "fixtures/emails/004-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "07b7443962ae79deb2b45d220deb551c005c769f111dfe8e3a50e31fff38a1c1"
+    },
+    {
+      "path": "fixtures/emails/005-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "56cc02394e437059d68ba24acbc182a3485ba60a441dcf8ad853555e5112bfd7"
+    },
+    {
+      "path": "fixtures/emails/006-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "ff8e7f1938bedf65c2a190d4d5077a3a7cae787007767acfb719a91acd2253bf"
+    },
+    {
+      "path": "fixtures/emails/007-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "19ee7e1d5079aac535bc7d106b98f347b2f3e8b008ef941bb05ae674c1c12c1e"
+    },
+    {
+      "path": "fixtures/emails/008-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "27af668250e9ba03e3d48b4f2044e7b240f99210b9e04c09c0ea465e11aed5db"
+    },
+    {
+      "path": "fixtures/emails/009-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "8500218118dc80ecd9629600d1867b7aa57b59d7322712a245c2aff9554b2f20"
+    },
+    {
+      "path": "fixtures/emails/010-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "9ef4204bd3e691198763eb4cfd21985a39401fb26d678b4a912000cf791bad62"
+    },
+    {
+      "path": "fixtures/emails/011-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "faf1e82c4177332e13bfc108ee344cb8e1afa0bcfa2e147c98ec70cb3c3270e0"
+    },
+    {
+      "path": "fixtures/emails/012-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9bef2ed986487764982877403e5cc54a59a4f391423630f8dd5a0e4166df1128"
+    },
+    {
+      "path": "fixtures/emails/013-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "e8020f8e10a095ec46c04cf8cd9d777b66438e48d4b1e8f0d5974bf8313ab5d0"
+    },
+    {
+      "path": "fixtures/emails/014-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "50d5873ef68da68a5b9e9d91e7b8e1e471784cad660d1af9e14d6c2b5c789284"
+    },
+    {
+      "path": "fixtures/emails/015-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "44a90af97be07952dc547f58eee81b625eff9f603e7638339551d59a20ee05bd"
+    },
+    {
+      "path": "fixtures/emails/016-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "14c472a2805bdd059c9b6d8cdf6937459a33b0aea5fa720ba3629021d6ad04b2"
+    },
+    {
+      "path": "fixtures/emails/017-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "5402a7cfbf84060b293f1cd358bb27cf43a4dfbb306bd4ec2e27dff8af29f3d1"
+    },
+    {
+      "path": "fixtures/emails/018-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "392d9355b4a2f23485825f62a27ee5e5f8ed907d7beb21ec59d5638d8bfbc2c1"
+    },
+    {
+      "path": "fixtures/emails/019-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "e4bc432c92f8fcac2cdca5095c22aaad7034388d67ce75c3cbc605359984544b"
+    },
+    {
+      "path": "fixtures/emails/020-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "02c47dae0e306a3aa13e6d822f35205c79c2cdafe307c6c724ae9dd13f470e70"
+    },
+    {
+      "path": "fixtures/emails/021-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "e656da667fbd8d947ed19e6d845adc5437331ace86a0abb092e91c39defa4fb5"
+    },
+    {
+      "path": "fixtures/emails/022-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "447a979fccd7c280e80da25ea6c23d6096eae0c01faf8d43c78a9ed82af74878"
+    },
+    {
+      "path": "fixtures/emails/023-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "a63ef350ea6329a47ebf6a30a2c5e4b76eb5de1cb653121cf4b01b2fd4de5067"
+    },
+    {
+      "path": "fixtures/emails/024-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9269f826b7cb5b0e2cc40d99c162b8b93d412d88f651cb4007aee4e1219d44bb"
+    },
+    {
+      "path": "fixtures/emails/025-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "70b8a2e4f4bb784d4f7782d43efcd291d663e208bd83559d647a39580afc5b58"
+    },
+    {
+      "path": "fixtures/emails/026-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "412e24ed6a1033a4e6aec69351ba1cab7b9b84fbe02df9727fb25f92220fa931"
+    },
+    {
+      "path": "fixtures/emails/027-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "2f67c3fff65e241d70b2e424c2e39c83d068daa2461fd2ab7634e747a6254160"
+    },
+    {
+      "path": "fixtures/emails/028-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "4d159f83b30a94bd918af20c37237d9d7cf9aa099fd810319084b9640a2ea2a8"
+    },
+    {
+      "path": "fixtures/emails/029-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "76a1590362a37df6b40bab8e1fd0a8ee38783ef726ecfd8ce450eab54f0473c0"
+    },
+    {
+      "path": "fixtures/emails/030-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "86354dd7632d1db200cc99c5f3ec496b8b869e08ee93d882b2eacddaadecd7dd"
+    },
+    {
+      "path": "fixtures/emails/031-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "73ccef24e653af8c9f4482560692e4b514bfcfb9bd7f918ad8b2b6a57f85d2ab"
+    },
+    {
+      "path": "fixtures/emails/032-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2c263ba29a22d9362bee479c387e4826373e1755cfd0034ac1820e3002fe48c4"
+    },
+    {
+      "path": "fixtures/emails/033-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "4f8f9c84a29e92b2cfeed133582f2f45a19274a6e5714195416ddb32cfce3644"
+    },
+    {
+      "path": "fixtures/emails/034-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "8bd9e62a51cd61650dacc828974c8b53d0f84eea7f62b3c9ea6959e80cce86c4"
+    },
+    {
+      "path": "fixtures/emails/035-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "b59b9d6211d211d06d62bf5754f39512447aba1cd13ce72baba99f75a75c9a2f"
+    },
+    {
+      "path": "fixtures/emails/036-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7c8e37cfd99bbf6c831e0f022878868bc988285f6100fcb1fde934dbcedd2415"
+    },
+    {
+      "path": "fixtures/emails/037-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "57f603238a2f735a85324b8e9ec881e4f9eea44fb6eb0268c473e7586311de57"
+    },
+    {
+      "path": "fixtures/emails/038-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2c0d0dbe7d007d95f0a33d262a9123278c4aecdd7a9a0fcda311a4d9bf673f2a"
+    },
+    {
+      "path": "fixtures/emails/039-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "95b68839a1658ac94659bd975a3d10a92679af2550f839457c4d871ca27bf1ef"
+    },
+    {
+      "path": "fixtures/emails/040-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "36c5533274affb45fb4808802a668a33f59598b662c68ae5eb2edd05d11faeb7"
+    },
+    {
+      "path": "fixtures/emails/041-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "177ecc6f91728c2d1fd4e35f39a07b857fe22d64b3c1602685d3a34a30b5c84c"
+    },
+    {
+      "path": "fixtures/emails/042-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "d0ff1ab663523a4a4bb3c0936fbbd09c25c4bcdedb7fab881f7e08a9f1407a09"
+    },
+    {
+      "path": "fixtures/emails/043-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "4df9ec91c7a92b559b73298d53859b12973a9c9cb5653eb413827fb41f533ceb"
+    },
+    {
+      "path": "fixtures/emails/044-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "a69a5ef64e3c96411dc25e70f850f3f7f3939b7f8e770061bbf49f03a83452c9"
+    },
+    {
+      "path": "fixtures/emails/045-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "ce0e548cbe0c51d5301548971b7fca4b6d58d62257a39acd1479965805088ef2"
+    },
+    {
+      "path": "fixtures/emails/046-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "f942102ef22337f205d1e9ed78818c99ada0031c356ff5acf667c83078e53596"
+    },
+    {
+      "path": "fixtures/emails/047-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "1929dbcb0985074b64d628ca94383486e90288a2cfb15009adeac2e1bc42928f"
+    },
+    {
+      "path": "fixtures/emails/048-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "dee14a8617ae2306698596e7b900bbf635d9bd663323cb03d1f4adf18733c513"
+    },
+    {
+      "path": "fixtures/emails/049-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "dbd78c92f23881684beda6838cdab11e031a218757b4aa7620efe16cdeaaeec8"
+    },
+    {
+      "path": "fixtures/emails/050-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "2cef99d676322618132d1ca4206a65d7942297cf9394a91d2992991f6c79c686"
+    },
+    {
+      "path": "fixtures/emails/051-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "46036391bb17ad050fa79c9dc0c5d4502ebb477b94629ddc26c38f0cc1707c10"
+    },
+    {
+      "path": "fixtures/emails/052-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "6e50b160ed77c2e33213f684b10c5cef9bf159bc00d7c757be22a1f873b3e151"
+    },
+    {
+      "path": "fixtures/emails/053-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "2e8096f2a477965e20c4cae32ba0849678b2dd118e36f8cc00d3ca07b11b9363"
+    },
+    {
+      "path": "fixtures/emails/054-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "bcdb8941cecc72b832fbdb2d4867f6d74779ea3848f7d8e9319a15e7261fbe2c"
+    },
+    {
+      "path": "fixtures/emails/055-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9f7dfadb5f6ea52cccfe69653b960b987bff99745e9fe76d5574cda16b0465e2"
+    },
+    {
+      "path": "fixtures/emails/056-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "09b7d69e389b6d7954e26f6ddb20aa6ca6ff755eb7a173745379fad0b1552a7c"
+    },
+    {
+      "path": "fixtures/emails/057-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "7de51235f8b09dfd52b40c97b1939de9b3c4324b3a47ce463cf14ae7cb550f1f"
+    },
+    {
+      "path": "fixtures/emails/058-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "c20137c20417d2fe6851c7701d2f9830e80786410e4dd5abed125e2f8415684a"
+    },
+    {
+      "path": "fixtures/emails/059-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "b676a61c4c8e62737c1b537e87efaf34fd88ce7df5b7a80356727deddc0c0b98"
+    },
+    {
+      "path": "fixtures/emails/060-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7447ff74ddcde3d92c328239bc36ceafbbe338587707abe35dd126bbbbc89162"
+    },
+    {
+      "path": "fixtures/emails/061-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "350ec623da99382475d642843dd3dcac9a260071f8ca9b14b9ed19e2ce3b60e2"
+    },
+    {
+      "path": "fixtures/emails/062-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "bbe6041b3a5378e4c0ccaa01d6b57dfc46ed73153b433b2967754ab4b0e8dda2"
+    },
+    {
+      "path": "fixtures/emails/063-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "553b4f63bf0645f95368fe4483d1209ba5a766c8577ac3fb9bdf98ecfd07f302"
+    },
+    {
+      "path": "fixtures/emails/064-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "7d4338ed0e95ed69a4a92f07ee9528584bb4a5938aca67919e5f184bf7cfc8ad"
+    },
+    {
+      "path": "fixtures/emails/065-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "6c332cbb6abd66d6e594d0e8001094a9894facfc8de028412cab5ba51c83a8a7"
+    },
+    {
+      "path": "fixtures/emails/066-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "0a387fdac8f70b6a5f01059346fbc9dc2e62fab58e2b1213a318034f571eadd9"
+    },
+    {
+      "path": "fixtures/emails/067-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "5d6c979b3075d3c60a0aa1472f634c0cb6cee564457cf42e866b1a7eadd70a89"
+    },
+    {
+      "path": "fixtures/emails/068-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "280552568abd3f8f0ac4c3c13d51797000e36f966270b90b389906fb3ad85034"
+    },
+    {
+      "path": "fixtures/emails/069-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "89bdcf20b543c24c1b89d9f90327605018bd93020455ed61123f40d55a1464b7"
+    },
+    {
+      "path": "fixtures/emails/070-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "fca937c6381ced2f3d745d45d1d73c671662fa1c16e0c78a3c42632974482c36"
+    },
+    {
+      "path": "fixtures/emails/071-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "422dd929f978dfa1bc795b1c8ff0ca07134fbf2c1edaf2bc18948b9251d21b26"
+    },
+    {
+      "path": "fixtures/emails/072-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "9dd9b3eaf5f4caf73b7fc70e0a871e4ac0302c01fc7b54a5771dd3e46e75bf7d"
+    },
+    {
+      "path": "fixtures/emails/073-harbor-family-late_archive_report.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "524355a9ce1a49b4f02f781e1bfffba40a7897e3845538b0a496707112ed8ea7"
+    },
+    {
+      "path": "fixtures/emails/074-maple-family-late_archive_report.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "410aef3b02ed532e2f4b87fa8e17d1f98e1f30c88d93de8a7dd36d64f650646b"
+    },
+    {
+      "path": "fixtures/emails/075-willow-family-late_archive_report.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "659fe82289e7f7b5879e29c54e23afcbd66fd6e476076d2d9d98a703093f2ba1"
+    },
+    {
+      "path": "fixtures/emails/076-harbor-family-corrected_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "f31ece52a8f248c5378522040c1a32976ec17a7ccd321203bf81291508e0fda0"
+    },
+    {
+      "path": "fixtures/emails/077-maple-family-corrected_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "10d1f930a7f9f9be7b104e0cd7b927210afcc77827404d4fdbde9a1ce567db50"
+    },
+    {
+      "path": "fixtures/emails/078-willow-family-corrected_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "ea422ed72683cd30750f0d7c2ca46eb436c6a9f90fbcf6c1dd3591a15f828544"
+    },
+    {
+      "path": "fixtures/emails/079-harbor-family-capital_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9d9c75f1735a3d8be73358b82f8ab8a043feaa6bc63d1144b646004c292f1fc8"
+    },
+    {
+      "path": "fixtures/emails/080-harbor-family-distribution.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "sha256": "258df9ebee87ca3ebf21a52b9faafd0e1353322b6f64505e887d16bbac9dbd56"
+    },
+    {
+      "path": "fixtures/emails/081-maple-family-capital_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "sha256": "57a4d9cc62b2d5d6605f710fa950273a8789979efb7d6b7bd30e6fa1bfed9c5a"
+    },
+    {
+      "path": "fixtures/emails/082-maple-family-distribution.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "sha256": "b78640e26a904b4f986be709ba4e541517f72fd2f5dd615b44f6116e3ee4d8cf"
+    },
+    {
+      "path": "fixtures/emails/083-willow-family-capital_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "sha256": "0ac9b5597236d7985f4c8ae299259535fa3e772d0bdce4874ea4684c9c6dde84"
+    },
+    {
+      "path": "fixtures/emails/084-willow-family-distribution.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "47960fa99e1624e69582268f543912b20394fba66b771c94279cd7c8244dbc55"
+    },
+    {
+      "path": "fixtures/emails/085-harbor-family-duplicate_forward.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9d9c75f1735a3d8be73358b82f8ab8a043feaa6bc63d1144b646004c292f1fc8"
+    },
+    {
+      "path": "fixtures/emails/086-maple-family-duplicate_forward.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "57a4d9cc62b2d5d6605f710fa950273a8789979efb7d6b7bd30e6fa1bfed9c5a"
+    },
+    {
+      "path": "fixtures/emails/087-willow-family-duplicate_forward.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "0ac9b5597236d7985f4c8ae299259535fa3e772d0bdce4874ea4684c9c6dde84"
+    },
+    {
+      "path": "fixtures/emails/088-harbor-family-bank_statement.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "217e08c38aeb71180ab1e3d4cd25e8d030c869f347c751d6a165d6da00851cf4"
+    },
+    {
+      "path": "fixtures/emails/089-maple-family-bank_statement.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "f77368457d27d820f0a3527c3f7bcdf2480902347b7053d2036f5943dd76e7d1"
+    },
+    {
+      "path": "fixtures/emails/090-willow-family-bank_statement.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "7bd60e969cb80191abf3e3fd772882edc9deebe02c7eb0f9c970ca158e5d8ce1"
+    },
+    {
+      "path": "fixtures/emails/091-harbor-family-acquisition_certificate.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "9bc9c71c6690eae05ab56a89d3a66aeb087755754a441f506fddfb4a868ff3e3"
+    },
+    {
+      "path": "fixtures/emails/092-maple-family-acquisition_certificate.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "842fc2fa6973856e14f75e30dc6c88e75e2016cae4bb676f610d2977e163b742"
+    },
+    {
+      "path": "fixtures/emails/093-willow-family-acquisition_certificate.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "4e51ad4911a4f73f801f686f867bb8b452067ccdf85e4d4079df9aeaa4238688"
+    },
+    {
+      "path": "fixtures/emails/094-harbor-family-incomplete_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "702af61b1092956f41370d328134a6cc498e53ab9d1b0f660630f9a5eda10a6e"
+    },
+    {
+      "path": "fixtures/emails/095-maple-family-incomplete_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "78062a6d0896d910b563d503d56520c946c8ef4dea3afb51cfefb3c53aeae361"
+    },
+    {
+      "path": "fixtures/emails/096-willow-family-incomplete_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "1d274674e0b17accc37aff83b28fcf5e04854bffcb01faec4e1c501622617c54"
+    },
+    {
+      "path": "fixtures/emails/097-harbor-family-office_administration.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "11c8f61771953a8f6f3446b98b1808e47ceb504138fe483df1c7caee89f53ae6"
+    },
+    {
+      "path": "fixtures/emails/098-maple-family-office_administration.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "sha256": "3994f39bf7b225da7c6547b3c3032267775dc9b891c1e60c6214d9c037052d60"
+    },
+    {
+      "path": "fixtures/emails/099-willow-family-office_administration.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "sha256": "654603ab3a92002f2830530927834bee3f4696d7e1a947f4848dc950e73d5623"
+    },
+    {
+      "path": "fixtures/emails/100-harbor-family-shared_consolidation.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "sha256": "2b8ca30e96d66531d9712d17e3dee6417cef9a97d3a08ed935736c3e8919169a"
+    }
+  ]
+}

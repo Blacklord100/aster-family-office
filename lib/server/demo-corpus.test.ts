@@ -14,6 +14,7 @@ import {
   demoCatalogSchema,
   loadDemoCatalog,
   readDemoSource,
+  demoCorpusRoot,
 } from './demo-corpus';
 import { sha256 } from './crypto';
 const temporary: string[] = [];
@@ -34,6 +35,29 @@ describe('fixed demo corpus boundary', () => {
     expect(catalog.documents).toHaveLength(100);
     for (const document of catalog.documents)
       expect(sha256(await readDemoSource(document))).toBe(document.sha256);
+  });
+  it('validates the separately pinned history sources and keeps legacy defaults isolated', async () => {
+    const [legacy, history] = await Promise.all([
+      loadDemoCatalog(),
+      loadDemoCatalog('history-v1'),
+    ]);
+    expect(history.documents).toHaveLength(100);
+    expect(new Set(history.documents.map((source) => source.sha256)).size).toBe(
+      97,
+    );
+    expect(history.offices.map((office) => office.id)).toEqual([
+      'harbor-family',
+      'maple-family',
+      'willow-family',
+    ]);
+    expect(legacy.offices[0].id).toBe('alder-house');
+    for (const document of history.documents)
+      expect(sha256(await readDemoSource(document, 'history-v1'))).toBe(
+        document.sha256,
+      );
+    await expect(readDemoSource(history.documents[0])).rejects.toThrow();
+    expect(() => demoCorpusRoot('../outside' as 'history-v1')).toThrow();
+    expect('gold' in history).toBe(false);
   });
   it('rejects path traversal, duplicate sources and cross-family routing', async () => {
     const original = await corpus();

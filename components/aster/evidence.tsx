@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { EvidenceSource } from '@/data';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { EmailPreview } from './email-preview';
 import { PdfPreview } from './pdf-preview';
 import { useWorkspace } from './workspace-context';
@@ -19,17 +20,44 @@ export const REVIEW_IDS = [
   'source-event-03',
   'source-event-04',
 ];
-export function EvidencePanel({
-  sourceId,
-  onHolding,
-  embedded = false,
-}: {
+type EvidencePanelProps = {
   sourceId: string;
   onHolding?: (id: string) => void;
   embedded?: boolean;
-}) {
+};
+export function EvidencePanel(props: EvidencePanelProps) {
+  const { state, data } = useWorkspace();
+  const source: EvidenceSource | undefined = data.evidence.find(
+    (item) => item.id === props.sourceId,
+  );
+  return (
+    <ScopedEvidencePanel
+      key={JSON.stringify([
+        state.identity?.organizationId,
+        state.identity?.dataScope,
+        props.sourceId,
+        source?.documentId,
+      ])}
+      {...props}
+    />
+  );
+}
+function ScopedEvidencePanel({
+  sourceId,
+  onHolding,
+  embedded = false,
+}: EvidencePanelProps) {
   const { state, data, mutate } = useWorkspace();
   const [preview, setPreview] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const downloadController = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      downloadController.current?.abort();
+    },
+    [],
+  );
   const source: EvidenceSource | undefined = data.evidence.find(
     (s) => s.id === sourceId,
   );
@@ -59,6 +87,49 @@ export function EvidencePanel({
     a.click();
     URL.revokeObjectURL(url);
   };
+  async function downloadOriginal() {
+    const organizationId = state.identity?.organizationId;
+    if (!source?.documentId || !organizationId || downloading) return;
+    const controller = new AbortController();
+    downloadController.current?.abort();
+    downloadController.current = controller;
+    setDownloading(true);
+    setDownloadError('');
+    try {
+      const response = await fetch(
+        '/api/documents/' + encodeURIComponent(source.documentId),
+        {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          redirect: 'error',
+          headers: { 'x-aster-organization': organizationId },
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(20_000),
+          ]),
+        },
+      );
+      if (!response.ok)
+        throw new Error('The original is unavailable or access has changed.');
+      const blob = await response.blob();
+      controller.signal.throwIfAborted();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = source.filename.replace(/[\\/\r\n]/g, '_');
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setDownloadError(
+          error instanceof Error
+            ? error.message
+            : 'The original could not be downloaded.',
+        );
+    } finally {
+      if (!controller.signal.aborted) setDownloading(false);
+    }
+  }
   return (
     <div className={embedded ? 'evidence-panel embedded' : 'evidence-panel'}>
       <div className="evidence-heading">
@@ -126,14 +197,11 @@ export function EvidencePanel({
         {source.documentId && !source.synthetic ? (
           <Button
             variant="outline"
-            onClick={() =>
-              window.location.assign(
-                '/api/documents/' + encodeURIComponent(source.documentId!),
-              )
-            }
+            onClick={() => void downloadOriginal()}
+            disabled={downloading || !state.identity?.organizationId}
           >
             <Download data-icon="inline-start" />
-            Download original
+            {downloading ? 'Downloading…' : 'Download original'}
           </Button>
         ) : null}
         <Button variant="outline" onClick={download}>
@@ -141,6 +209,12 @@ export function EvidencePanel({
           Download excerpt
         </Button>
       </div>
+      {downloadError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Original unavailable</AlertTitle>
+          <AlertDescription>{downloadError}</AlertDescription>
+        </Alert>
+      ) : null}
       {source.documentId &&
       !source.synthetic &&
       /\.(eml|pdf)$/i.test(source.filename) ? (

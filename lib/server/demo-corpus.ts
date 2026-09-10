@@ -4,6 +4,7 @@ import { open, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { sha256 } from './crypto';
+import { DEMO_DATASETS, type DemoDataset } from '../demo-contract';
 
 const identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/);
 export const demoCatalogSchema = z
@@ -75,14 +76,22 @@ export const demoCatalogSchema = z
         });
   });
 export type DemoCatalog = z.infer<typeof demoCatalogSchema>;
-export const demoCorpusRoot = () =>
-  path.resolve(
-    process.env.ASTER_DEMO_CORPUS_ROOT ??
-      path.join(process.cwd(), 'benchmark/mailroom-v1'),
+export function demoCorpusRoot(input: DemoDataset = 'mailroom-v1') {
+  const dataset = z.enum(DEMO_DATASETS).parse(input);
+  return path.resolve(
+    (dataset === 'history-v1'
+      ? process.env.ASTER_DEMO_HISTORY_CORPUS_ROOT
+      : process.env.ASTER_DEMO_CORPUS_ROOT) ??
+      path.join(process.cwd(), 'benchmark', dataset),
   );
+}
 /** Check size before allocating and reject symbolic links or sources outside the configured corpus. */
-async function readBounded(relativePath: string, maxBytes: number) {
-  const root = await realpath(demoCorpusRoot());
+async function readBounded(
+  relativePath: string,
+  maxBytes: number,
+  dataset: DemoDataset,
+) {
+  const root = await realpath(demoCorpusRoot(dataset));
   const filename = path.join(root, relativePath);
   const resolved = await realpath(filename);
   if (resolved !== filename || !resolved.startsWith(root + path.sep))
@@ -114,19 +123,22 @@ async function readBounded(relativePath: string, maxBytes: number) {
   }
 }
 /** Routing/identity metadata only. The benchmark answer key is never loaded. */
-export async function loadDemoCatalog() {
+export async function loadDemoCatalog(dataset: DemoDataset = 'mailroom-v1') {
   return demoCatalogSchema.parse(
     JSON.parse(
-      (await readBounded('catalog.json', 1024 * 1024)).toString('utf8'),
+      (await readBounded('catalog.json', 1024 * 1024, dataset)).toString(
+        'utf8',
+      ),
     ),
   );
 }
 export async function readDemoSource(
   document: DemoCatalog['documents'][number],
+  dataset: DemoDataset = 'mailroom-v1',
 ) {
   // This exported helper remains safe even when called without a prior catalog parse.
   const parsed = demoCatalogSchema.shape.documents.element.parse(document);
-  const bytes = await readBounded(parsed.path, 10 * 1024 * 1024);
+  const bytes = await readBounded(parsed.path, 10 * 1024 * 1024, dataset);
   if (sha256(bytes) !== parsed.sha256) throw new Error('DEMO_CORPUS_CHANGED');
   return bytes;
 }

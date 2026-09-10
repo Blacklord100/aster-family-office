@@ -12,11 +12,12 @@ import { InboxView } from './inbox';
 import { ConnectionsView } from './connections-view';
 import { ProcessingView } from './processing-view';
 import { TeamSettings } from './team-settings';
-import { ReportsView, PrintableReport, downloadHoldings } from './reports';
+import { PrintableReport, downloadHoldings } from './reports';
 import { EvidencePanel } from './evidence';
 import { AssistantPanel } from './assistant';
 import { DemoWorkspaceBanner } from './demo-workspace';
-import { PageHeading } from './primitives';
+import { PageHeading, FamilyPicker } from './primitives';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { WorkspaceContext } from './workspace-context';
 import {
   initialWorkspace,
@@ -125,10 +126,12 @@ export function AsterApp() {
     try {
       const response = await fetch('/api/workspace', { cache: 'no-store' });
       if (response.status === 401) {
+        setState(initialWorkspace(false));
         window.location.assign('/login');
         return;
       }
       if (response.status === 403) {
+        setState(initialWorkspace(false));
         const body = await response.json();
         if (body.error === 'MFA_REQUIRED') {
           window.location.assign('/account');
@@ -246,6 +249,19 @@ export function AsterApp() {
         view: next.view,
         family: next.family,
       });
+      if (next.view === route.view && next.holding === route.holding) {
+        const current = new URLSearchParams(window.location.search);
+        for (const [key, value] of current)
+          if (
+            key.startsWith('history') ||
+            key === 'activityMode' ||
+            key === 'activityOrder' ||
+            key === 'investmentTab'
+          )
+            params.set(key, value);
+        if (next.family === route.family && current.has('observation'))
+          params.set('observation', current.get('observation')!);
+      }
       if (next.holding) params.set('holding', next.holding);
       if (next.view === 'agents' && next.jobId) params.set('jobId', next.jobId);
       if (next.view === 'connections') params.set('tab', next.connectionsTab);
@@ -291,6 +307,7 @@ export function AsterApp() {
   const liveDemo = state.demo;
   const activeHolding = data.holdings.find((h) => h.id === route.holding);
   const context = {
+    revision: state.workspaceRevision ?? -1,
     state,
     data,
     mutate,
@@ -370,6 +387,7 @@ export function AsterApp() {
                   onFamily={family}
                   onHolding={openHolding}
                   onExport={() => preview(null)}
+                  onManagers={() => navigate('intelligence')}
                 />
               )
             ) : null}
@@ -409,10 +427,54 @@ export function AsterApp() {
               />
             ) : null}
             {route.view === 'intelligence' && !state.identity?.dataScope ? (
-              <IntelligenceView family={route.family} />
+              <>
+                <div className="workspace-subnavigation">
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate('investments')}
+                  >
+                    Back to investments
+                  </Button>
+                </div>
+                <IntelligenceView family={route.family} />
+              </>
             ) : null}
             {route.view === 'operations' && canAdmin ? (
               <OperationsView />
+            ) : null}
+            {route.view === 'setup' && !hasDataScope ? (
+              <Tabs defaultValue="register">
+                <PageHeading
+                  title="Office setup"
+                  subtitle="Families, legal entities, accounts and workspace administration."
+                />
+                <TabsList variant="line" className="workspace-subnavigation">
+                  <TabsTrigger value="register">
+                    Families & accounts
+                  </TabsTrigger>
+                  {canAdmin ? (
+                    <TabsTrigger value="operations">
+                      Service operations
+                    </TabsTrigger>
+                  ) : null}
+                  <TabsTrigger value="team">Team & access</TabsTrigger>
+                </TabsList>
+                <TabsContent value="register">
+                  <LedgerView
+                    family={route.family}
+                    onFamily={family}
+                    mode="setup"
+                  />
+                </TabsContent>
+                {canAdmin ? (
+                  <TabsContent value="operations">
+                    <OperationsView />
+                  </TabsContent>
+                ) : null}
+                <TabsContent value="team">
+                  <TeamSettings />
+                </TabsContent>
+              </Tabs>
             ) : null}
             {route.view === 'agents' && state.identity && !hasDataScope ? (
               <ProcessingView
@@ -437,18 +499,22 @@ export function AsterApp() {
                 <PageHeading
                   title="Reports"
                   subtitle="Reproducible reporting, reconciled cash flows and portfolio scenarios."
+                >
+                  <FamilyPicker value={route.family} onChange={family} />
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('calendar')}
+                  >
+                    Reporting calendar
+                  </Button>
+                </PageHeading>
+                <ReportingWorkbench
+                  key={`${state.identity?.organizationId ?? 'loading'}:${route.family}`}
+                  family={route.family}
+                  onFamily={family}
+                  onSource={openSource}
+                  onLegacyPreview={preview}
                 />
-                <ReportingWorkbench family={route.family} onFamily={family} />
-                <details className="mx-6 mb-8 rounded-xl border bg-white">
-                  <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
-                    Earlier report snapshots & quick exports
-                  </summary>
-                  <ReportsView
-                    family={route.family}
-                    onFamily={family}
-                    onPreview={preview}
-                  />
-                </details>
               </>
             ) : null}
           </Shell>

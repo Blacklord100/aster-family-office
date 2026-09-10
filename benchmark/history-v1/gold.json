@@ -1,0 +1,3470 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "synthetic-history-v1",
+  "createdDate": "2026-09-10",
+  "frozenBeforeInference": true,
+  "provenance": "Fresh deterministic fictional source documents; author-specified expected facts and history written before any PDF/email rendering or model invocation. Not independently human-adjudicated.",
+  "factsFields": [
+    "kind",
+    "investmentName",
+    "effectiveDate",
+    "amount",
+    "currency",
+    "dueDate"
+  ],
+  "cases": [
+    {
+      "id": "history-001",
+      "path": "fixtures/emails/001-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2023-09-30",
+          "amount": "1000123.45",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-002",
+      "path": "fixtures/emails/002-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2023-09-30",
+          "amount": "1180123.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-003",
+      "path": "fixtures/emails/003-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2023-09-30",
+          "amount": "1240123.45",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-004",
+      "path": "fixtures/emails/004-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2023-09-30",
+          "amount": "1420123.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-005",
+      "path": "fixtures/emails/005-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2023-09-30",
+          "amount": "1480123.45",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-006",
+      "path": "fixtures/emails/006-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2023-09-30",
+          "amount": "1660123.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2023-09-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2023-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-007",
+      "path": "fixtures/emails/007-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2023-12-31",
+          "amount": "1038128.14",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-008",
+      "path": "fixtures/emails/008-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2023-12-31",
+          "amount": "1224968.14",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-009",
+      "path": "fixtures/emails/009-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2023-12-31",
+          "amount": "1287248.14",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-010",
+      "path": "fixtures/emails/010-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2023-12-31",
+          "amount": "1474088.14",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-011",
+      "path": "fixtures/emails/011-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2023-12-31",
+          "amount": "1536368.14",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-012",
+      "path": "fixtures/emails/012-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2023-12-31",
+          "amount": "1723208.14",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2023-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-013",
+      "path": "fixtures/emails/013-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2024-03-31",
+          "amount": "1052129.87",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-014",
+      "path": "fixtures/emails/014-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2024-03-31",
+          "amount": "1241489.87",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-015",
+      "path": "fixtures/emails/015-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2024-03-31",
+          "amount": "1304609.87",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-016",
+      "path": "fixtures/emails/016-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2024-03-31",
+          "amount": "1493969.87",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-017",
+      "path": "fixtures/emails/017-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2024-03-31",
+          "amount": "1557089.87",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-018",
+      "path": "fixtures/emails/018-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2024-03-31",
+          "amount": "1746449.87",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2024-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-019",
+      "path": "fixtures/emails/019-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2024-06-30",
+          "amount": "1024126.41",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-020",
+      "path": "fixtures/emails/020-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2024-06-30",
+          "amount": "1208446.41",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-021",
+      "path": "fixtures/emails/021-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2024-06-30",
+          "amount": "1269886.41",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-022",
+      "path": "fixtures/emails/022-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2024-06-30",
+          "amount": "1454206.41",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-023",
+      "path": "fixtures/emails/023-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2024-06-30",
+          "amount": "1515646.41",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-024",
+      "path": "fixtures/emails/024-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2024-06-30",
+          "amount": "1699966.41",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2024-06-30",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 3,
+      "pdf": false
+    },
+    {
+      "id": "history-025",
+      "path": "fixtures/emails/025-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2024-09-30",
+          "amount": "1071132.21",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-026",
+      "path": "fixtures/emails/026-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2024-09-30",
+          "amount": "1263912.21",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-027",
+      "path": "fixtures/emails/027-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2024-09-30",
+          "amount": "1328172.21",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-028",
+      "path": "fixtures/emails/028-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2024-09-30",
+          "amount": "1520952.21",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-029",
+      "path": "fixtures/emails/029-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2024-09-30",
+          "amount": "1585212.21",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-030",
+      "path": "fixtures/emails/030-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2024-09-30",
+          "amount": "1777992.21",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2024-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2024-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 4,
+      "pdf": true
+    },
+    {
+      "id": "history-031",
+      "path": "fixtures/emails/031-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1114137.52",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-032",
+      "path": "fixtures/emails/032-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2024-12-31",
+          "amount": "1314657.52",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-033",
+      "path": "fixtures/emails/033-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1381497.52",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-034",
+      "path": "fixtures/emails/034-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2024-12-31",
+          "amount": "1582017.52",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-035",
+      "path": "fixtures/emails/035-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1648857.52",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-036",
+      "path": "fixtures/emails/036-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2024-12-31",
+          "amount": "1849377.52",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-037",
+      "path": "fixtures/emails/037-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2025-03-31",
+          "amount": "1083133.70",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-038",
+      "path": "fixtures/emails/038-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2025-03-31",
+          "amount": "1278073.70",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-039",
+      "path": "fixtures/emails/039-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2025-03-31",
+          "amount": "1343053.70",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-040",
+      "path": "fixtures/emails/040-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2025-03-31",
+          "amount": "1537993.70",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-041",
+      "path": "fixtures/emails/041-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2025-03-31",
+          "amount": "1602973.70",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-042",
+      "path": "fixtures/emails/042-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2025-03-31",
+          "amount": "1797913.70",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2025-03-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 6,
+      "pdf": false
+    },
+    {
+      "id": "history-043",
+      "path": "fixtures/emails/043-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2025-06-30",
+          "amount": "1162143.45",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-044",
+      "path": "fixtures/emails/044-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2025-06-30",
+          "amount": "1371303.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-045",
+      "path": "fixtures/emails/045-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2025-06-30",
+          "amount": "1441023.45",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-046",
+      "path": "fixtures/emails/046-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2025-06-30",
+          "amount": "1650183.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-047",
+      "path": "fixtures/emails/047-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2025-06-30",
+          "amount": "1719903.45",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-048",
+      "path": "fixtures/emails/048-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2025-06-30",
+          "amount": "1929063.45",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2025-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 7,
+      "pdf": true
+    },
+    {
+      "id": "history-049",
+      "path": "fixtures/emails/049-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2025-09-30",
+          "amount": "1178145.42",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-050",
+      "path": "fixtures/emails/050-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2025-09-30",
+          "amount": "1390185.42",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-051",
+      "path": "fixtures/emails/051-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2025-09-30",
+          "amount": "1460865.42",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-052",
+      "path": "fixtures/emails/052-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2025-09-30",
+          "amount": "1672905.42",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-053",
+      "path": "fixtures/emails/053-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2025-09-30",
+          "amount": "1743585.42",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-054",
+      "path": "fixtures/emails/054-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2025-09-30",
+          "amount": "1955625.42",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2025-09-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2025-10-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 8,
+      "pdf": true
+    },
+    {
+      "id": "history-055",
+      "path": "fixtures/emails/055-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1139140.61",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-056",
+      "path": "fixtures/emails/056-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2025-12-31",
+          "amount": "1344160.61",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-057",
+      "path": "fixtures/emails/057-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1412500.61",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-058",
+      "path": "fixtures/emails/058-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2025-12-31",
+          "amount": "1617520.61",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-059",
+      "path": "fixtures/emails/059-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1685860.61",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-060",
+      "path": "fixtures/emails/060-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2025-12-31",
+          "amount": "1890880.61",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2025-12-31",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-01-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 9,
+      "pdf": false
+    },
+    {
+      "id": "history-061",
+      "path": "fixtures/emails/061-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-03-31",
+          "amount": "1224151.10",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-062",
+      "path": "fixtures/emails/062-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2026-03-31",
+          "amount": "1444471.10",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-063",
+      "path": "fixtures/emails/063-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-03-31",
+          "amount": "1517911.10",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-064",
+      "path": "fixtures/emails/064-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2026-03-31",
+          "amount": "1738231.10",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-065",
+      "path": "fixtures/emails/065-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-03-31",
+          "amount": "1811671.10",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-066",
+      "path": "fixtures/emails/066-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2026-03-31",
+          "amount": "2031991.10",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2026-03-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-04-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 10,
+      "pdf": true
+    },
+    {
+      "id": "history-067",
+      "path": "fixtures/emails/067-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1257155.18",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-068",
+      "path": "fixtures/emails/068-harbor-family-quarterly_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1483415.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 1,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-069",
+      "path": "fixtures/emails/069-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1558835.18",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-070",
+      "path": "fixtures/emails/070-maple-family-quarterly_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1785095.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 1,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-071",
+      "path": "fixtures/emails/071-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1860515.18",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-072",
+      "path": "fixtures/emails/072-willow-family-quarterly_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "quarterly_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "2086775.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-07-24",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 1,
+      "quarter": 11,
+      "pdf": true
+    },
+    {
+      "id": "history-073",
+      "path": "fixtures/emails/073-harbor-family-late_archive_report.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "late_archive_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1114137.52",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-074",
+      "path": "fixtures/emails/074-maple-family-late_archive_report.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "late_archive_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1381497.52",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-075",
+      "path": "fixtures/emails/075-willow-family-late_archive_report.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "late_archive_report",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2024-12-31",
+          "amount": "1648857.52",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2024-12-31",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 5,
+      "pdf": true
+    },
+    {
+      "id": "history-076",
+      "path": "fixtures/emails/076-harbor-family-corrected_nav.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "corrected_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1131362.84",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2025-12-31:restated",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": true,
+      "supersedesAmount": "1139140.61",
+      "manualCorrectionRequired": true
+    },
+    {
+      "id": "history-077",
+      "path": "fixtures/emails/077-maple-family-corrected_nav.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "corrected_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1404722.84",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2025-12-31:restated",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": true,
+      "supersedesAmount": "1412500.61",
+      "manualCorrectionRequired": true
+    },
+    {
+      "id": "history-078",
+      "path": "fixtures/emails/078-willow-family-corrected_nav.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "corrected_nav",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2025-12-31",
+          "amount": "1678082.84",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2025-12-31:restated",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "fund": 0,
+      "quarter": 9,
+      "pdf": true,
+      "supersedesAmount": "1685860.61",
+      "manualCorrectionRequired": true
+    },
+    {
+      "id": "history-079",
+      "path": "fixtures/emails/079-harbor-family-capital_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "EUR",
+          "dueDate": "2026-09-08",
+          "eventKey": "harbor-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-080",
+      "path": "fixtures/emails/080-harbor-family-distribution.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-controller",
+      "category": "distribution",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "EUR",
+          "dueDate": "2026-09-08",
+          "eventKey": "harbor-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": true
+    },
+    {
+      "id": "history-081",
+      "path": "fixtures/emails/081-maple-family-capital_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-investment",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "GBP",
+          "dueDate": "2026-09-08",
+          "eventKey": "maple-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": false
+    },
+    {
+      "id": "history-082",
+      "path": "fixtures/emails/082-maple-family-distribution.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-principal",
+      "category": "distribution",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "GBP",
+          "dueDate": "2026-09-08",
+          "eventKey": "maple-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": true
+    },
+    {
+      "id": "history-083",
+      "path": "fixtures/emails/083-willow-family-capital_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-controller",
+      "category": "capital_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "CHF",
+          "dueDate": "2026-09-08",
+          "eventKey": "willow-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": false
+    },
+    {
+      "id": "history-084",
+      "path": "fixtures/emails/084-willow-family-distribution.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "distribution",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "distribution",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "CHF",
+          "dueDate": "2026-09-08",
+          "eventKey": "willow-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-03",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": true
+    },
+    {
+      "id": "history-085",
+      "path": "fixtures/emails/085-harbor-family-duplicate_forward.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "duplicate_forward",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "EUR",
+          "dueDate": "2026-09-08",
+          "eventKey": "harbor-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": false,
+      "identicalTo": "history-079"
+    },
+    {
+      "id": "history-086",
+      "path": "fixtures/emails/086-maple-family-duplicate_forward.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "duplicate_forward",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "GBP",
+          "dueDate": "2026-09-08",
+          "eventKey": "maple-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": false,
+      "identicalTo": "history-081"
+    },
+    {
+      "id": "history-087",
+      "path": "fixtures/emails/087-willow-family-duplicate_forward.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "duplicate_forward",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "CHF",
+          "dueDate": "2026-09-08",
+          "eventKey": "willow-family:call-sep",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": false,
+      "identicalTo": "history-083"
+    },
+    {
+      "id": "history-088",
+      "path": "fixtures/emails/088-harbor-family-bank_statement.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "bank_statement",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor operating cash balance",
+          "effectiveDate": "2026-09-01",
+          "amount": "500000.00",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:cash-opening",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor operating cash balance"
+          ]
+        },
+        {
+          "kind": "capital_call",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "EUR",
+          "dueDate": "2026-09-08",
+          "eventKey": "harbor-family:call-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "distribution",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "EUR",
+          "dueDate": "2026-09-08",
+          "eventKey": "harbor-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": true,
+      "bankSettlementDate": "2026-09-08"
+    },
+    {
+      "id": "history-089",
+      "path": "fixtures/emails/089-maple-family-bank_statement.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "bank_statement",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Maple operating cash balance",
+          "effectiveDate": "2026-09-01",
+          "amount": "500000.00",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:cash-opening",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple operating cash balance"
+          ]
+        },
+        {
+          "kind": "capital_call",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "GBP",
+          "dueDate": "2026-09-08",
+          "eventKey": "maple-family:call-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "distribution",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "GBP",
+          "dueDate": "2026-09-08",
+          "eventKey": "maple-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": true,
+      "bankSettlementDate": "2026-09-08"
+    },
+    {
+      "id": "history-090",
+      "path": "fixtures/emails/090-willow-family-bank_statement.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "bank_statement",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Willow operating cash balance",
+          "effectiveDate": "2026-09-01",
+          "amount": "500000.00",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:cash-opening",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow operating cash balance"
+          ]
+        },
+        {
+          "kind": "capital_call",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "40000.25",
+          "currency": "CHF",
+          "dueDate": "2026-09-08",
+          "eventKey": "willow-family:call-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "distribution",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-09-02",
+          "amount": "12500.10",
+          "currency": "CHF",
+          "dueDate": "2026-09-08",
+          "eventKey": "willow-family:distribution-sep",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": true,
+      "bankSettlementDate": "2026-09-08"
+    },
+    {
+      "id": "history-091",
+      "path": "fixtures/emails/091-harbor-family-acquisition_certificate.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "acquisition_certificate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "news",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": true,
+      "lifecycleRecords": [
+        {
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Harbor Meridian Infrastructure I: this investor position was legally acquired on 2023-07-01."
+        },
+        {
+          "investmentName": "Harbor Orchard Credit II",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Harbor Orchard Credit II: this investor position was legally acquired on 2023-07-01."
+        }
+      ]
+    },
+    {
+      "id": "history-092",
+      "path": "fixtures/emails/092-maple-family-acquisition_certificate.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "acquisition_certificate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "news",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": true,
+      "lifecycleRecords": [
+        {
+          "investmentName": "Maple Meridian Infrastructure I",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Maple Meridian Infrastructure I: this investor position was legally acquired on 2023-07-01."
+        },
+        {
+          "investmentName": "Maple Orchard Credit II",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Maple Orchard Credit II: this investor position was legally acquired on 2023-07-01."
+        }
+      ]
+    },
+    {
+      "id": "history-093",
+      "path": "fixtures/emails/093-willow-family-acquisition_certificate.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "acquisition_certificate",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "news",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "news",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2023-07-01",
+          "amount": null,
+          "currency": null,
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:opened",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": true,
+      "lifecycleRecords": [
+        {
+          "investmentName": "Willow Meridian Infrastructure I",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Willow Meridian Infrastructure I: this investor position was legally acquired on 2023-07-01."
+        },
+        {
+          "investmentName": "Willow Orchard Credit II",
+          "kind": "opened",
+          "effectiveDate": "2023-07-01",
+          "sourceQuote": "Willow Orchard Credit II: this investor position was legally acquired on 2023-07-01."
+        }
+      ]
+    },
+    {
+      "id": "history-094",
+      "path": "fixtures/emails/094-harbor-family-incomplete_call.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "incomplete_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2026-09-04",
+          "amount": null,
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:incomplete-call",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": false,
+      "manualDetailsRequired": true
+    },
+    {
+      "id": "history-095",
+      "path": "fixtures/emails/095-maple-family-incomplete_call.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "incomplete_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2026-09-04",
+          "amount": null,
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:incomplete-call",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": false,
+      "manualDetailsRequired": true
+    },
+    {
+      "id": "history-096",
+      "path": "fixtures/emails/096-willow-family-incomplete_call.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "incomplete_call",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "capital_call",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2026-09-04",
+          "amount": null,
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:incomplete-call",
+          "evidencePage": 1,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": false,
+      "manualDetailsRequired": true
+    },
+    {
+      "id": "history-097",
+      "path": "fixtures/emails/097-harbor-family-office_administration.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "office_administration",
+      "relevant": false,
+      "facts": [],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 0,
+      "pdf": false
+    },
+    {
+      "id": "history-098",
+      "path": "fixtures/emails/098-maple-family-office_administration.eml",
+      "office_id": "maple-family",
+      "mailbox_id": "maple-family-controller",
+      "category": "office_administration",
+      "relevant": false,
+      "facts": [],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 1,
+      "pdf": false
+    },
+    {
+      "id": "history-099",
+      "path": "fixtures/emails/099-willow-family-office_administration.eml",
+      "office_id": "willow-family",
+      "mailbox_id": "willow-family-investment",
+      "category": "office_administration",
+      "relevant": false,
+      "facts": [],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "family": 2,
+      "pdf": false
+    },
+    {
+      "id": "history-100",
+      "path": "fixtures/emails/100-harbor-family-shared_consolidation.eml",
+      "office_id": "harbor-family",
+      "mailbox_id": "harbor-family-principal",
+      "category": "shared_consolidation",
+      "relevant": true,
+      "facts": [
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1257155.18",
+          "currency": "EUR",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Harbor Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1483415.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "harbor-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Harbor Orchard Credit II"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1558835.18",
+          "currency": "GBP",
+          "dueDate": null,
+          "eventKey": "maple-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Maple Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "1785095.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "maple-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Maple Orchard Credit II"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Meridian Infrastructure I",
+          "effectiveDate": "2026-06-30",
+          "amount": "1860515.18",
+          "currency": "CHF",
+          "dueDate": null,
+          "eventKey": "willow-family:fund0:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Meridian Infrastructure I"
+          ]
+        },
+        {
+          "kind": "valuation",
+          "investmentName": "Willow Orchard Credit II",
+          "effectiveDate": "2026-06-30",
+          "amount": "2086775.18",
+          "currency": "USD",
+          "dueDate": null,
+          "eventKey": "willow-family:fund1:2026-06-30",
+          "evidencePage": 2,
+          "evidenceAnchors": [
+            "Willow Orchard Credit II"
+          ]
+        }
+      ],
+      "receivedHeaderDate": "2026-09-09",
+      "review_boundaries": {
+        "noticeIsSettlementProof": false,
+        "automaticSettlementPermitted": false,
+        "lifecycleRequiresExplicitReview": true
+      },
+      "pdf": true,
+      "crossFamilySource": true
+    }
+  ]
+}

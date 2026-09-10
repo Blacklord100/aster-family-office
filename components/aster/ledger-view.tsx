@@ -8,6 +8,7 @@ import {
   useState,
   type SubmitEvent,
 } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   BookOpen,
   CheckCircle2,
@@ -59,8 +60,13 @@ import {
   type FinanceState,
   type LedgerCommand,
   type LedgerResponse,
+  type CashObligation,
 } from '@/lib/ledger-contract';
-import { cashflowCoverageCurrent, transactionStatus } from '@/lib/ledger';
+import {
+  cashflowCoverageCurrent,
+  transactionStatus,
+  obligationSummary,
+} from '@/lib/ledger';
 import type { PortfolioRecords } from '@/lib/workspace';
 import {
   FamilyPicker,
@@ -73,6 +79,12 @@ import {
 } from './primitives';
 import { useWorkspace } from './workspace-context';
 import styles from './ledger.module.css';
+import { EvidencePanel } from './evidence';
+import {
+  ledgerDraftNeedsReview,
+  mergeLedgerSnapshot,
+  type LedgerSnapshot,
+} from '@/lib/ledger-snapshot';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const labelKind = (kind: string) =>
@@ -95,6 +107,11 @@ const titles: Record<LedgerCommand['type'], string> = {
   voidTransaction: 'Void an unsettled transaction',
   recordValuation: 'Record a sourced valuation',
   reconcilePeriod: 'Reconcile a cash-flow period',
+  registerNoticeObligation: 'Register an earlier notice',
+  linkTransactionObligation: 'Match an existing transaction',
+  amendObligation: 'Complete or amend a notice',
+  cancelObligation: 'Cancel or mark a duplicate notice',
+  confirmDistinctObligation: 'Confirm separate obligations',
 };
 const classes = [
   'Public equities',
@@ -105,27 +122,41 @@ const classes = [
   'Cash',
 ];
 const liquidities = ['Daily', 'Within 30 days', '1–3 years', '3+ years'];
+class LedgerRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'LedgerRequestError';
+  }
+}
 async function requestLedger(
   method = 'GET',
   body?: unknown,
   signal?: AbortSignal,
+  organizationId?: string,
 ): Promise<LedgerResponse> {
   const response = await fetch('/api/ledger', {
     method,
     cache: 'no-store',
     credentials: 'same-origin',
     signal,
+    headers: {
+      ...(organizationId ? { 'x-aster-organization': organizationId } : {}),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
     ...(body
       ? {
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         }
       : {}),
   });
   const payload = await response.json();
   if (!response.ok)
-    throw new Error(
+    throw new LedgerRequestError(
       payload.message ?? 'The ledger request could not be completed.',
+      response.status,
     );
   return payload;
 }
@@ -145,6 +176,10 @@ function LedgerForm({
   finance,
   transactionId,
   holdingId,
+  obligation,
+  eventId,
+  stale,
+  onAcknowledge,
   onClose,
   onSubmit,
 }: {
@@ -153,6 +188,10 @@ function LedgerForm({
   finance: FinanceState;
   transactionId?: string;
   holdingId?: string;
+  obligation?: CashObligation;
+  eventId?: string;
+  stale: boolean;
+  onAcknowledge: () => void;
   onClose: () => void;
   onSubmit: (command: LedgerCommand) => Promise<void>;
 }) {
@@ -164,8 +203,9 @@ function LedgerForm({
       holdingId ??
       portfolio.holdings.find((h) => h.assetClass !== 'Cash')?.id ??
       '',
-    cashHoldingId:
-      portfolio.holdings.find((h) => h.assetClass === 'Cash')?.id ?? '',
+    cashHoldingId: obligation
+      ? ''
+      : (portfolio.holdings.find((h) => h.assetClass === 'Cash')?.id ?? ''),
     destinationCashHoldingId: '',
     currency: holdingId
       ? (portfolio.holdings.find((h) => h.id === holdingId)?.currency ?? 'EUR')
@@ -174,13 +214,13 @@ function LedgerForm({
     accountType: 'Custody',
     assetClass: 'Private equity',
     liquidityBucket: '3+ years',
-    kind: 'capital_call',
-    investmentEffect: 'none',
-    commitmentEffect: 'none',
+    kind: obligation?.kind ?? 'capital_call',
+    investmentEffect: obligation ? '' : 'none',
+    commitmentEffect: obligation ? '' : 'none',
     costBasisEUR: '0',
     unfundedCommitmentEUR: '0',
     commitmentAmountEUR: '0',
-    investmentCostBasisEUR: '0',
+    investmentCostBasisEUR: obligation ? '' : '0',
     ownershipPercent: '100',
     date: today(),
     valuationDate: today(),
@@ -190,6 +230,23 @@ function LedgerForm({
     fxDate: today(),
     from: today(),
     to: today(),
+    ...(obligation
+      ? {
+          holdingId: obligation.holdingId,
+          amount:
+            mode === 'recordTransaction'
+              ? (obligationSummary(finance, obligation).unallocatedAmount ?? '')
+              : (obligation.amount ?? ''),
+          currency: obligation.currency ?? '',
+          effectiveDate: obligation.effectiveDate ?? '',
+          dueDate: obligation.dueDate ?? '',
+          sourceId: obligation.sourceId,
+          sourceReference:
+            portfolio.evidence.find((row) => row.id === obligation.sourceId)
+              ?.filename ?? '',
+          sourceDate: obligation.effectiveDate ?? '',
+        }
+      : {}),
   }));
   const [verified, setVerified] = useState(false),
     [restricted, setRestricted] = useState(false),
@@ -205,6 +262,14 @@ function LedgerForm({
     (h) => h.id === fields.holdingId,
   );
   const cash = portfolio.holdings.find((h) => h.id === fields.cashHoldingId);
+  const matchingCash = portfolio.holdings.filter(
+    (holding) =>
+      holding.assetClass === 'Cash' &&
+      (!obligation ||
+        (holding.entityId === currentHolding?.entityId &&
+          holding.familyId === currentHolding?.familyId &&
+          holding.currency === obligation.currency)),
+  );
   const currency =
     mode === 'recordTransaction'
       ? (cash?.currency ?? fields.currency)
@@ -272,6 +337,12 @@ function LedgerForm({
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+    if (stale) {
+      setError(
+        'Review the refreshed financial records before saving your retained draft.',
+      );
+      return;
+    }
     if (
       mode === 'reviewAccount' &&
       !['restricted', 'unrestricted'].includes(fields.restrictionState)
@@ -296,6 +367,47 @@ function LedgerForm({
     let command: unknown;
     const proof = { source, evidenceVerified: verified };
     switch (mode) {
+      case 'registerNoticeObligation':
+        command = { type: mode, eventId, evidenceVerified: verified };
+        break;
+      case 'linkTransactionObligation':
+        command = {
+          type: mode,
+          obligationId: obligation?.id,
+          transactionId: f.transactionId,
+          ...proof,
+        };
+        break;
+      case 'amendObligation':
+        command = {
+          type: mode,
+          obligationId: obligation?.id,
+          amount: f.amount || null,
+          currency: f.currency || null,
+          effectiveDate: f.effectiveDate || null,
+          dueDate: f.dueDate || null,
+          reason: f.reason,
+          ...proof,
+        };
+        break;
+      case 'cancelObligation':
+        command = {
+          type: mode,
+          obligationId: obligation?.id,
+          ...(f.duplicateOf ? { duplicateOf: f.duplicateOf } : {}),
+          reason: f.reason,
+          ...proof,
+        };
+        break;
+      case 'confirmDistinctObligation':
+        command = {
+          type: mode,
+          obligationId: obligation?.id,
+          otherObligationId: f.otherObligationId,
+          reason: f.reason,
+          ...proof,
+        };
+        break;
       case 'reviewAccount':
         command = {
           type: mode,
@@ -361,6 +473,7 @@ function LedgerForm({
       case 'recordTransaction':
         command = {
           type: mode,
+          ...(obligation ? { obligationId: obligation.id } : {}),
           kind: f.kind,
           ...(investmentKind ? { holdingId: f.holdingId } : {}),
           cashHoldingId: f.cashHoldingId,
@@ -483,8 +596,159 @@ function LedgerForm({
                   : 'Use reviewed source amounts and explicit classifications. No conversion rate is fetched or inferred.'}
           </DialogDescription>
         </DialogHeader>
+        {stale ? (
+          <Alert>
+            <AlertTitle>Financial records changed</AlertTitle>
+            <AlertDescription>
+              Your entries are retained. Check the refreshed notice and balances
+              before continuing.
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setVerified(false);
+                  onAcknowledge();
+                }}
+              >
+                I reviewed the latest records
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {obligation ? (
+          <Alert>
+            <AlertTitle>
+              {labelKind(obligation.kind)} ·{' '}
+              {
+                portfolio.holdings.find(
+                  (row) => row.id === obligation.holdingId,
+                )?.name
+              }
+            </AlertTitle>
+            <AlertDescription>
+              {obligation.amount === null
+                ? 'Notice amount unknown'
+                : `${obligation.amount} ${obligation.currency ?? '(currency unknown)'}`}{' '}
+              ·{' '}
+              {obligation.dueDate
+                ? `Due ${dateLabel(obligation.dueDate)}`
+                : 'Due date unknown'}
+              . {obligation.summary}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <form onSubmit={(event) => void submit(event)}>
           <FieldGroup className={styles.formGrid}>
+            {mode === 'registerNoticeObligation' ? (
+              <p className={styles.note}>
+                Create a draft from the retained notice. Its original acceptance
+                time and due date remain unknown. Review the source below; no
+                transaction or cash movement will be created.
+              </p>
+            ) : null}
+            {mode === 'linkTransactionObligation' && obligation ? (
+              <>
+                {pick(
+                  'transactionId',
+                  'Existing payment / receipt',
+                  obligationSummary(
+                    finance,
+                    obligation,
+                  ).matchingTransactionIds.map((id) => {
+                    const row = finance.transactions.find(
+                      (item) => item.id === id,
+                    )!;
+                    return {
+                      value: id,
+                      label: `${row.amount} ${row.currency} · ${labelKind(transactionStatus(finance, row.id))} · ${row.source.reference}`,
+                    };
+                  }),
+                )}
+                <p className={styles.note}>
+                  Match the retained transaction after reviewing its source.
+                  This creates no additional transaction or cash posting.
+                </p>
+              </>
+            ) : null}
+            {mode === 'amendObligation' ? (
+              <>
+                {input(
+                  'amount',
+                  'Reported amount',
+                  'text',
+                  'Leave unknown details empty. Existing notice values and every amendment remain in history.',
+                  false,
+                )}
+                {input(
+                  'currency',
+                  'Reported currency code',
+                  'text',
+                  'For example EUR or USD. No currency is inferred.',
+                  false,
+                )}
+                {input(
+                  'effectiveDate',
+                  'Reported effective date',
+                  'date',
+                  undefined,
+                  false,
+                )}
+                {input(
+                  'dueDate',
+                  'Due / expected date',
+                  'date',
+                  undefined,
+                  false,
+                )}
+                {input('reason', 'Completion / correction reason')}
+              </>
+            ) : null}
+            {mode === 'cancelObligation' ? (
+              <>
+                {input('reason', 'Cancellation / duplicate reason')}
+                {pick(
+                  'duplicateOf',
+                  'Retain another obligation (optional)',
+                  (finance.obligations ?? [])
+                    .filter(
+                      (row) =>
+                        row.id !== obligation?.id &&
+                        !row.cancellation &&
+                        row.holdingId === obligation?.holdingId &&
+                        row.kind === obligation?.kind,
+                    )
+                    .map((row) => ({
+                      value: row.id,
+                      label: `${row.amount ?? '?'} ${row.currency ?? '?'} · ${row.dueDate ?? 'Due date unknown'} · ${row.summary.slice(0, 70)}`,
+                    })),
+                )}
+              </>
+            ) : null}
+            {mode === 'confirmDistinctObligation' && obligation ? (
+              <>
+                {pick(
+                  'otherObligationId',
+                  'Similar notice confirmed as separate',
+                  obligationSummary(
+                    finance,
+                    obligation,
+                  ).relatedObligationIds.map((id) => {
+                    const row = finance.obligations!.find(
+                      (item) => item.id === id,
+                    )!;
+                    return {
+                      value: id,
+                      label: `${row.amount ?? '?'} ${row.currency ?? '?'} · ${row.summary.slice(0, 90)}`,
+                    };
+                  }),
+                )}
+                {input(
+                  'reason',
+                  'Evidence that these are separate obligations',
+                )}
+              </>
+            ) : null}
             {mode === 'createFamily' ? (
               <>
                 {input('name', 'Family name')}
@@ -649,21 +913,44 @@ function LedgerForm({
             ) : null}
             {mode === 'recordTransaction' ? (
               <>
-                {pick('kind', 'Transaction kind', choices([...LEDGER_KINDS]))}
+                {obligation
+                  ? null
+                  : pick(
+                      'kind',
+                      'Transaction kind',
+                      choices([...LEDGER_KINDS]),
+                    )}
                 {pick(
                   'cashHoldingId',
                   'Funding / receiving cash balance',
-                  portfolio.holdings
-                    .filter((h) => h.assetClass === 'Cash')
-                    .map((h) => ({
-                      value: h.id,
-                      label:
-                        h.name +
-                        ' · ' +
-                        nativeMoney(h.originalValue, h.currency),
-                    })),
+                  matchingCash.map((h) => ({
+                    value: h.id,
+                    label:
+                      h.name + ' · ' + nativeMoney(h.originalValue, h.currency),
+                  })),
                 )}
-                {investmentKind
+                {!matchingCash.length ? (
+                  <Alert className={styles.wide}>
+                    <AlertTitle>Register a matching cash balance</AlertTitle>
+                    <AlertDescription>
+                      Add a sourced cash holding in Office setup
+                      {obligation
+                        ? ` for this legal entity in ${obligation.currency ?? 'the confirmed notice currency'}`
+                        : ''}
+                      , then return to prepare the payment or receipt. Creating
+                      a notice does not establish a cash balance.
+                      <a
+                        href={
+                          '/?view=setup&family=' +
+                          encodeURIComponent(currentHolding?.familyId ?? 'all')
+                        }
+                      >
+                        Open Office setup
+                      </a>
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                {investmentKind && !obligation
                   ? pick(
                       'holdingId',
                       'Investment',
@@ -879,15 +1166,19 @@ function LedgerForm({
             ) : null}
             {needsSource ? (
               <FieldGroup className={styles.section}>
-                {input('sourceReference', 'Source report / bank reference')}
-                {input('sourceDate', 'Source as of', 'date')}
-                {input(
-                  'sourceId',
-                  'Existing evidence ID (optional)',
-                  'text',
-                  undefined,
-                  false,
-                )}
+                {mode !== 'registerNoticeObligation' ? (
+                  <>
+                    {input('sourceReference', 'Source report / bank reference')}
+                    {input('sourceDate', 'Source as of', 'date')}
+                    {input(
+                      'sourceId',
+                      'Existing evidence ID (optional)',
+                      'text',
+                      undefined,
+                      false,
+                    )}
+                  </>
+                ) : null}
                 <Field orientation="horizontal" className={styles.wide}>
                   <Checkbox
                     id="ledger-verified"
@@ -918,7 +1209,10 @@ function LedgerForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={busy || (needsSource && !verified)}>
+            <Button
+              type="submit"
+              disabled={busy || stale || (needsSource && !verified)}
+            >
               {busy
                 ? 'Saving…'
                 : mode === 'settleTransaction'
@@ -939,12 +1233,29 @@ function LedgerForm({
 export function LedgerView({
   family,
   onFamily,
+  mode = 'cash',
 }: {
   family: string;
   onFamily: (value: string) => void;
+  mode?: 'cash' | 'setup';
 }) {
-  const { reload: reloadWorkspace } = useWorkspace();
-  const [response, setResponse] = useState<LedgerResponse | null>(null),
+  const {
+    reload: reloadWorkspace,
+    revision: workspaceRevision,
+    state,
+  } = useWorkspace();
+  const organizationId = state.identity?.organizationId;
+  const params = useSearchParams();
+  const selectedHolding = params.get('holding');
+  const selectedObligation = params.get('obligation');
+  const contextKey = JSON.stringify([
+    state.identity?.organizationId,
+    state.identity?.user.id,
+    state.identity?.role,
+    state.identity?.dataScope,
+  ]);
+  const activeContext = useRef(contextKey);
+  const [snapshot, setSnapshot] = useState<LedgerSnapshot | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
@@ -952,43 +1263,71 @@ export function LedgerView({
     mode: LedgerCommand['type'];
     transactionId?: string;
     holdingId?: string;
+    obligationId?: string;
+    eventId?: string;
+    revision: number;
+    contextKey: string;
   } | null>(null);
+  const response =
+    snapshot?.contextKey === contextKey ? snapshot.response : null;
+  const [sourceId, setSourceId] = useState<string | null>(null);
+  const [tab, setTab] = useState(mode === 'setup' ? 'register' : 'obligations');
+  const requests = useRef(0);
+  const inFlight = useRef<AbortController | null>(null);
   const requestKey = useRef<{ body: string; key: string } | null>(null);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+  const load = useCallback(async () => {
+    if (!organizationId) return;
+    const serial = ++requests.current;
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
     try {
-      setResponse(await requestLedger('GET', undefined, signal));
-      setError('');
+      const value = await requestLedger(
+        'GET',
+        undefined,
+        controller.signal,
+        organizationId,
+      );
+      if (serial === requests.current && !controller.signal.aborted) {
+        setSnapshot((current) =>
+          mergeLedgerSnapshot(
+            current,
+            value,
+            contextKey,
+            activeContext.current,
+          ),
+        );
+        setError('');
+      }
     } catch (cause) {
-      if (!signal?.aborted)
+      if (!controller.signal.aborted && serial === requests.current) {
+        if (
+          cause instanceof LedgerRequestError &&
+          [401, 403].includes(cause.status)
+        ) {
+          setSnapshot(null);
+          setDialog(null);
+          setSourceId(null);
+        }
         setError(
           cause instanceof Error
             ? cause.message
             : 'The ledger could not be loaded.',
         );
+      }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!controller.signal.aborted && serial === requests.current)
+        setLoading(false);
     }
-  }, []);
+  }, [contextKey, organizationId]);
   useEffect(() => {
-    const controller = new AbortController();
-    void requestLedger('GET', undefined, controller.signal)
-      .then((value) => {
-        if (!controller.signal.aborted) setResponse(value);
-      })
-      .catch((cause) => {
-        if (!controller.signal.aborted)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'The ledger could not be loaded.',
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
+    activeContext.current = contextKey;
+    if (workspaceRevision >= 0) void load();
+    return () => {
+      inFlight.current?.abort();
+      requests.current += 1;
+    };
+  }, [workspaceRevision, load, contextKey]);
   const portfolio = response?.portfolio,
     finance = response?.finance;
   const holdings = useMemo(
@@ -1007,9 +1346,37 @@ export function LedgerView({
     portfolio?.accounts.filter(
       (a) => family === 'all' || a.familyId === family,
     ) ?? [];
+  const obligations = (finance?.obligations ?? [])
+    .filter(
+      (item) =>
+        holdingIds.has(item.holdingId) &&
+        (!selectedHolding || item.holdingId === selectedHolding) &&
+        (!selectedObligation || item.id === selectedObligation),
+    )
+    .toReversed();
+  const legacyNotices = (portfolio?.events ?? []).filter(
+    (event) =>
+      !selectedObligation &&
+      ['Capital call', 'Distribution'].includes(event.type) &&
+      event.status === 'Source reported' &&
+      event.financialEffect === 'None' &&
+      event.holdingIds.length === 1 &&
+      holdingIds.has(event.holdingIds[0]) &&
+      (!selectedHolding || event.holdingIds[0] === selectedHolding) &&
+      !(finance?.obligations ?? []).some(
+        (item) =>
+          item.sourceId === event.sourceId &&
+          item.holdingId === event.holdingIds[0],
+      ),
+  );
   const transactions =
     finance?.transactions
-      .filter((tx) => holdingIds.has(tx.cashHoldingId))
+      .filter(
+        (tx) =>
+          holdingIds.has(tx.cashHoldingId) &&
+          (!selectedHolding || tx.holdingId === selectedHolding) &&
+          (!selectedObligation || tx.obligationId === selectedObligation),
+      )
       .toReversed() ?? [];
   const reviewed = transactions.filter(
     (tx) => finance && transactionStatus(finance, tx.id) === 'reviewed',
@@ -1023,23 +1390,59 @@ export function LedgerView({
     .reduce((sum, tx) => sum + tx.amountEUR, 0);
   function open(
     mode: LedgerCommand['type'],
-    extra: { transactionId?: string; holdingId?: string } = {},
+    extra: {
+      transactionId?: string;
+      holdingId?: string;
+      obligationId?: string;
+      eventId?: string;
+    } = {},
   ) {
     requestKey.current = null;
-    setDialog({ mode, ...extra });
+    setDialog({
+      mode,
+      ...extra,
+      revision: response?.revision ?? -1,
+      contextKey,
+    });
     setNotice('');
   }
   async function save(command: LedgerCommand) {
     if (!response) throw new Error('Reload the ledger before saving.');
+    if (
+      !dialog ||
+      ledgerDraftNeedsReview(dialog, snapshot, loading, workspaceRevision)
+    )
+      throw new Error(
+        'Review the refreshed records before saving your retained draft.',
+      );
     const body = JSON.stringify(command);
     if (requestKey.current?.body !== body)
       requestKey.current = { body, key: crypto.randomUUID() };
-    const next = await requestLedger('POST', {
-      expectedRevision: response.revision,
-      idempotencyKey: requestKey.current.key,
-      command,
-    });
-    setResponse(next);
+    inFlight.current?.abort();
+    requests.current += 1;
+    let next: LedgerResponse;
+    try {
+      next = await requestLedger(
+        'POST',
+        {
+          expectedRevision: dialog.revision,
+          idempotencyKey: requestKey.current.key,
+          command,
+        },
+        undefined,
+        organizationId,
+      );
+    } catch (cause) {
+      if (activeContext.current === contextKey) await load();
+      throw cause;
+    }
+    if (activeContext.current !== contextKey) return;
+    inFlight.current?.abort();
+    requests.current += 1;
+    setSnapshot((current) =>
+      mergeLedgerSnapshot(current, next, contextKey, activeContext.current),
+    );
+    setLoading(false);
     setNotice(
       next.duplicate
         ? 'The earlier request was already saved; no duplicate was posted.'
@@ -1050,19 +1453,26 @@ export function LedgerView({
   return (
     <div className={styles.root}>
       <PageHeading
-        title="Investment register & ledger"
-        subtitle="Recorded ownership, original-currency values and reviewed cash movements"
+        title={mode === 'setup' ? 'Office setup' : 'Cash & commitments'}
+        subtitle={
+          mode === 'setup'
+            ? 'Families, legal entities, accounts and registered opening balances'
+            : 'Source notices, expected payments and confirmed cash movements'
+        }
       >
         <FamilyPicker value={family} onChange={onFamily} />
         <Button
           variant="outline"
           disabled={loading}
-          onClick={() => void load()}
+          onClick={() => {
+            setLoading(true);
+            void load();
+          }}
         >
           <RefreshCw data-icon="inline-start" />
           Reload
         </Button>
-        {response?.canWrite ? (
+        {response?.canWrite && mode === 'setup' ? (
           <Button
             onClick={() => open('createHolding')}
             disabled={!accounts.length}
@@ -1106,11 +1516,21 @@ export function LedgerView({
             />
             <Metric
               label="Recorded cash"
-              value={money(
-                holdings
-                  .filter((h) => h.assetClass === 'Cash')
-                  .reduce((sum, h) => sum + h.valueEUR, 0),
-              )}
+              value={
+                !holdings.some((h) => h.assetClass === 'Cash')
+                  ? 'Not recorded'
+                  : holdings.some(
+                        (h) =>
+                          h.assetClass === 'Cash' &&
+                          h.valuationStatus === 'unknown',
+                      )
+                    ? 'Incomplete'
+                    : money(
+                        holdings
+                          .filter((h) => h.assetClass === 'Cash')
+                          .reduce((sum, h) => sum + h.valueEUR, 0),
+                      )
+              }
               note="Account restrictions still apply"
             />
             <Metric
@@ -1133,13 +1553,367 @@ export function LedgerView({
               note="Updated only by explicit posted movements"
             />
           </div>
-          <Tabs defaultValue="register" className={styles.stack}>
+          <Tabs
+            value={
+              mode === 'setup'
+                ? 'register'
+                : tab === 'register'
+                  ? 'obligations'
+                  : tab
+            }
+            onValueChange={setTab}
+            className={styles.stack}
+          >
             <TabsList variant="line">
-              <TabsTrigger value="register">Register</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
-              <TabsTrigger value="valuations">Valuations</TabsTrigger>
-              <TabsTrigger value="coverage">Reconciliation</TabsTrigger>
+              {mode === 'setup' ? (
+                <TabsTrigger value="register">Ownership & accounts</TabsTrigger>
+              ) : (
+                <>
+                  <TabsTrigger value="obligations">
+                    Obligation drafts
+                  </TabsTrigger>
+                  <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                  <TabsTrigger value="valuations">Valuations</TabsTrigger>
+                  <TabsTrigger value="coverage">Reconciliation</TabsTrigger>
+                </>
+              )}
             </TabsList>
+            <TabsContent value="obligations" className={styles.stack}>
+              <Panel
+                title="Accepted cash notices"
+                subtitle="Amounts remain in their reported currency. Account matching, FX and financial treatment are reviewed before settlement."
+              >
+                {selectedHolding || selectedObligation ? (
+                  <div className={styles.filterNotice}>
+                    <span>Showing the selected investment or obligation</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('holding');
+                        url.searchParams.delete('obligation');
+                        window.history.replaceState(
+                          null,
+                          '',
+                          url.pathname + url.search,
+                        );
+                      }}
+                    >
+                      Show all notices
+                    </Button>
+                  </div>
+                ) : null}
+                {obligations.length ? (
+                  <div className={styles.obligations}>
+                    {obligations.map((item) => {
+                      const summary = obligationSummary(finance, item),
+                        holding = portfolio.holdings.find(
+                          (row) => row.id === item.holdingId,
+                        );
+                      const allocated =
+                        summary.reviewedAmount !== '0.00' ||
+                        summary.settledAmount !== '0.00';
+                      const formatted = (amount: string | null) =>
+                        amount === null
+                          ? 'Unknown'
+                          : item.currency
+                            ? nativeMoney(amount, item.currency)
+                            : `${amount} · currency unknown`;
+                      return (
+                        <article key={item.id} className={styles.obligation}>
+                          <header>
+                            <div>
+                              <span className={styles.eyebrow}>
+                                {labelKind(item.kind)}
+                              </span>
+                              <h3>
+                                {holding?.name ?? 'Investment unavailable'}
+                              </h3>
+                              <p>
+                                {item.dueDate
+                                  ? `Due / expected ${dateLabel(item.dueDate)}`
+                                  : 'Due / expected date unknown'}{' '}
+                                ·{' '}
+                                {item.effectiveDate
+                                  ? `Effective ${dateLabel(item.effectiveDate)}`
+                                  : 'Effective date unknown'}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                summary.status === 'settled'
+                                  ? 'secondary'
+                                  : 'outline'
+                              }
+                            >
+                              {labelKind(summary.status)}
+                            </Badge>
+                          </header>
+                          <div className={styles.obligationAmounts}>
+                            <div>
+                              <span>Notice</span>
+                              <strong>{formatted(item.amount)}</strong>
+                            </div>
+                            <div>
+                              <span>Confirmed settlement</span>
+                              <strong>
+                                {formatted(summary.settledAmount)}
+                              </strong>
+                            </div>
+                            <div>
+                              <span>Remaining to settle</span>
+                              <strong>
+                                {item.cancellation
+                                  ? 'Cancelled'
+                                  : formatted(summary.remainingAmount)}
+                              </strong>
+                            </div>
+                            <div>
+                              <span>Available to allocate</span>
+                              <strong>
+                                {item.cancellation
+                                  ? 'Not applicable'
+                                  : formatted(summary.unallocatedAmount)}
+                              </strong>
+                            </div>
+                          </div>
+                          <details className={styles.provenance}>
+                            <summary>Source summary</summary>
+                            <p>{item.summary}</p>
+                          </details>
+                          {summary.missingDetails.length ? (
+                            <p className={styles.attention}>
+                              Needs review: {summary.missingDetails.join(' · ')}
+                            </p>
+                          ) : !allocated && !item.cancellation ? (
+                            <p className={styles.note}>
+                              Next: choose a matching cash account, confirm FX
+                              if needed and classify the payment. The notice has
+                              changed no cash balance.
+                            </p>
+                          ) : null}
+                          {item.cancellation ? (
+                            <p className={styles.note}>
+                              Cancelled {dateLabel(item.cancellation.at)}:{' '}
+                              {item.cancellation.reason}
+                              {item.cancellation.duplicateOf
+                                ? ' · linked to the retained obligation'
+                                : ''}
+                            </p>
+                          ) : null}
+                          <div className={styles.actions}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSourceId(item.sourceId)}
+                            >
+                              <FileText data-icon="inline-start" />
+                              Open notice
+                            </Button>
+                            {response.canWrite && !item.cancellation ? (
+                              <>
+                                {!summary.missingDetails.length &&
+                                summary.unallocatedAmount !== null &&
+                                summary.unallocatedAmount !== '0.00' ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      open('recordTransaction', {
+                                        holdingId: item.holdingId,
+                                        obligationId: item.id,
+                                      })
+                                    }
+                                  >
+                                    Prepare payment / receipt
+                                  </Button>
+                                ) : null}
+                                {!allocated ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      open('amendObligation', {
+                                        obligationId: item.id,
+                                        holdingId: item.holdingId,
+                                      })
+                                    }
+                                  >
+                                    Complete / amend
+                                  </Button>
+                                ) : null}
+                                {summary.relatedObligationIds.length ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      open('confirmDistinctObligation', {
+                                        obligationId: item.id,
+                                      })
+                                    }
+                                  >
+                                    Confirm separate notices
+                                  </Button>
+                                ) : null}
+                                {summary.matchingTransactionIds.length ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      open('linkTransactionObligation', {
+                                        obligationId: item.id,
+                                      })
+                                    }
+                                  >
+                                    Match existing transaction
+                                  </Button>
+                                ) : null}
+                                {!allocated ? (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      open('cancelObligation', {
+                                        obligationId: item.id,
+                                      })
+                                    }
+                                  >
+                                    Cancel / duplicate
+                                  </Button>
+                                ) : null}
+                              </>
+                            ) : null}
+                            {summary.transactionIds.length ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set('obligation', item.id);
+                                  window.history.replaceState(
+                                    null,
+                                    '',
+                                    url.pathname + url.search,
+                                  );
+                                  setTab('transactions');
+                                }}
+                              >
+                                Transactions ({summary.transactionIds.length})
+                              </Button>
+                            ) : null}
+                          </div>
+                          <details className={styles.provenance}>
+                            <summary>Source and correction history</summary>
+                            <p>
+                              Registered{' '}
+                              {new Date(item.acceptedAt).toLocaleString()} ·{' '}
+                              {item.acceptedBy}.{' '}
+                              {item.origin === 'legacy_notice'
+                                ? 'Original acceptance time and due date were not retained; this registration does not backdate them.'
+                                : `Accepted fact ${Number(item.factIndex ?? 0) + 1}${item.reviewRevision === undefined ? '' : ` · review ${item.reviewRevision}`}.`}
+                            </p>
+                            <p>
+                              {item.importedAt
+                                ? `Imported ${new Date(item.importedAt).toLocaleString()}`
+                                : 'Import timestamp unknown'}{' '}
+                              · source {item.sourceId}
+                            </p>
+                            <p>
+                              Original notice:{' '}
+                              {item.original.amount ?? 'Amount unknown'}{' '}
+                              {item.original.currency ?? 'Currency unknown'} ·
+                              due {item.original.dueDate ?? 'unknown'}
+                            </p>
+                            {item.amendments.map((revision) => (
+                              <p key={revision.id}>
+                                {new Date(revision.at).toLocaleString()} ·{' '}
+                                {revision.actorId}: {revision.reason}.{' '}
+                                {revision.before.amount ?? '?'} →{' '}
+                                {revision.after.amount ?? '?'}{' '}
+                                {revision.after.currency ?? '?'} · due{' '}
+                                {revision.after.dueDate ?? 'unknown'}
+                                {revision.source.sourceId ? (
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSourceId(revision.source.sourceId!)
+                                    }
+                                  >
+                                    Amendment evidence
+                                  </Button>
+                                ) : (
+                                  ` · ${revision.source.reference}`
+                                )}
+                              </p>
+                            ))}
+                            {item.distinctFrom.map((relation, index) => (
+                              <p key={index}>
+                                Separate-obligation review{' '}
+                                {dateLabel(relation.at)}: {relation.reason}
+                              </p>
+                            ))}
+                          </details>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Blank>
+                    {selectedHolding || selectedObligation
+                      ? 'No obligation is available for this selection and your authorized scope.'
+                      : 'Accept a capital-call or distribution notice in Documents. Its draft will appear here automatically, even when details are missing.'}
+                  </Blank>
+                )}
+              </Panel>
+              {legacyNotices.length ? (
+                <Panel
+                  title="Earlier accepted notices"
+                  subtitle="These sources predate linked obligation drafts. Register each after checking the source; missing details remain unknown."
+                >
+                  <div className={styles.eventList}>
+                    {legacyNotices.map((event) => (
+                      <div key={event.id} className={styles.event}>
+                        <FileText />
+                        <div>
+                          <strong>{event.title}</strong>
+                          <details className={styles.provenance}>
+                            <summary>Source summary</summary>
+                            <p>{event.summary}</p>
+                          </details>
+                          <p>
+                            {event.reportedAmount ?? 'Amount unknown'}{' '}
+                            {event.reportedCurrency ?? 'Currency unknown'} ·{' '}
+                            {event.dateBasis === 'Source reported'
+                              ? dateLabel(event.date)
+                              : 'Effective date unknown'}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSourceId(event.sourceId)}
+                        >
+                          Open source
+                        </Button>
+                        {response.canWrite ? (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              open('registerNoticeObligation', {
+                                eventId: event.id,
+                              })
+                            }
+                          >
+                            Register draft
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              ) : null}
+            </TabsContent>
             <TabsContent value="register" className={styles.stack}>
               <div className={styles.grid}>
                 <Panel
@@ -1361,7 +2135,7 @@ export function LedgerView({
             </TabsContent>
             <TabsContent value="transactions" className={styles.stack}>
               <Panel
-                title="Reviewed transactions & obligations"
+                title="Reviewed transactions"
                 subtitle="Notices, settlements and corrections remain separate"
                 action={
                   response.canWrite ? (
@@ -1399,6 +2173,9 @@ export function LedgerView({
                                 {tx.source.reference}
                               </small>
                               <small>{tx.memo}</small>
+                              {tx.obligationId ? (
+                                <small>Linked notice · {tx.obligationId}</small>
+                              ) : null}
                             </TableCell>
                             <TableCell>
                               {
@@ -1720,17 +2497,57 @@ export function LedgerView({
             overdrafts. Settlement and FX changes require source review; no
             banking, trading, market-data or tax-lot connection is implied.
           </p>
-          {dialog ? (
+          {dialog && dialog.contextKey === contextKey ? (
             <LedgerForm
-              key={dialog.mode + dialog.transactionId + dialog.holdingId}
+              key={
+                dialog.mode +
+                dialog.transactionId +
+                dialog.holdingId +
+                dialog.obligationId +
+                dialog.eventId
+              }
               mode={dialog.mode}
               portfolio={portfolio}
               finance={finance}
               transactionId={dialog.transactionId}
               holdingId={dialog.holdingId}
+              obligation={finance.obligations?.find(
+                (item) => item.id === dialog.obligationId,
+              )}
+              eventId={dialog.eventId}
+              stale={ledgerDraftNeedsReview(
+                dialog,
+                snapshot,
+                loading,
+                workspaceRevision,
+              )}
+              onAcknowledge={() =>
+                setDialog((current) =>
+                  current ? { ...current, revision: response.revision } : null,
+                )
+              }
               onClose={() => setDialog(null)}
               onSubmit={save}
             />
+          ) : null}
+          {sourceId &&
+          portfolio.evidence.some((item) => item.id === sourceId) ? (
+            <Dialog
+              open
+              onOpenChange={(isOpen) => {
+                if (!isOpen) setSourceId(null);
+              }}
+            >
+              <DialogContent className={styles.dialog}>
+                <DialogHeader>
+                  <DialogTitle>Cash notice evidence</DialogTitle>
+                  <DialogDescription>
+                    Original source and accepted fact provenance
+                  </DialogDescription>
+                </DialogHeader>
+                <EvidencePanel sourceId={sourceId} embedded />
+              </DialogContent>
+            </Dialog>
           ) : null}
         </>
       ) : null}

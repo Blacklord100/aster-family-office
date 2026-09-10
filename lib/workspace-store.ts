@@ -78,7 +78,7 @@ export async function changeWorkspace(
   action = 'workspace.update',
 ) {
   return withTenant(context.organizationId, async (client) => {
-    const { state } = await readWorkspaceInTransaction(
+    const { state, revision } = await readWorkspaceInTransaction(
       client,
       context.organizationId,
       true,
@@ -92,6 +92,6 @@ export async function changeWorkspace(
       action,
       context.organizationId,
     );
-    return next;
+    return { ...next, workspaceRevision: revision + 1 };
   });
 }

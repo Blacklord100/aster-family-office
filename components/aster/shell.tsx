@@ -48,6 +48,7 @@ export type View =
   | 'ledger'
   | 'intelligence'
   | 'operations'
+  | 'setup'
   | 'overview'
   | 'investments'
   | 'timeline'
@@ -60,18 +61,19 @@ export type View =
   | 'agents'
   | 'connections';
 export const navigation = [
-  { id: 'overview', label: 'Overview', icon: House },
+  { id: 'overview', label: 'Portfolio', icon: House },
   { id: 'investments', label: 'Investments', icon: BriefcaseBusiness },
-  { id: 'ledger', label: 'Register & ledger', icon: BookOpen },
+  { id: 'ledger', label: 'Cash & commitments', icon: BookOpen },
   { id: 'intelligence', label: 'Knowledge & managers', icon: Network },
   { id: 'risk', label: 'Exposure & stress', icon: Activity },
-  { id: 'timeline', label: 'Timeline', icon: Clock3 },
+  { id: 'timeline', label: 'Activity', icon: Clock3 },
   { id: 'inbox', label: 'Source library', icon: Mail },
   { id: 'exceptions', label: 'Exceptions', icon: CircleAlert },
   { id: 'calendar', label: 'Reporting calendar', icon: CalendarDays },
   { id: 'reports', label: 'Reports', icon: ChartNoAxesCombined },
-  { id: 'agents', label: 'Documents', icon: Files },
+  { id: 'agents', label: 'Documents & review', icon: Files },
   { id: 'connections', label: 'Connections', icon: Link2 },
+  { id: 'setup', label: 'Office setup', icon: Settings2 },
   { id: 'operations', label: 'Operations', icon: ShieldCheck },
 ] as const;
 export function navigationFor(
@@ -79,6 +81,21 @@ export function navigationFor(
 ) {
   return navigation.filter((item) => workspaceViewAvailable(item.id, identity));
 }
+const primaryViews = new Set([
+  'overview',
+  'investments',
+  'ledger',
+  'risk',
+  'timeline',
+  'reports',
+]);
+const supportingViews = new Set(['agents', 'inbox', 'connections', 'setup']);
+const navigationParent: Partial<Record<View, View>> = {
+  intelligence: 'investments',
+  exceptions: 'overview',
+  calendar: 'reports',
+  operations: 'setup',
+};
 type Props = {
   view: View;
   family: string;
@@ -115,7 +132,7 @@ function Navigation({
         <button
           className="brand"
           onClick={() => go('overview')}
-          aria-label="Aster overview"
+          aria-label="Aster portfolio"
         >
           <Asterisk className="brand-symbol" />
           <span>Aster</span>
@@ -130,23 +147,51 @@ function Navigation({
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {navigationFor(state.identity).map((n) => (
-              <SidebarMenuItem key={n.id}>
-                <SidebarMenuButton
-                  isActive={
-                    canonicalWorkspaceView(view, state.identity) === n.id
-                  }
-                  onClick={() => go(n.id)}
-                  className="nav-item"
-                >
-                  <n.icon />
-                  <span>{n.label}</span>
-                  {n.id === 'inbox' ? (
-                    <span className="nav-count">{inboxCount}</span>
-                  ) : null}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {navigationFor(state.identity)
+              .filter((n) => primaryViews.has(n.id))
+              .map((n) => (
+                <SidebarMenuItem key={n.id}>
+                  <SidebarMenuButton
+                    isActive={
+                      (navigationParent[view] ??
+                        canonicalWorkspaceView(view, state.identity)) === n.id
+                    }
+                    onClick={() => go(n.id)}
+                    className="nav-item"
+                  >
+                    <n.icon />
+                    <span>{n.label}</span>
+                    {n.id === 'inbox' ? (
+                      <span className="nav-count">{inboxCount}</span>
+                    ) : null}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <Separator className="sidebar-separator" />
+        <SidebarGroup>
+          <SidebarMenu>
+            {navigationFor(state.identity)
+              .filter((n) => supportingViews.has(n.id))
+              .map((n) => (
+                <SidebarMenuItem key={n.id}>
+                  <SidebarMenuButton
+                    isActive={
+                      (navigationParent[view] ??
+                        canonicalWorkspaceView(view, state.identity)) === n.id
+                    }
+                    onClick={() => go(n.id)}
+                    className="nav-item"
+                  >
+                    <n.icon />
+                    <span>{n.label}</span>
+                    {n.id === 'inbox' ? (
+                      <span className="nav-count">{inboxCount}</span>
+                    ) : null}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
           </SidebarMenu>
         </SidebarGroup>
         <Separator className="sidebar-separator" />

@@ -127,6 +127,19 @@ export function scopeWorkspace(
   }
   if (state.finance) {
     const finance = state.finance;
+    const obligations = (finance.obligations ?? []).filter(
+      (item) =>
+        holdingIds.has(item.holdingId) &&
+        sourceIds.has(item.sourceId) &&
+        (!item.documentId || releasedDocuments.has(item.documentId)) &&
+        item.amendments.every(
+          (entry) =>
+            !entry.source.sourceId || sourceIds.has(entry.source.sourceId),
+        ) &&
+        (!item.cancellation?.source.sourceId ||
+          sourceIds.has(item.cancellation.source.sourceId)),
+    );
+    const obligationIds = new Set(obligations.map((item) => item.id));
     const transactions = finance.transactions.filter(
       (t) =>
         holdingIds.has(t.cashHoldingId) &&
@@ -142,7 +155,39 @@ export function scopeWorkspace(
           entityIds.has(id),
         ),
       ),
-      transactions,
+      obligations: obligations.map((item) => ({
+        ...item,
+        distinctFrom: item.distinctFrom.filter(
+          (relation) =>
+            obligationIds.has(relation.obligationId) &&
+            (!relation.source.sourceId ||
+              sourceIds.has(relation.source.sourceId)),
+        ),
+        cancellation: item.cancellation
+          ? {
+              ...item.cancellation,
+              duplicateOf:
+                item.cancellation.duplicateOf &&
+                obligationIds.has(item.cancellation.duplicateOf)
+                  ? item.cancellation.duplicateOf
+                  : undefined,
+            }
+          : undefined,
+      })),
+      transactions: transactions.map((tx) => ({
+        ...tx,
+        obligationId:
+          tx.obligationId && obligationIds.has(tx.obligationId)
+            ? tx.obligationId
+            : undefined,
+        obligationLink:
+          tx.obligationId &&
+          obligationIds.has(tx.obligationId) &&
+          (!tx.obligationLink?.source.sourceId ||
+            sourceIds.has(tx.obligationLink.source.sourceId))
+            ? tx.obligationLink
+            : undefined,
+      })),
       events: finance.events.filter(
         (e) =>
           transactionIds.has(e.transactionId) &&
@@ -177,5 +222,28 @@ export function scopeWorkspace(
       receipts: [],
     };
   }
+  if (state.historyLifecycle)
+    result.historyLifecycle = {
+      version: 1,
+      revision: state.historyLifecycle.revision,
+      receipts: [],
+      records: state.historyLifecycle.records.filter(
+        (record) =>
+          holdingIds.has(record.holdingId) &&
+          sourceIds.has(record.sourceId) &&
+          releasedDocuments.has(record.documentId) &&
+          scopeAllows(
+            scope,
+            record.registeredDetails.familyId,
+            record.registeredDetails.entityId,
+          ) &&
+          (!record.details ||
+            scopeAllows(
+              scope,
+              record.details.familyId,
+              record.details.entityId,
+            )),
+      ),
+    };
   return result;
 }

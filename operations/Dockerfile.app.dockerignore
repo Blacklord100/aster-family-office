@@ -28,6 +28,11 @@
 !benchmark/mailroom-v1/fixtures/
 !benchmark/mailroom-v1/fixtures/emails/
 !benchmark/mailroom-v1/fixtures/emails/*.eml
+!benchmark/history-v1/
+!benchmark/history-v1/catalog.json
+!benchmark/history-v1/fixtures/
+!benchmark/history-v1/fixtures/emails/
+!benchmark/history-v1/fixtures/emails/*.eml
 !operations/
 !operations/scripts/
 !operations/scripts/app-entrypoint.mjs

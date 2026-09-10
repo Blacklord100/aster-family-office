@@ -125,7 +125,15 @@ export async function writeLedger(
         ctx.user.id,
         'ledger.' + input.command.type,
         next.resultId,
-        { financeRevision: next.finance.revision },
+        {
+          financeRevision: next.finance.revision,
+          ...('obligationId' in input.command
+            ? { obligationId: input.command.obligationId }
+            : {}),
+          ...('transactionId' in input.command
+            ? { transactionId: input.command.transactionId }
+            : {}),
+        },
       );
       return { ...next, revision: revision + 1, canWrite: true };
     });

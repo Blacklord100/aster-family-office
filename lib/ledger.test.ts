@@ -13,6 +13,8 @@ import {
   hasReconciledCashflowCoverage,
   postReviewedValuation,
   transactionStatus,
+  postReviewedCashNotice,
+  obligationSummary,
 } from './ledger';
 const meta = (id: string, date = '2026-09-10'): LedgerMeta => ({
   id,
@@ -825,5 +827,461 @@ describe('register and cashflow coverage', () => {
         '2026-09-10',
       ),
     ).toBe(false);
+  });
+});
+
+const noticeInput = (
+  overrides: Partial<Parameters<typeof postReviewedCashNotice>[2]> = {},
+): Parameters<typeof postReviewedCashNotice>[2] => ({
+  holdingId: 'fund',
+  kind: 'capital_call',
+  sourceId: 'source-fund',
+  fingerprint: 'notice-1',
+  amount: '100.03',
+  currency: 'EUR',
+  effectiveDate: '2026-09-09',
+  dueDate: '2026-09-11',
+  documentId: 'notice.pdf',
+  jobId: 'job',
+  factIndex: 0,
+  reviewRevision: 2,
+  importedAt: '2026-09-10T10:00:00Z',
+  summary: 'Source notice only',
+  origin: 'accepted_fact',
+  ...overrides,
+});
+const part = (amount: string) =>
+  tx({
+    obligationId: 'notice',
+    amount,
+    investmentAmount: amount,
+    investmentCostBasisEUR: amount,
+    commitmentAmountEUR: '0',
+    commitmentEffect: 'none',
+  });
+
+describe('connected cash notices and exact allocation history', () => {
+  it('retains unknown terms and provenance without changing cash, commitments or valuations', () => {
+    const portfolio = records(),
+      before = structuredClone(portfolio);
+    const output = postReviewedCashNotice(
+      portfolio,
+      undefined,
+      noticeInput({
+        amount: null,
+        currency: null,
+        effectiveDate: null,
+        dueDate: null,
+      }),
+      meta('notice'),
+    );
+    expect(portfolio).toEqual(before);
+    expect(output.finance.transactions).toEqual([]);
+    expect(output.finance.events).toEqual([]);
+    expect(output.finance.valuations).toEqual([]);
+    expect(output.obligation).toMatchObject({
+      acceptedBy: 'reviewer',
+      acceptedAt: meta('notice').at,
+      importedAt: '2026-09-10T10:00:00Z',
+      jobId: 'job',
+      factIndex: 0,
+      reviewRevision: 2,
+    });
+    expect(obligationSummary(output.finance, output.obligation)).toMatchObject({
+      status: 'needs_details',
+      remainingAmount: null,
+      unallocatedAmount: null,
+    });
+    expect(() =>
+      applyLedgerAction(portfolio, output.finance, part('20'), meta('tx')),
+    ).toThrow(/notice amount|currency/);
+  });
+  it('reserves exact partial amounts, posts once, releases reversals and preserves transaction lineage', () => {
+    const portfolio = records(),
+      original = structuredClone(portfolio);
+    const draft = postReviewedCashNotice(
+      portfolio,
+      undefined,
+      noticeInput(),
+      meta('notice'),
+    );
+    let output = applyLedgerAction(
+      portfolio,
+      draft.finance,
+      part('33.34'),
+      meta('part1'),
+    );
+    expect(output.portfolio).toEqual(original);
+    expect(obligationSummary(output.finance, draft.obligation)).toMatchObject({
+      status: 'ready',
+      settledAmount: '0.00',
+      reviewedAmount: '33.34',
+      unallocatedAmount: '66.69',
+      remainingAmount: '100.03',
+    });
+    expect(() =>
+      applyLedgerAction(
+        output.portfolio,
+        output.finance,
+        part('66.70'),
+        meta('too-much'),
+      ),
+    ).toThrow(/exceeds the unallocated/);
+    output = applyLedgerAction(
+      output.portfolio,
+      output.finance,
+      { ...settle, transactionId: 'part1' },
+      meta('settle1'),
+    );
+    expect(obligationSummary(output.finance, draft.obligation)).toMatchObject({
+      status: 'partially_settled',
+      settledAmount: '33.34',
+      remainingAmount: '66.69',
+    });
+    expect(
+      output.portfolio.holdings.find((h) => h.id === 'cash')?.originalValue,
+    ).toBe(466.66);
+    expect(() =>
+      applyLedgerAction(
+        output.portfolio,
+        output.finance,
+        { ...settle, transactionId: 'part1' },
+        meta('repeat'),
+      ),
+    ).toThrow(/unsettled/);
+    output = applyLedgerAction(
+      output.portfolio,
+      output.finance,
+      part('66.69'),
+      meta('part2'),
+    );
+    output = applyLedgerAction(
+      output.portfolio,
+      output.finance,
+      { ...settle, transactionId: 'part2' },
+      meta('settle2'),
+    );
+    expect(obligationSummary(output.finance, draft.obligation)).toMatchObject({
+      status: 'settled',
+      settledAmount: '100.03',
+      remainingAmount: '0.00',
+    });
+    output = applyLedgerAction(
+      output.portfolio,
+      output.finance,
+      {
+        type: 'reverseTransaction',
+        transactionId: 'part1',
+        date: '2026-09-10',
+        reason: 'Bank correction',
+        source,
+        evidenceVerified: true,
+      },
+      meta('reversal'),
+    );
+    expect(obligationSummary(output.finance, draft.obligation)).toMatchObject({
+      status: 'partially_settled',
+      settledAmount: '66.69',
+      unallocatedAmount: '33.34',
+    });
+    expect(output.finance.events.at(-1)?.reversesEventId).toBe('settle1');
+    expect(output.finance.transactions.map((t) => t.obligationId)).toEqual([
+      'notice',
+      'notice',
+    ]);
+  });
+  it('keeps explicit amendment versions and a replay cannot restore the original notice', () => {
+    const draft = postReviewedCashNotice(
+      records(),
+      undefined,
+      noticeInput({ amount: null, dueDate: null }),
+      meta('notice'),
+    );
+    const amended = applyLedgerAction(
+      records(),
+      draft.finance,
+      {
+        type: 'amendObligation',
+        obligationId: 'notice',
+        amount: '20.01',
+        currency: 'EUR',
+        effectiveDate: '2026-09-09',
+        dueDate: '2026-09-11',
+        reason: 'Confirmed missing amount and due date',
+        source,
+        evidenceVerified: true,
+      },
+      meta('amend'),
+    );
+    expect(amended.finance.obligations?.[0].amendments[0]).toMatchObject({
+      id: 'amend',
+      before: { amount: null },
+      after: { amount: '20.01' },
+      actorId: 'reviewer',
+    });
+    const replay = postReviewedCashNotice(
+      records(),
+      amended.finance,
+      noticeInput({ amount: null, dueDate: null }),
+      meta('replay'),
+    );
+    expect(replay.duplicate).toBe(true);
+    expect(replay.finance.revision).toBe(amended.finance.revision);
+    expect(replay.obligation.amount).toBe('20.01');
+    expect(replay.finance.obligations).toHaveLength(1);
+    const allocated = applyLedgerAction(
+      records(),
+      amended.finance,
+      part('20.01'),
+      meta('tx'),
+    );
+    for (const command of [
+      {
+        type: 'cancelObligation' as const,
+        obligationId: 'notice',
+        reason: 'Wrong notice',
+        source,
+        evidenceVerified: true as const,
+      },
+      {
+        type: 'amendObligation' as const,
+        obligationId: 'notice',
+        amount: '21',
+        currency: 'EUR',
+        effectiveDate: null,
+        dueDate: '2026-09-11',
+        reason: 'Revised notice',
+        source,
+        evidenceVerified: true as const,
+      },
+    ])
+      expect(() =>
+        applyLedgerAction(
+          allocated.portfolio,
+          allocated.finance,
+          command,
+          meta('bad'),
+        ),
+      ).toThrow(/Void reviewed transactions/);
+  });
+  it('requires explicit resolution for forwarded or conflicting notices and rechecks after transaction review', () => {
+    const portfolio = records();
+    portfolio.evidence.push({
+      ...portfolio.evidence.find((e) => e.id === 'source-fund')!,
+      id: 'source-forward',
+    });
+    const first = postReviewedCashNotice(
+      portfolio,
+      undefined,
+      noticeInput(),
+      meta('notice'),
+    );
+    const reserved = applyLedgerAction(
+      portfolio,
+      first.finance,
+      part('20'),
+      meta('tx'),
+    );
+    const second = postReviewedCashNotice(
+      portfolio,
+      reserved.finance,
+      noticeInput({
+        sourceId: 'source-forward',
+        fingerprint: 'forward-different-date',
+        amount: '110',
+      }),
+      meta('forward'),
+    );
+    expect(
+      obligationSummary(second.finance, first.obligation).relatedObligationIds,
+    ).toEqual(['forward']);
+    expect(() =>
+      applyLedgerAction(
+        portfolio,
+        second.finance,
+        { ...settle, transactionId: 'tx' },
+        meta('settled'),
+      ),
+    ).toThrow(/similar-source conflicts/);
+    const resolved = applyLedgerAction(
+      portfolio,
+      second.finance,
+      {
+        type: 'cancelObligation',
+        obligationId: 'forward',
+        duplicateOf: 'notice',
+        reason: 'Forward repeats original notice; original amount confirmed',
+        source,
+        evidenceVerified: true,
+      },
+      meta('duplicate'),
+    );
+    const settled = applyLedgerAction(
+      portfolio,
+      resolved.finance,
+      { ...settle, transactionId: 'tx' },
+      meta('settled'),
+    );
+    expect(settled.finance.obligations?.[1].cancellation?.duplicateOf).toBe(
+      'notice',
+    );
+    expect(
+      obligationSummary(settled.finance, settled.finance.obligations![0])
+        .settledAmount,
+    ).toBe('20.00');
+  });
+  it('records separate-notice confirmation but amendments invalidate its term revisions', () => {
+    const portfolio = records();
+    portfolio.evidence.push({ ...portfolio.evidence[1], id: 'source-other' });
+    const first = postReviewedCashNotice(
+      portfolio,
+      undefined,
+      noticeInput(),
+      meta('notice'),
+    );
+    const second = postReviewedCashNotice(
+      portfolio,
+      first.finance,
+      noticeInput({
+        sourceId: 'source-other',
+        fingerprint: 'other',
+        amount: '40',
+      }),
+      meta('other'),
+    );
+    const confirmed = applyLedgerAction(
+      portfolio,
+      second.finance,
+      {
+        type: 'confirmDistinctObligation',
+        obligationId: 'notice',
+        otherObligationId: 'other',
+        reason: 'Separate notices, references A and B',
+        source,
+        evidenceVerified: true,
+      },
+      meta('distinct'),
+    );
+    expect(
+      obligationSummary(confirmed.finance, confirmed.finance.obligations![0])
+        .relatedObligationIds,
+    ).toEqual([]);
+    const changed = applyLedgerAction(
+      portfolio,
+      confirmed.finance,
+      {
+        type: 'amendObligation',
+        obligationId: 'other',
+        amount: '50',
+        currency: 'EUR',
+        dueDate: '2026-09-11',
+        effectiveDate: '2026-09-09',
+        reason: 'Revised amount on second notice',
+        source,
+        evidenceVerified: true,
+      },
+      meta('amend'),
+    );
+    expect(
+      obligationSummary(changed.finance, changed.finance.obligations![0])
+        .relatedObligationIds,
+    ).toEqual(['other']);
+    expect(changed.finance.obligations![0].distinctFrom).toHaveLength(1);
+  });
+  it('links previously settled transactions without repeating their postings', () => {
+    const prepared = applyLedgerAction(records(), undefined, tx(), meta('tx'));
+    const settled = applyLedgerAction(
+      prepared.portfolio,
+      prepared.finance,
+      settle,
+      meta('settled'),
+    );
+    const notice = postReviewedCashNotice(
+      settled.portfolio,
+      settled.finance,
+      noticeInput({ amount: '100' }),
+      meta('notice'),
+    );
+    expect(
+      obligationSummary(notice.finance, notice.obligation)
+        .matchingTransactionIds,
+    ).toEqual(['tx']);
+    expect(() =>
+      applyLedgerAction(
+        settled.portfolio,
+        notice.finance,
+        part('100'),
+        meta('duplicate'),
+      ),
+    ).toThrow(/Match existing transactions/);
+    const linked = applyLedgerAction(
+      settled.portfolio,
+      notice.finance,
+      {
+        type: 'linkTransactionObligation',
+        obligationId: 'notice',
+        transactionId: 'tx',
+        source,
+        evidenceVerified: true,
+      },
+      meta('matched'),
+    );
+    expect(linked.portfolio).toEqual(settled.portfolio);
+    expect(linked.finance.events).toEqual(settled.finance.events);
+    expect(
+      obligationSummary(linked.finance, linked.finance.obligations![0]).status,
+    ).toBe('settled');
+    expect(linked.finance.transactions[0].obligationLink?.at).toBe(
+      meta('matched').at,
+    );
+    expect(() =>
+      applyLedgerAction(
+        linked.portfolio,
+        linked.finance,
+        {
+          type: 'linkTransactionObligation',
+          obligationId: 'notice',
+          transactionId: 'tx',
+          source,
+          evidenceVerified: true,
+        },
+        meta('repeat'),
+      ),
+    ).toThrow(/unlinked/);
+  });
+  it('does not let manual transactions bypass a matching notice or alter its investment and currency', () => {
+    const draft = postReviewedCashNotice(
+      records(),
+      undefined,
+      noticeInput(),
+      meta('notice'),
+    );
+    expect(() =>
+      applyLedgerAction(records(), draft.finance, tx(), meta('unlinked')),
+    ).toThrow(/accepted notice matches/);
+    expect(() =>
+      applyLedgerAction(
+        records(),
+        draft.finance,
+        { ...part('10'), dueDate: '2026-09-12' },
+        meta('wrong-date'),
+      ),
+    ).toThrow(/due date must match/);
+    expect(() =>
+      postReviewedCashNotice(
+        records(),
+        draft.finance,
+        noticeInput({ holdingId: 'cash', fingerprint: 'bad' }),
+        meta('bad'),
+      ),
+    ).toThrow(/evidence linked/);
+    expect(() =>
+      postReviewedCashNotice(
+        records(),
+        draft.finance,
+        noticeInput({ holdingId: 'foreign', fingerprint: 'bad' }),
+        meta('bad'),
+      ),
+    ).toThrow(/workspace/);
   });
 });

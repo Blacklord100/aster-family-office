@@ -8,6 +8,24 @@
 .root {
   margin-top: 26px;
 }
+.historyHeadline {
+  padding: 4px 0 18px;
+}
+.historyHeadline strong {
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.filters.historyFilters {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+@media (max-width: 900px) {
+  .filters.historyFilters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .filters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

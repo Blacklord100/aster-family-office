@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Calculator,
   Download,
@@ -47,6 +47,8 @@ import {
 } from './primitives';
 import { useWorkspace } from './workspace-context';
 import styles from './reporting.module.css';
+import { HistoryReport } from './history-report';
+import type { SavedReport } from '@/lib/workspace';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const native = (amount: number | null, currency: string) =>
@@ -59,10 +61,19 @@ const native = (amount: number | null, currency: string) =>
       }).format(amount);
 const eur = (amount: number | null) =>
   amount === null ? 'Unavailable' : money(amount, 2);
+class ReportingRequestError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 async function requestReporting(
   params?: URLSearchParams,
   body?: unknown,
   signal?: AbortSignal,
+  organizationId?: string,
 ): Promise<ReportingResponse> {
   const response = await fetch(
     '/api/reporting' + (params ? '?' + params.toString() : ''),
@@ -71,9 +82,12 @@ async function requestReporting(
       cache: 'no-store',
       credentials: 'same-origin',
       signal,
+      headers: {
+        ...(organizationId ? { 'x-aster-organization': organizationId } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
       ...(body
         ? {
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           }
         : {}),
@@ -81,7 +95,10 @@ async function requestReporting(
   );
   const result = await response.json();
   if (!response.ok)
-    throw new Error(result.message ?? 'The report could not be completed.');
+    throw new ReportingRequestError(
+      response.status,
+      result.message ?? 'The report could not be completed.',
+    );
   return result;
 }
 function download(value: unknown, name: string) {
@@ -95,7 +112,13 @@ function download(value: unknown, name: string) {
   link.click();
   URL.revokeObjectURL(url);
 }
-function PeriodResults({ report }: { report: PeriodReport }) {
+function PeriodResults({
+  report,
+  onSource,
+}: {
+  report: PeriodReport;
+  onSource?: (id: string) => void;
+}) {
   return (
     <div className={styles.stack}>
       <div className="metrics-row">
@@ -188,6 +211,15 @@ function PeriodResults({ report }: { report: PeriodReport }) {
                       ? row.opening.source.reference + ' · ' + row.opening.basis
                       : 'Source mark missing'}
                   </small>
+                  {row.opening?.sourceId && onSource ? (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => onSource(row.opening!.sourceId!)}
+                    >
+                      View opening source
+                    </Button>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   {eur(row.closing?.valueEUR ?? null)}
@@ -196,6 +228,15 @@ function PeriodResults({ report }: { report: PeriodReport }) {
                       ? row.closing.source.reference + ' · ' + row.closing.basis
                       : 'Source mark missing'}
                   </small>
+                  {row.closing?.sourceId && onSource ? (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => onSource(row.closing!.sourceId!)}
+                    >
+                      View closing source
+                    </Button>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   {eur(row.changeEUR)}
@@ -233,7 +274,19 @@ function PeriodResults({ report }: { report: PeriodReport }) {
                       <small>{flow.kind}</small>
                     </TableCell>
                     <TableCell>{eur(flow.amountEUR)}</TableCell>
-                    <TableCell>{flow.source.reference}</TableCell>
+                    <TableCell>
+                      {flow.source.sourceId && onSource ? (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => onSource(flow.source.sourceId!)}
+                        >
+                          {flow.source.reference}
+                        </Button>
+                      ) : (
+                        flow.source.reference
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -517,21 +570,78 @@ function StressSummary({ result }: { result: StressResult }) {
     </div>
   );
 }
-export function ReportingWorkbench({
+function ReportingWorkbenchContent({
   family,
   onFamily,
+  onSource,
+  onLegacyPreview,
 }: {
   family: string;
   onFamily: (value: string) => void;
+  onSource?: (id: string) => void;
+  onLegacyPreview?: (report: SavedReport) => void;
 }) {
   const { data, state, reload } = useWorkspace();
+  const organizationId = state.identity?.organizationId;
+  const active = useRef(true);
+  const controllers = useRef(new Set<AbortController>());
+  useEffect(() => {
+    active.current = true;
+    const pending = controllers.current;
+    return () => {
+      active.current = false;
+      for (const controller of pending) controller.abort();
+      pending.clear();
+    };
+  }, []);
+  async function scopedRequest(params?: URLSearchParams, body?: unknown) {
+    if (!organizationId)
+      throw new ReportingRequestError(403, 'Choose an authorized workspace.');
+    const controller = new AbortController();
+    controllers.current.add(controller);
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    try {
+      return await requestReporting(
+        params,
+        body,
+        controller.signal,
+        organizationId,
+      );
+    } finally {
+      clearTimeout(timeout);
+      controllers.current.delete(controller);
+    }
+  }
+  const [accessDenied, setAccessDenied] = useState(false);
   const [response, setResponse] = useState<ReportingResponse | null>(null),
     [period, setPeriod] = useState<PeriodReport | null>(null),
     [opened, setOpened] = useState<ReportingSnapshot | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
-  const [tab, setTab] = useState('period');
+  const handleFailure = useCallback(
+    (cause: unknown, fallback: string) => {
+      if (!active.current) return;
+      if (
+        cause instanceof ReportingRequestError &&
+        [401, 403].includes(cause.status)
+      ) {
+        setAccessDenied(true);
+        setResponse(null);
+        setOpened(null);
+        setPeriod(null);
+        reload();
+      }
+      setError(
+        cause instanceof Error && cause.name !== 'AbortError'
+          ? cause.message
+          : fallback,
+      );
+    },
+    [reload],
+  );
+
+  const [tab, setTab] = useState('history');
   const [from, setFrom] = useState(() => today().slice(0, 4) + '-01-01'),
     [to, setTo] = useState(today),
     [cashDate, setCashDate] = useState(today),
@@ -544,21 +654,23 @@ export function ReportingWorkbench({
     [name, setName] = useState('Reviewed period report');
   const retry = useRef<{ body: string; key: string } | null>(null);
   useEffect(() => {
+    if (!organizationId) return;
     const controller = new AbortController();
-    void requestReporting(undefined, undefined, controller.signal)
+    void requestReporting(
+      undefined,
+      undefined,
+      controller.signal,
+      organizationId,
+    )
       .then((result) => {
         if (!controller.signal.aborted) setResponse(result);
       })
       .catch((cause) => {
         if (!controller.signal.aborted)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Reports could not be loaded.',
-          );
+          handleFailure(cause, 'Reports could not be loaded.');
       });
     return () => controller.abort();
-  }, []);
+  }, [organizationId, handleFailure]);
   const entities = data.entities.filter(
       (e) => family === 'all' || e.familyId === family,
     ),
@@ -639,22 +751,19 @@ export function ReportingWorkbench({
     setError('');
     try {
       const parsed = periodQuerySchema.parse(query),
-        result = await requestReporting(
+        result = await scopedRequest(
           new URLSearchParams({ query: JSON.stringify(parsed) }),
         );
+      if (!active.current) return;
       setResponse(result);
       setPeriod(result.period ?? null);
       setOpened(null);
       setTab('period');
       setNotice('Period recalculated from current reviewed records.');
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'The report could not be calculated.',
-      );
+      handleFailure(cause, 'The report could not be calculated.');
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
   async function save(
@@ -670,11 +779,13 @@ export function ReportingWorkbench({
     if (retry.current?.body !== serialized)
       retry.current = { body: serialized, key: crypto.randomUUID() };
     try {
-      const result = await requestReporting(undefined, {
+      const result = await scopedRequest(undefined, {
         ...intent,
         expectedRevision: response.revision,
         idempotencyKey: retry.current.key,
       });
+      if (!active.current) return;
+      retry.current = null;
       setResponse(result);
       setOpened(result.snapshot ?? null);
       if (result.snapshot) setTab(result.snapshot.kind);
@@ -685,31 +796,24 @@ export function ReportingWorkbench({
       );
       reload();
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'The snapshot could not be saved.',
-      );
+      handleFailure(cause, 'The snapshot could not be saved.');
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
   async function openSnapshot(id: string) {
     setBusy(true);
     setError('');
     try {
-      const result = await requestReporting(new URLSearchParams({ id }));
+      const result = await scopedRequest(new URLSearchParams({ id }));
+      if (!active.current) return;
       setResponse(result);
       setOpened(result.snapshot ?? null);
       if (result.snapshot) setTab(result.snapshot.kind);
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'The snapshot could not be opened.',
-      );
+      handleFailure(cause, 'The snapshot could not be opened.');
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
   const dateField = (
@@ -728,170 +832,223 @@ export function ReportingWorkbench({
       />
     </Field>
   );
+  if (accessDenied)
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Report access changed</AlertTitle>
+        <AlertDescription>
+          {error || 'Your session or workspace permissions changed.'}
+          <Button variant="link" onClick={() => window.location.reload()}>
+            Reload workspace
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
   return (
     <section className={styles.root} aria-label="Custom period reporting">
-      <Panel
-        title="Custom periods & liquidity"
-        subtitle="Sourced valuations, reconciled cash flows and reproducible scenario runs"
-        action={
-          <FamilyPicker
-            value={family}
-            onChange={(value) => {
-              setEntity('all');
-              onFamily(value);
-            }}
-          />
-        }
-      >
-        <FieldGroup className={styles.filters}>
-          {dateField('report-from', 'Opening date', from, setFrom)}
-          {dateField('report-to', 'Closing date', to, setTo)}
-          <Field>
-            <FieldLabel>Legal entity</FieldLabel>
-            <Picker
-              value={selectedEntity}
-              onChange={setEntity}
-              label="Reporting legal entity"
-              options={[
-                { value: 'all', label: 'All selected entities' },
-                ...entities.map((e) => ({ value: e.id, label: e.name })),
-              ]}
-            />
-          </Field>
-          {dateField('report-cash-date', 'Cash as of', cashDate, setCashDate)}
-          {dateField(
-            'report-through',
-            'Obligations through',
-            through,
-            setThrough,
-          )}
-          <Field>
-            <FieldLabel>Liquidity currency</FieldLabel>
-            <Picker
-              value={currency}
-              onChange={setCurrency}
-              label="Liquidity currency"
-              options={[
-                { value: 'all', label: 'All currencies separately' },
-                ...LEDGER_CURRENCIES.map((value) => ({ value, label: value })),
-              ]}
-            />
-          </Field>
-        </FieldGroup>
-        <div className={styles.actions}>
-          <Button
-            onClick={() => void calculate()}
-            disabled={busy || !scope.familyIds.length}
-          >
-            <Calculator data-icon="inline-start" />
-            {busy ? 'Working…' : 'Calculate period'}
-          </Button>
-          {filtersChanged ? (
-            <Badge variant="outline">Filters changed · calculate again</Badge>
-          ) : null}
-          <p className={styles.note}>
-            Performance is measured in EUR. Currency selection applies only to
-            liquidity.
-          </p>
-        </div>
-      </Panel>
-      {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Report needs attention</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-      {notice ? (
-        <Alert>
-          <FileCheck2 />
-          <AlertDescription>{notice}</AlertDescription>
-        </Alert>
-      ) : null}
-      <Panel
-        title="Save a reproducible snapshot"
-        subtitle="Inputs and results are pinned together; later portfolio or template edits do not rewrite them"
-      >
-        <div className={styles.snapshotControls}>
-          <Field>
-            <FieldLabel htmlFor="report-name">Snapshot name</FieldLabel>
-            <Input
-              id="report-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={240}
-            />
-          </Field>
-          <div className={styles.actions}>
-            {response?.canWrite ? (
-              <Button
-                variant="outline"
-                disabled={
-                  busy || !period || filtersChanged || !!opened || !name.trim()
-                }
-                onClick={() =>
-                  period &&
-                  void save({ action: 'savePeriod', query: period.query })
-                }
-              >
-                <Save data-icon="inline-start" />
-                Save calculated period
-              </Button>
-            ) : (
-              <Badge variant="outline">Read-only report access</Badge>
-            )}
-            {shownPeriod ? (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  download(shownPeriod, 'aster-period-report.json')
-                }
-              >
-                <Download data-icon="inline-start" />
-                Export period JSON
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </Panel>
-      {opened ? (
-        <Alert>
-          <FileCheck2 />
-          <AlertTitle>
-            Saved {opened.kind} snapshot · {opened.name}
-          </AlertTitle>
-          <AlertDescription>
-            Created {new Date(opened.createdAt).toLocaleString()} · workspace
-            revision {opened.workspaceRevision}. This is the preserved result.{' '}
-            <div className={styles.actions}>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  download(
-                    opened,
-                    'aster-' + opened.kind + '-' + opened.id + '.json',
-                  )
-                }
-              >
-                <Download data-icon="inline-start" />
-                Export inputs & result
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setOpened(null)}>
-                Return to live calculations
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
       <Tabs value={tab} onValueChange={setTab} className={styles.stack}>
         <TabsList variant="line" className={styles.tabs}>
-          <TabsTrigger value="period">Period & reconciliation</TabsTrigger>
-          <TabsTrigger value="stress">Hypothetical stress run</TabsTrigger>
-          <TabsTrigger value="snapshots">Saved snapshots</TabsTrigger>
+          <TabsTrigger value="history">Portfolio snapshot</TabsTrigger>
+          <TabsTrigger value="period">Period analysis</TabsTrigger>
+          <TabsTrigger value="stress">Saved stress analysis</TabsTrigger>
+          <TabsTrigger value="snapshots">Saved reports</TabsTrigger>
         </TabsList>
+        {tab === 'period' ? (
+          <>
+            <Panel
+              title="Period analysis & cash coverage"
+              subtitle="Sourced valuations, reconciled cash flows and reproducible scenario runs"
+              action={
+                <FamilyPicker
+                  value={family}
+                  onChange={(value) => {
+                    setEntity('all');
+                    onFamily(value);
+                  }}
+                />
+              }
+            >
+              <FieldGroup className={styles.filters}>
+                {dateField('report-from', 'Opening date', from, setFrom)}
+                {dateField('report-to', 'Closing date', to, setTo)}
+                <Field>
+                  <FieldLabel>Legal entity</FieldLabel>
+                  <Picker
+                    value={selectedEntity}
+                    onChange={setEntity}
+                    label="Reporting legal entity"
+                    options={[
+                      { value: 'all', label: 'All selected entities' },
+                      ...entities.map((e) => ({ value: e.id, label: e.name })),
+                    ]}
+                  />
+                </Field>
+                {dateField(
+                  'report-cash-date',
+                  'Cash as of',
+                  cashDate,
+                  setCashDate,
+                )}
+                {dateField(
+                  'report-through',
+                  'Obligations through',
+                  through,
+                  setThrough,
+                )}
+                <Field>
+                  <FieldLabel>Liquidity currency</FieldLabel>
+                  <Picker
+                    value={currency}
+                    onChange={setCurrency}
+                    label="Liquidity currency"
+                    options={[
+                      { value: 'all', label: 'All currencies separately' },
+                      ...LEDGER_CURRENCIES.map((value) => ({
+                        value,
+                        label: value,
+                      })),
+                    ]}
+                  />
+                </Field>
+              </FieldGroup>
+              <div className={styles.actions}>
+                <Button
+                  onClick={() => void calculate()}
+                  disabled={busy || !scope.familyIds.length}
+                >
+                  <Calculator data-icon="inline-start" />
+                  {busy ? 'Working…' : 'Calculate period'}
+                </Button>
+                {filtersChanged ? (
+                  <Badge variant="outline">
+                    Filters changed · calculate again
+                  </Badge>
+                ) : null}
+                <p className={styles.note}>
+                  Performance is measured in EUR. Currency selection applies
+                  only to liquidity.
+                </p>
+              </div>
+            </Panel>
+          </>
+        ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Report needs attention</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {notice ? (
+          <Alert>
+            <FileCheck2 />
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        ) : null}
+        {tab === 'period' ? (
+          <Panel
+            title="Save a reproducible snapshot"
+            subtitle="Inputs and results are pinned together; later portfolio or template edits do not rewrite them"
+          >
+            <div className={styles.snapshotControls}>
+              <Field>
+                <FieldLabel htmlFor="report-name">Snapshot name</FieldLabel>
+                <Input
+                  id="report-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={240}
+                />
+              </Field>
+              <div className={styles.actions}>
+                {response?.canWrite ? (
+                  <Button
+                    variant="outline"
+                    disabled={
+                      busy ||
+                      !period ||
+                      filtersChanged ||
+                      !!opened ||
+                      !name.trim()
+                    }
+                    onClick={() =>
+                      period &&
+                      void save({ action: 'savePeriod', query: period.query })
+                    }
+                  >
+                    <Save data-icon="inline-start" />
+                    Save calculated period
+                  </Button>
+                ) : (
+                  <Badge variant="outline">Read-only report access</Badge>
+                )}
+                {shownPeriod ? (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      download(shownPeriod, 'aster-period-report.json')
+                    }
+                  >
+                    <Download data-icon="inline-start" />
+                    Export period JSON
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </Panel>
+        ) : null}
+        {opened ? (
+          <Alert>
+            <FileCheck2 />
+            <AlertTitle>
+              Saved {opened.kind} snapshot · {opened.name}
+            </AlertTitle>
+            <AlertDescription>
+              Created {new Date(opened.createdAt).toLocaleString()} · workspace
+              revision {opened.workspaceRevision}. This is the preserved result.{' '}
+              <div className={styles.actions}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    download(
+                      opened,
+                      'aster-' + opened.kind + '-' + opened.id + '.json',
+                    )
+                  }
+                >
+                  <Download data-icon="inline-start" />
+                  Export inputs & result
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setOpened(null)}
+                >
+                  Return to live calculations
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <TabsContent value="history" className={styles.stack}>
+          <HistoryReport
+            family={family}
+            onFamily={onFamily}
+            saved={opened?.kind === 'history' ? opened : undefined}
+            onSource={onSource}
+            onSaved={(value) => {
+              setResponse(value);
+              setOpened(value.snapshot ?? null);
+              setTab('history');
+              setNotice(
+                'History snapshot saved with its source observations and coverage.',
+              );
+            }}
+          />
+        </TabsContent>
         <TabsContent value="period" className={styles.stack}>
           {shownPeriod ? (
-            <PeriodResults report={shownPeriod} />
+            <PeriodResults report={shownPeriod} onSource={onSource} />
           ) : (
             <Panel title="Choose a period">
               <p className={styles.note}>
@@ -990,6 +1147,35 @@ export function ReportingWorkbench({
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {(state.reports ?? [])
+                  .filter(
+                    (report) => family === 'all' || report.family === family,
+                  )
+                  .map((report) => (
+                    <TableRow key={'legacy-' + report.id}>
+                      <TableCell>
+                        {report.name}
+                        <small>Earlier portfolio snapshot</small>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(report.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell>Legacy snapshot</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">Preserved legacy format</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onLegacyPreview?.(report)}
+                          disabled={!onLegacyPreview}
+                        >
+                          Open snapshot
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 {visibleSnapshots.toReversed().map((snapshot) => (
                   <TableRow key={snapshot.id}>
                     <TableCell>
@@ -1027,7 +1213,10 @@ export function ReportingWorkbench({
                 ))}
               </TableBody>
             </Table>
-            {!visibleSnapshots.length ? (
+            {!visibleSnapshots.length &&
+            !(state.reports ?? []).some(
+              (report) => family === 'all' || report.family === family,
+            ) ? (
               <p className={styles.note}>
                 No saved snapshots are available in this selection. Scoped
                 viewers can calculate from their released records; full-input
@@ -1040,4 +1229,20 @@ export function ReportingWorkbench({
       </Tabs>
     </section>
   );
+}
+
+/** Permission changes remount the private report state, not only office switches. */
+export function ReportingWorkbench(
+  props: Parameters<typeof ReportingWorkbenchContent>[0],
+) {
+  const { state } = useWorkspace();
+  const identity = state.identity;
+  const contextKey = JSON.stringify([
+    identity?.organizationId,
+    identity?.user.id,
+    identity?.role,
+    identity?.dataScope,
+    props.family,
+  ]);
+  return <ReportingWorkbenchContent key={contextKey} {...props} />;
 }

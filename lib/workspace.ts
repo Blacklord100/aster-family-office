@@ -64,6 +64,8 @@ export type PortfolioRecords = {
   accounts: Account[];
 };
 export type WorkspaceState = {
+  /** Transport metadata from the encrypted workspace row; never an input revision. */
+  workspaceRevision?: number;
   demo?: import('./demo-contract').DemoWorkspaceState;
   sampleData?: boolean;
   sampleDataAllowed?: boolean;
@@ -77,6 +79,7 @@ export type WorkspaceState = {
   riskData?: RiskData;
   riskScenarios?: SavedRiskScenario[];
   finance?: FinanceState;
+  historyLifecycle?: import('./portfolio-history-lifecycle-contract').HistoryLifecycleState;
   reporting?: ReportingState;
   intelligence?: IntelligenceState;
   obligations?: import('./report-obligations-contract').ReportObligationsState;

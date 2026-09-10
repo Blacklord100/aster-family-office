@@ -10,6 +10,10 @@ import {
 } from 'lucide-react';
 import { rangeStartDate } from '@/lib/date-ranges';
 import { aggregateRecordedMarks } from '@/lib/recorded-marks';
+import {
+  investmentSummaries,
+  historySparkline,
+} from '@/lib/investment-summary';
 import type { Holding } from '@/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,6 +54,10 @@ import {
 } from './charts';
 import type { View } from './shell';
 import { useWorkspace } from './workspace-context';
+import {
+  PortfolioWorkspace,
+  type PortfolioWorkspaceProps,
+} from './portfolio-workspace';
 export function HoldingsTable({
   holdings,
   onSelect,
@@ -62,6 +70,10 @@ export function HoldingsTable({
   portfolioTotal?: number;
 }) {
   const { data } = useWorkspace();
+  const summaries = useMemo(
+    () => investmentSummaries(data.history),
+    [data.history],
+  );
   const total = portfolioTotal ?? holdings.reduce((s, h) => s + h.valueEUR, 0);
   return (
     <Table className="holdings-table">
@@ -76,7 +88,15 @@ export function HoldingsTable({
           {!compact ? (
             <TableHead className="holding-secondary">Family</TableHead>
           ) : null}
-          <TableHead className="number">Value</TableHead>
+          <TableHead className="number">Reported value</TableHead>
+          {!compact ? (
+            <TableHead className="holding-secondary">History</TableHead>
+          ) : null}
+          {!compact ? (
+            <TableHead className="number holding-secondary">
+              Previous mark change
+            </TableHead>
+          ) : null}
           <TableHead className="number holding-weight">Weight</TableHead>
         </TableRow>
       </TableHeader>
@@ -134,7 +154,65 @@ export function HoldingsTable({
               {h.valuationStatus === 'unknown'
                 ? 'Not reported'
                 : money(h.valueEUR)}
+              {h.valuationStatus !== 'unknown' ? (
+                <small className="holding-mark-date">
+                  {dateLabel(h.valuationDate)}
+                </small>
+              ) : null}
             </TableCell>
+            {!compact ? (
+              <TableCell className="holding-secondary">
+                {summaries.get(h.id)?.observations.length ? (
+                  <svg
+                    viewBox="0 0 96 28"
+                    width="96"
+                    height="28"
+                    aria-label={`${summaries.get(h.id)!.observations.length} dated observations`}
+                  >
+                    <polyline
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth="1.5"
+                      points={historySparkline(
+                        summaries.get(h.id)!.observations,
+                      )
+                        .map((p) => `${p.x},${p.y}`)
+                        .join(' ')}
+                    />
+                    {historySparkline(summaries.get(h.id)!.observations).map(
+                      (p) => (
+                        <circle
+                          key={p.date}
+                          cx={p.x}
+                          cy={p.y}
+                          r="2"
+                          fill="var(--primary)"
+                        />
+                      ),
+                    )}
+                  </svg>
+                ) : (
+                  'No observations'
+                )}
+              </TableCell>
+            ) : null}
+            {!compact ? (
+              <TableCell className="number holding-secondary">
+                {summaries.get(h.id)?.changeEUR != null ? (
+                  <>
+                    <span>
+                      {summaries.get(h.id)!.changeEUR! > 0 ? '+' : ''}
+                      {money(summaries.get(h.id)!.changeEUR!, 2)}
+                    </span>
+                    <small className="holding-mark-date">
+                      Since {dateLabel(summaries.get(h.id)!.previous!.date)}
+                    </small>
+                  </>
+                ) : (
+                  <span className="muted">First observation</span>
+                )}
+              </TableCell>
+            ) : null}
             <TableCell className="number muted holding-weight">
               {h.valuationStatus === 'unknown'
                 ? '—'
@@ -146,7 +224,15 @@ export function HoldingsTable({
     </Table>
   );
 }
-export function Overview({
+export function Overview(props: PortfolioWorkspaceProps) {
+  const { state } = useWorkspace();
+  return state.sampleData ? (
+    <SampleOverview {...props} />
+  ) : (
+    <PortfolioWorkspace {...props} />
+  );
+}
+function SampleOverview({
   family,
   onFamily,
   onNavigate,

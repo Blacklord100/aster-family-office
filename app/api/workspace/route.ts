@@ -88,10 +88,11 @@ const Action = z.discriminatedUnion('type', [
 export async function GET(request: Request) {
   try {
     const context = await requireWorkspace(request, 'read'),
-      { state } = await readWorkspace(context);
+      { state, revision } = await readWorkspace(context);
     return clearStaleWorkspaceCookie(
       json({
         ...state,
+        workspaceRevision: revision,
         sampleDataAllowed: process.env.ASTER_ALLOW_SAMPLE_DATA === 'true',
         identity: {
           user: context.user,

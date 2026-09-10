@@ -111,6 +111,21 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe('demo provisioning failure boundaries', () => {
+  it('pins the selected history dataset into the encrypted workspace and reads only its sources', async () => {
+    const run = await createDemoRun(ctx, 'history-v1');
+    expect(run.dataset).toBe('history-v1');
+    expect(mocked.load).toHaveBeenCalledWith('history-v1');
+    expect(
+      mocked.read.mock.calls.every((call) => call[1] === 'history-v1'),
+    ).toBe(true);
+    const inserted = mocked.query.mock.calls.find(([sql]) =>
+      sql.startsWith('INSERT INTO app_workspace'),
+    )!;
+    const state = JSON.parse(inserted[1][1].toString());
+    expect(state.demo.dataset).toBe('history-v1');
+    expect(state.portfolio.holdings).toEqual([]);
+    expect(state.finance).toBeUndefined();
+  });
   it('charges rate and checks quota before copying, then links the folder in the same transaction', async () => {
     const run = await createDemoRun(ctx);
     expect(mocked.events.indexOf('rate')).toBeLessThan(

@@ -4,6 +4,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.workspace-subnavigation {
+  margin: 0 32px 20px;
+}
+.holding-mark-date {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .workspace-subnavigation {
+    margin: 0 16px 16px;
+    max-width: calc(100% - 32px);
+    overflow-x: auto;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -3570,15 +3589,36 @@ a:focus-visible {
 }
 
 /* Keep adjacent monetary values and allocation weights visually distinct. */
-.holdings-table .number + .number { padding-left: 16px; }
+.holdings-table .number + .number {
+  padding-left: 16px;
+}
 
 @media (max-width: 700px) {
-  .investments-table-panel .holdings-table { min-width: 0; width: 100%; table-layout: fixed; }
+  .investments-table-panel .holdings-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+  }
   .investments-table-panel .holdings-table .holding-secondary,
-  .investments-table-panel .holdings-table .holding-weight { display: none; }
-  .investments-table-panel .holdings-table th:last-of-type { display: none; }
-  .investments-table-panel .holdings-table .number { width: 84px; }
-  .investments-table-panel .holding-name { min-width: 0; max-width: 100%; }
-  .investments-table-panel .holding-name > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-  .investments-table-panel .holding-name small { white-space: normal; }
+  .investments-table-panel .holdings-table .holding-weight {
+    display: none;
+  }
+  .investments-table-panel .holdings-table th:last-of-type {
+    display: none;
+  }
+  .investments-table-panel .holdings-table .number {
+    width: 84px;
+  }
+  .investments-table-panel .holding-name {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .investments-table-panel .holding-name > span:last-child {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .investments-table-panel .holding-name small {
+    white-space: normal;
+  }
 }

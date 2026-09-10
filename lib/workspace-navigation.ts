@@ -36,6 +36,7 @@ export function workspaceViewAvailable(
       'connections',
       'intelligence',
       'operations',
+      'setup',
     ].includes(view)
   );
 }

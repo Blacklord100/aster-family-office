@@ -40,6 +40,8 @@ COPY --from=builder --chown=1000:1000 /app/package.json ./package.json
 # Financial benchmark answer keys are excluded from the build context and image.
 COPY --from=builder --chown=1000:1000 /app/benchmark/mailroom-v1/catalog.json ./benchmark/mailroom-v1/catalog.json
 COPY --from=builder --chown=1000:1000 /app/benchmark/mailroom-v1/fixtures/emails ./benchmark/mailroom-v1/fixtures/emails
+COPY --from=builder --chown=1000:1000 /app/benchmark/history-v1/catalog.json ./benchmark/history-v1/catalog.json
+COPY --from=builder --chown=1000:1000 /app/benchmark/history-v1/fixtures/emails ./benchmark/history-v1/fixtures/emails
 # Operational scripts read SQL assets from /app/migrations.
 COPY operations/scripts/app-entrypoint.mjs /opt/aster/app-entrypoint.mjs
 COPY operations/scripts/bootstrap-stdin.mjs /opt/aster/bootstrap-stdin.mjs

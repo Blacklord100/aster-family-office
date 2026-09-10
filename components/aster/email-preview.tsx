@@ -7,15 +7,34 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EmailPreviewResponse } from '@/lib/email-preview-contract';
 import { PdfPreview } from './pdf-preview';
+import { useWorkspace } from './workspace-context';
 import styles from './email-preview.module.css';
 
-export function EmailPreview({
+type EmailPreviewProps = { documentId: string; onOpened: () => void };
+export function EmailPreview(props: EmailPreviewProps) {
+  const { state } = useWorkspace();
+  const organizationId = state.identity?.organizationId;
+  if (!organizationId)
+    return (
+      <output>Choose an authenticated office to preview this original.</output>
+    );
+  return (
+    <ScopedEmailPreview
+      key={JSON.stringify([
+        organizationId,
+        state.identity?.dataScope,
+        props.documentId,
+      ])}
+      {...props}
+      organizationId={organizationId}
+    />
+  );
+}
+function ScopedEmailPreview({
   documentId,
   onOpened,
-}: {
-  documentId: string;
-  onOpened: () => void;
-}) {
+  organizationId,
+}: EmailPreviewProps & { organizationId: string }) {
   const [data, setData] = useState<EmailPreviewResponse | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
@@ -33,6 +52,7 @@ export function EmailPreview({
         const response = await fetch(
           '/api/documents/' + encodeURIComponent(documentId) + '/email',
           {
+            headers: { 'x-aster-organization': organizationId },
             cache: 'no-store',
             credentials: 'same-origin',
             redirect: 'error',
@@ -73,7 +93,7 @@ export function EmailPreview({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [documentId]);
+  }, [documentId, organizationId]);
   return (
     <div className={styles.root} aria-label="Decoded email source">
       {error ? (
