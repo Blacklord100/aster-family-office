@@ -21,7 +21,7 @@ import {
 } from './primitives';
 import { rangeStartDate } from '@/lib/date-ranges';
 import { aggregateRecordedMarks } from '@/lib/recorded-marks';
-import { reportValue } from '@/lib/report-value';
+import { currentReportHoldings, reportValue } from '@/lib/report-value';
 import type { Holding } from '@/data';
 import type { SavedReport } from '@/lib/workspace';
 import { ValueChart, makeHistory } from './charts';
@@ -98,9 +98,15 @@ export function ReportsView({
   const { state, data, mutate } = useWorkspace();
   const [range, setRange] = useState('YTD'),
     [saving, setSaving] = useState(false);
-  const hs = data.holdings.filter(
-      (h) => family === 'all' || h.familyId === family,
-    ),
+  const asOf =
+    state.sampleData && !data.evidence.some((e) => !e.synthetic)
+      ? '2026-09-07'
+      : new Date().toISOString().slice(0, 10);
+  const hs = currentReportHoldings(
+      data.holdings.filter((h) => family === 'all' || h.familyId === family),
+      state.historyLifecycle,
+      asOf,
+    ).holdings,
     visible = state.reports.filter(
       (r) => family === 'all' || r.family === family,
     );
@@ -278,9 +284,15 @@ export function PrintableReport({
   const performanceAvailable = saved?.synthetic ?? currentPerformanceAvailable;
   const containsSampleRecords = saved?.synthetic ?? state.sampleData;
   const scope = saved?.family ?? family;
-  const hs =
-    saved?.holdings ??
-    data.holdings.filter((h) => scope === 'all' || h.familyId === scope);
+  const current = currentReportHoldings(
+    data.holdings.filter((h) => scope === 'all' || h.familyId === scope),
+    state.historyLifecycle,
+    state.sampleData && !data.evidence.some((e) => !e.synthetic)
+      ? '2026-09-07'
+      : new Date().toISOString().slice(0, 10),
+  );
+  const hs = saved?.holdings ?? current.holdings,
+    ownershipBasis = saved ? saved.ownershipBasis : current.ownershipBasis;
   const valuation = reportValue(hs);
   const total = valuation.valueEUR ?? 0;
   const selectedRange = saved?.range ?? range;
@@ -326,7 +338,14 @@ export function PrintableReport({
       <h1>{saved?.name ?? 'Consolidated portfolio report'}</h1>
       <p>
         {scope === 'all' ? 'All families' : scope + ' family'} · EUR · Latest
-        accepted marks
+        recorded marks for the selected position cohort
+      </p>
+      <p className="saved-snapshot-note">
+        {ownershipBasis
+          ? `Position cohort as of ${dateLabel(ownershipBasis.asOfDate)}: ${ownershipBasis.excludedCount} sourced exits or future acquisitions excluded; ${ownershipBasis.unknownOwnershipCount} positions retain unknown ownership dates.`
+          : 'Original saved register cohort. Ownership dates were not applied when this report was saved; it may include positions now closed.'}{' '}
+        This is a register snapshot, not a reconstruction of all positions owned
+        during the chart period.
       </p>
       {saved ? (
         <p className="saved-snapshot-note">
@@ -348,7 +367,7 @@ export function PrintableReport({
           </strong>
         </div>
         <div>
-          <span>Unfunded</span>
+          <span>Selected positions’ registered unfunded</span>
           <strong>
             {hs.some((h) => h.unfundedStatus === 'unknown')
               ? 'Coverage incomplete'

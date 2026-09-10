@@ -6,10 +6,10 @@ from .source_parsing import (CURRENCIES, DATE_RE, DateMention, MoneyMention, dat
                              money_mentions, mask_instructions, normalize)
 
 KIND_PATTERNS = {
-    'valuation': r'\b(?:valuation|net asset value|NAV|carrying value|value of your interest|value attributable to your interest|your (?:closing|reported) value)\b',
+    'valuation': r'\b(?:valuation|net asset value|NAV|carrying value|(?:opening|closing|reported) cash balance|value of your interest|value attributable to your interest|your (?:closing|reported) value)\b',
     'capital_call': r'\b(?:capital call|drawdown(?: notice)?|capital requested|capital called|funding notice|calls? (?:an? )?additional|capital request)\b',
     'distribution': r'\b(?:distribution|distributed)\b|\breturned\b(?=[\s\S]{0,200}\bcash to your (?:partnership )?interest\b)',
-    'news': r'\b(?:portfolio update|investment update|company update|news update|business update|appointed|appointment|announced|launched|resigned|new director|joins? the board|opened|operating update)\b',
+    'news': r'\b(?:portfolio update|investment update|company update|news update|business update|appointed|appointment|announced|launched|resigned|new director|joins? the board|opened|operating update|investor position (?:was|is) legally acquired)\b',
 }
 # Physical PDF wraps and HTML layout whitespace do not change an event phrase.
 # Keep source text/offsets untouched so evidence remains an exact source quote.
@@ -110,6 +110,7 @@ def _clean_name(raw):
 def _ownership_mentions(text):
     """Explicit topic/object owners also delimit unfamiliar lower-case names."""
     patterns = [
+        r'(?im)^\s*(?P<name>[^\n,:;]{2,200}?)\s*:\s*(?=(?:(?:opening|closing|reported)\s+cash\s+balance|(?:(?:the\s+)?investor\s+)?(?:NAV|net\s+asset\s+value|valuation)|(?:capital\s+call|distribution)(?:\s+notice)?|this\s+investor\s+position\s+(?:was|is)\s+legally\s+acquired)\b)',
         r'(?im)(?:^|(?<=[;.!?])\s+)\s*(?:for|regarding|as regards|on behalf of|in respect of|concerning)\s+(?P<name>[^\n,:;]{2,200}?)\s*[,;:]',
         r'(?i)\b(?:holding|interest|position)\s+in\s+(?P<name>[^\n,;:]{2,200}?)\s+(?:is|was|were|has|had|stood|amounted|at)\b',
         r'(?i)\b(?:carrying amount|fair (?:market )?value|closing value|net asset value|NAV|valuation|capital call|distribution)\s+(?:of|for|attributable to)\s+(?P<name>[^\n,;:]{2,200}?)\s+(?:is|was|were|has|had|at|as of|as at|equals|stands)\b',
@@ -237,12 +238,13 @@ def _date_role(text, mention):
     return 'context'
 
 
-def _dates_for(text, unit_start, unit_end, kind, names, name, position):
+def _dates_for(text, unit_start, unit_end, kind, names, name, position, predicate_matches=_positive_matches):
     all_dates = date_mentions(text)
     local = [d for d in all_dates if unit_start <= d.start < unit_end]
     # Bound inheritance at another explicitly named investment, never borrow its dates.
     other = [n for n in names if normalize(n.name).casefold() != normalize(name.name).casefold()]
     previous = max((n.end for n in other if n.end < position), default=0)
+    predicate_start = previous
     # A new fund starts its own scope at its first named mention after the prior
     # fund, not at the prior fund's name (which would retain its later deadline).
     previous = min((n.start for n in names if previous <= n.start <= position and
@@ -253,11 +255,25 @@ def _dates_for(text, unit_start, unit_end, kind, names, name, position):
     first_name = min((item.start for item in names), default=0)
     header_dates = [d for d in all_dates if d.end <= first_name and roles[d.start] in ('valuation','due')]
     scoped = list({d.start:d for d in scoped+header_dates}.values())
-    due_local = [d for d in local if roles[d.start] == 'due']
-    due_scope = [d for d in scoped if roles[d.start] == 'due']
+    def deadline_applies(mention):
+        # A deadline on another cash-flow event is not a generic fund deadline.
+        # This matters when a statement repeats a call and a distribution for the
+        # same fund: either event may have its own distinct payment date.
+        predicates = [(event_kind, predicate_start + start + match.start(), predicate_start + start + match.end())
+                      for event_kind in ('capital_call', 'distribution')
+                      for start, _, unit in _units(text[predicate_start:following])
+                      for match in predicate_matches(unit, event_kind)
+                      if not any(item.start <= predicate_start + start + match.start() < item.end for item in names)]
+        preceding = [item for item in predicates if item[2] <= mention.start]
+        if preceding:
+            return max(preceding, key=lambda item: item[1])[0] == kind
+        possible = {item[0] for item in predicates}
+        return possible == {kind}
+    due_local = [d for d in local if roles[d.start] == 'due' and deadline_applies(d)]
+    due_scope = [d for d in scoped if roles[d.start] == 'due' and deadline_applies(d)]
     dues = due_local or due_scope
     due_values = {d.value for d in dues}
-    due = next(iter(due_values)) if kind == 'capital_call' and len(due_values) == 1 else None
+    due = next(iter(due_values)) if kind in ('capital_call', 'distribution') and len(due_values) == 1 else None
     good = [d for d in local if roles[d.start] not in ('due','issue')]
     wanted = ('valuation','effective') if kind == 'valuation' else ('distribution','effective') if kind == 'distribution' else ('effective',)
     preferred = [d for d in good if roles[d.start] in wanted]
@@ -578,11 +594,22 @@ def _retraction_subject(head):
     return named.group('kind').casefold() if named else None
 
 
+def _numeric_retraction(unit):
+    money = money_mentions(unit)
+    head = unit[:money[0].start] if money else unit
+    if (money and WITHDRAWN.search(unit) and re.match(
+            r'(?is)^\s*(?:the|this|that)\s+(?:withdrawn|superseded|erroneous|old|original|previous)\s+(?:figure|NAV|valuation|amount|call|distribution)\s+(?:was|is|of|amounted to|stood at)\s*(?:' + CURRENCIES + r'|[€$£])?\s*$', head)):
+        return money[0]
+    return None
+
+
 def _next_retracts(next_unit):
     # A backward reference can revoke or condition a prior source figure even
     # when the model crops that later sentence out of its evidence quote.
     money = money_mentions(next_unit)
     head = next_unit[:money[0].start] if money else next_unit
+    if _numeric_retraction(next_unit):
+        return True  # Match this explicit amount below; never revoke a different mark.
     if re.search(r'(?i)\b(?:this is an example calculation|not the value of your actual|illustration only)\b',head):
         return True
     conditional = re.match(r'(?is)\s*(?:This|That|The (?:preceding |above )?(?:value|amount|figure))\b',head) and re.search(
@@ -595,8 +622,8 @@ def _apply_retractions(events, units, names):
 
     Only the nearest preceding event of the stated kind is eligible. A named
     different investment is a scope boundary; an older mark must not disappear
-    just because the newest mark is withdrawn. Numeric old-figure references
-    are handled at their own source span, rather than rebinding a prior event.
+    just because the newest mark is withdrawn. An explicit old-figure amount
+    targets matching source events only, within the same owner and date scope.
     """
     removed = set()
     for start, _, unit in units:
@@ -609,6 +636,11 @@ def _apply_retractions(events, units, names):
         candidates = [(index, event) for index, event in enumerate(events)
                       if event.end <= start and event.kind != 'news'
                       and (kind is None or event.kind == kind)]
+        numeric = _numeric_retraction(unit)
+        if numeric:
+            candidates = [(index,event) for index,event in candidates
+                          if event.amount is not None and Decimal(event.amount) == Decimal(numeric.amount)
+                          and (numeric.currency is None or event.currency == numeric.currency)]
         explicit_names = {normalize(item.name).casefold() for item in names if re.search(
             r'(?<!\w)'+r'\s+'.join(re.escape(word) for word in item.name.split())+r'(?!\w)',unit,re.I)}
         if explicit_names:
@@ -616,11 +648,16 @@ def _apply_retractions(events, units, names):
                           if normalize(event.investmentName).casefold() in explicit_names]
         status_marker = WITHDRAWN.search(head) or re.search(r'(?i)\b(?:would|conditional|contingent|only if)\b',head)
         status_dates = [mention for mention in date_mentions(head) if status_marker and mention.end <= status_marker.start()]
+        if numeric:
+            # A quoted old mark may state its reporting date or payment deadline
+            # after the amount. Never revoke a newer equal-sized mark instead.
+            status_dates += [mention for mention in date_mentions(unit)
+                             if _date_role(unit,mention) in ('valuation','effective','distribution','due')]
         if status_dates:
             # An explicitly dated withdrawal targets that period/deadline,
             # never an unrelated newer mark just because it appeared last.
             candidates = [(index,event) for index,event in candidates if all(
-                (event.dueDate if _date_role(head,mention) == 'due' else event.effectiveDate) == mention.value
+                (event.dueDate if _date_role(unit if numeric else head,mention) == 'due' else event.effectiveDate) == mention.value
                 for mention in status_dates)]
         if not candidates:
             continue
@@ -748,7 +785,7 @@ def source_events(text: str, investment_hint: str | None = None) -> list[SourceE
                 continue
             if kind != 'news' and (tokens or not re.search(r'(?i)\b(?:pending|under .*review|not available|no approved value|unknown|valuation statement|capital call notice|distribution confirmation)\b', unit)):
                 continue
-            if kind == 'news' and not re.search(r'(?i)\b(?:appointed|announced|launched|resigned|new director|joins? the board|news update|company update|investment update|portfolio update|opened|operating update)\b', unit):
+            if kind == 'news' and not re.search(r'(?i)\b(?:appointed|announced|launched|resigned|new director|joins? the board|news update|company update|investment update|portfolio update|opened|operating update|investor position (?:was|is) legally acquired)\b', unit):
                 continue
             name = _name_for(names,start,end,start+len(unit)//2)
             if not name:

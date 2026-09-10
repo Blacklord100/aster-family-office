@@ -21,6 +21,7 @@ import {
 } from '../lib/server/demo-intelligence';
 import {
   claimDocumentJob,
+  renewDocumentLease,
   workerOrganizationScope,
 } from '../lib/server/worker-scope';
 const owner = randomUUID();
@@ -86,13 +87,9 @@ while (!stopping) {
   const renewal = setInterval(() => {
     if (renewing) return;
     renewing = true;
-    void pool
-      .query(
-        "UPDATE app_job_queue SET lease_until=now()+interval '90 seconds' WHERE id=$1 AND lease_owner=$2",
-        [queue.id, owner],
-      )
-      .then((lease) => {
-        if (!lease.rowCount) requestController.abort(new Error('LEASE_LOST'));
+    void renewDocumentLease(pool, queue.id, owner)
+      .then((owned) => {
+        if (!owned) requestController.abort(new Error('LEASE_LOST'));
       })
       .catch(() => requestController.abort(new Error('LEASE_UNVERIFIED')))
       .finally(() => {
@@ -108,7 +105,7 @@ while (!stopping) {
       if (!r.rows[0]) return null;
       // Fence stale claimants before starting, using the same job-then-queue lock order as completion.
       const lease = await c.query(
-        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 FOR UPDATE',
+        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp() FOR UPDATE',
         [queue.id, owner],
       );
       if (!lease.rowCount) return null;
@@ -142,12 +139,17 @@ while (!stopping) {
         queue.id,
         { attemptId },
       );
+      const fenced = await c.query(
+        'SELECT 1 FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
+        [queue.id, owner],
+      );
+      if (!fenced.rowCount) throw new Error('LEASE_LOST');
       attemptStartedAt = performance.now();
       return r.rows[0];
     });
     if (!document) {
       await pool.query(
-        'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2',
+        'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
         [queue.id, owner],
       );
       continue;
@@ -196,7 +198,7 @@ while (!stopping) {
         queue.id,
       ]);
       const lease = await c.query(
-        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 FOR UPDATE',
+        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp() FOR UPDATE',
         [queue.id, owner],
       );
       if (!lease.rowCount) return;
@@ -228,10 +230,11 @@ while (!stopping) {
                 }),
           },
         );
-      await c.query(
-        'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2',
+      const finished = await c.query(
+        'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
         [queue.id, owner],
       );
+      if (!finished.rowCount) throw new Error('LEASE_LOST');
     });
     await publishDemoJob(queue.organization_id, queue.id);
     await indexDemoJobSources(queue.organization_id, queue.id).catch(() =>
@@ -254,7 +257,7 @@ while (!stopping) {
         queue.id,
       ]);
       const lease = await c.query(
-        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 FOR UPDATE',
+        'SELECT id FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp() FOR UPDATE',
         [queue.id, owner],
       );
       if (!lease.rowCount) return;
@@ -288,36 +291,35 @@ while (!stopping) {
           "UPDATE app_jobs SET status='queued',error_code=NULL,updated_at=now() WHERE id=$1 AND status='processing'",
           [queue.id],
         );
-        await c.query(
-          'UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now(),attempts=GREATEST(attempts-1,0) WHERE id=$1 AND lease_owner=$2',
+        const released = await c.query(
+          'UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now(),attempts=GREATEST(attempts-1,0) WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
           [queue.id, owner],
         );
+        if (!released.rowCount) throw new Error('LEASE_LOST');
       } else if (decision === 'capacity') {
         await c.query(
           "UPDATE app_jobs SET status='queued',error_code='PROCESSOR_BUSY',updated_at=now() WHERE id=$1 AND status='processing'",
           [queue.id],
         );
-        await c.query(
-          "UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now()+interval '30 seconds',attempts=GREATEST(attempts-1,0),capacity_deferrals=capacity_deferrals+1 WHERE id=$1 AND lease_owner=$2",
+        const released = await c.query(
+          "UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now()+interval '30 seconds',attempts=GREATEST(attempts-1,0),capacity_deferrals=capacity_deferrals+1 WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()",
           [queue.id, owner],
         );
+        if (!released.rowCount) throw new Error('LEASE_LOST');
       } else if (decision === 'retry') {
         await c.query(
           "UPDATE app_jobs SET status='queued',error_code=$2,updated_at=now() WHERE id=$1 AND status='processing'",
           [queue.id, code],
         );
-        await c.query(
-          "UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now()+interval '30 seconds' WHERE id=$1 AND lease_owner=$2",
+        const released = await c.query(
+          "UPDATE app_job_queue SET lease_owner=NULL,lease_until=NULL,available_at=now()+interval '30 seconds' WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()",
           [queue.id, owner],
         );
+        if (!released.rowCount) throw new Error('LEASE_LOST');
       } else {
         await c.query(
           "UPDATE app_jobs SET status='failed',error_code=$2,updated_at=now() WHERE id=$1 AND status='processing'",
           [queue.id, code],
-        );
-        await c.query(
-          'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2',
-          [queue.id, owner],
         );
         await audit(
           c,
@@ -335,8 +337,16 @@ while (!stopping) {
                 }),
           },
         );
+        const released = await c.query(
+          'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
+          [queue.id, owner],
+        );
+        if (!released.rowCount) throw new Error('LEASE_LOST');
       }
-    }).catch(() => console.error('Worker could not persist job outcome.'));
+    }).catch((cause) => {
+      if (!(cause instanceof Error && cause.message === 'LEASE_LOST'))
+        console.error('Worker could not persist job outcome.');
+    });
   } finally {
     clearInterval(renewal);
     if (activeRequest === requestController) activeRequest = null;

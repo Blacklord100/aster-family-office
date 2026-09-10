@@ -74,6 +74,14 @@ export function demoFactIssue(
   )
     return 'The financial notice has missing amount, currency or effective date.';
   if (
+    ['capital_call', 'distribution'].includes(fact.kind) &&
+    !fact.dueDate &&
+    /\b(?:due\s+date|payment\s+due|payable\s+(?:by|on)|settlement\s+by)\b/i.test(
+      fact.evidence.quote,
+    )
+  )
+    return 'The notice mentions a payment deadline that was not extracted; review the original before publication.';
+  if (
     fact.kind !== 'news' &&
     !['EUR', 'USD', 'GBP', 'CHF'].includes(fact.currency ?? '')
   )

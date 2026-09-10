@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { DataScope } from '@/lib/data-scope';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 type AccessData = {
   members: {
     id: string;
@@ -19,13 +23,12 @@ type AccessData = {
   }[];
   documentLimit: number;
 };
-async function fetchAccess(signal?: AbortSignal): Promise<AccessData> {
-  const response = await fetch('/api/data-access', { signal });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.message);
-  return body;
-}
 export function DataAccessSettings() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedDataAccessSettings key={key} />;
+}
+function ScopedDataAccessSettings() {
+  const { request } = useWorkspaceRequest();
   const [data, setData] = useState<AccessData | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -37,21 +40,27 @@ export function DataAccessSettings() {
     [verified, setVerified] = useState(false);
   async function load() {
     try {
-      setData(await fetchAccess());
+      setData(await request<AccessData>('/api/data-access'));
+      setError('');
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setTarget('');
+        setVerified(false);
+      }
       setError(e instanceof Error ? e.message : 'Could not load access');
     }
   }
   useEffect(() => {
     const controller = new AbortController();
-    void fetchAccess(controller.signal)
+    void request<AccessData>('/api/data-access', { signal: controller.signal })
       .then(setData)
       .catch((e: unknown) => {
         if (!controller.signal.aborted)
           setError(e instanceof Error ? e.message : 'Could not load access');
       });
     return () => controller.abort();
-  }, []);
+  }, [request]);
   function select(id: string, nextKind = kind) {
     setTarget(id);
     setVerified(false);
@@ -88,16 +97,19 @@ export function DataAccessSettings() {
               scope,
               evidenceVerified: verified,
             };
-      const r = await fetch('/api/data-access', {
+      await request('/api/data-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const result = await r.json();
-      if (!r.ok) throw new Error(result.message);
       await load();
       setVerified(false);
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setTarget('');
+        setVerified(false);
+      }
       setError(e instanceof Error ? e.message : 'Could not update access');
     } finally {
       setBusy(false);
@@ -107,6 +119,11 @@ export function DataAccessSettings() {
     return (
       <p className="text-sm" role={error ? 'alert' : undefined}>
         {error || 'Loading client access…'}
+        {error ? (
+          <Button variant="link" size="sm" onClick={() => void load()}>
+            Reload access
+          </Button>
+        ) : null}
       </p>
     );
   return (
@@ -173,7 +190,10 @@ export function DataAccessSettings() {
               <input
                 type="checkbox"
                 checked={restricted}
-                onChange={(e) => setRestricted(e.target.checked)}
+                onChange={(e) => {
+                  setRestricted(e.target.checked);
+                  setVerified(false);
+                }}
               />
               {kind === 'member'
                 ? 'Limit this viewer to selected families'
@@ -195,6 +215,7 @@ export function DataAccessSettings() {
                         type="checkbox"
                         checked={familyIds.includes(f.id)}
                         onChange={(e) => {
+                          setVerified(false);
                           setFamilies((prev) =>
                             e.target.checked
                               ? [...prev, f.id]
@@ -219,13 +240,14 @@ export function DataAccessSettings() {
                         <input
                           type="checkbox"
                           checked={entityIds.includes(entity.id)}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            setVerified(false);
                             setEntities((prev) =>
                               e.target.checked
                                 ? [...prev, entity.id]
                                 : prev.filter((id) => id !== entity.id),
-                            )
-                          }
+                            );
+                          }}
                         />
                         {entity.name}
                       </label>
@@ -235,14 +257,49 @@ export function DataAccessSettings() {
             )}
             {kind === 'document' ? (
               <>
-                <a
-                  className="underline"
-                  href={'/api/documents/' + target}
-                  target="_blank"
-                  rel="noreferrer"
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError('');
+                    try {
+                      const original = await request<Blob>(
+                        '/api/documents/' + encodeURIComponent(target),
+                        {},
+                        'blob',
+                      );
+                      const url = URL.createObjectURL(original);
+                      const anchor = document.createElement('a');
+                      anchor.href = url;
+                      anchor.download =
+                        data.documents.find(
+                          (document) => document.id === target,
+                        )?.filename ?? 'source-original';
+                      anchor.click();
+                      URL.revokeObjectURL(url);
+                    } catch (error) {
+                      if (
+                        error instanceof WorkspaceRequestError &&
+                        [401, 403].includes(error.status)
+                      ) {
+                        setData(null);
+                        setTarget('');
+                        setVerified(false);
+                      }
+                      setError(
+                        error instanceof Error
+                          ? error.message
+                          : 'The original could not be downloaded.',
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
                 >
-                  Open original before release
-                </a>
+                  Download original before release
+                </Button>
                 <label className="flex items-start gap-2">
                   <input
                     type="checkbox"

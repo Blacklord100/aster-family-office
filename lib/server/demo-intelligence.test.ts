@@ -21,7 +21,8 @@ vi.mock('../workspace-store', () => ({
   readWorkspaceInTransaction: vi.fn(),
   saveWorkspace: vi.fn(),
 }));
-import { withTenant } from './db';
+import { withTenant, pool } from './db';
+import { AccessError } from './access';
 import { audit } from './audit';
 import { loadDemoCatalog } from './demo-corpus';
 import { hasDemoSourceVerification } from './demo-review-policy';
@@ -31,6 +32,7 @@ import { encrypt, sha256 } from './crypto';
 import {
   demoConstituentProposals,
   indexDemoJobSources,
+  indexReadyDemoSources,
 } from './demo-intelligence';
 
 const org = randomUUID(),
@@ -270,6 +272,50 @@ describe('source-backed synthetic constituent attribution', () => {
 });
 
 describe('autonomous demo indexing boundary', () => {
+  it('defers temporary decoding quota and processor capacity without consuming permanent failure attempts', async () => {
+    for (const code of ['RATE_LIMITED', 'PROCESSOR_BUSY']) {
+      query.mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            document_id: docId,
+            content_hash: doc.contentHash,
+            payload: encrypt(text, 'document:' + org + ':' + docId),
+            created_at: new Date('2026-09-10T00:00:00Z'),
+            indexed: false,
+          },
+        ],
+      });
+      vi.mocked(indexDocument).mockRejectedValueOnce(
+        new AccessError(429, code, 'Temporary capacity'),
+      );
+      expect(await indexDemoJobSources(org, jobId)).toMatchObject({
+        indexed: false,
+      });
+      expect(audit).toHaveBeenLastCalledWith(
+        expect.anything(),
+        org,
+        expect.any(String),
+        'demo.intelligence_deferred',
+        docId,
+        { reason: code },
+      );
+    }
+  });
+  it('keeps old quota failures retryable in bounded recovery without rewriting immutable audit history', async () => {
+    vi.mocked(pool).query.mockResolvedValueOnce({
+      rows: [{ id: org }],
+    } as never);
+    query.mockResolvedValueOnce({ rows: [] });
+    await indexReadyDemoSources([org]);
+    const recoveryQuery = query.mock.calls.find(([sql]) =>
+      sql.includes('SELECT DISTINCT ON'),
+    )?.[0];
+    expect(recoveryQuery).toContain("NOT IN ('RATE_LIMITED','PROCESSOR_BUSY')");
+    expect(recoveryQuery).toContain("interval '5 minutes'");
+    expect(recoveryQuery).toContain('LIMIT 2');
+  });
+
   it('does nothing when demo automation is disabled or the system source verification is missing', async () => {
     vi.stubEnv('ASTER_ENABLE_DEMO', 'false');
     expect(await indexDemoJobSources(org, jobId)).toMatchObject({

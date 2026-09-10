@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import type { SavedReport, WorkspaceState } from '../workspace';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
+import { startApplicationFixtureWorker } from '../test-support/application-worker';
 vi.mock('server-only', () => ({}));
 vi.mock('./auth', () => ({
   authEnvironment: () => ({ origin: 'http://localhost:3000' }),
@@ -35,6 +37,9 @@ const orgA = randomUUID(),
   administrator = randomUUID(),
   viewer = randomUUID();
 let db: typeof import('./db'), admin: Pool;
+let fixtureWorker:
+  | Awaited<ReturnType<typeof startApplicationFixtureWorker>>
+  | undefined;
 let workspace: typeof import('../../app/api/workspace/route'),
   documents: typeof import('../../app/api/documents/route'),
   documentGet: typeof import('../../app/api/documents/[id]/route'),
@@ -97,6 +102,8 @@ async function addSession(userId: string) {
 suite('real application database and worker boundaries', () => {
   beforeAll(async () => {
     vi.stubEnv('DATABASE_URL', process.env.APP_TEST_DATABASE_URL!);
+    vi.stubEnv('MIGRATION_DATABASE_URL', process.env.APP_TEST_ADMIN_URL!);
+    assertDisposableDatabase();
     vi.stubEnv('AUTH_REQUIRE_MFA', 'true');
     db = await import('./db');
     admin = new Pool({
@@ -123,14 +130,34 @@ suite('real application database and worker boundaries', () => {
       "INSERT INTO app_memberships(organization_id,user_id,role) VALUES($1,$2,'owner'),($3,$4,'owner'),($1,$5,'viewer'),($1,$6,'admin')",
       [orgA, userA, orgB, userB, viewer, administrator],
     );
+    if (
+      (await admin.query('SELECT count(*)::int AS count FROM app_job_queue'))
+        .rows[0].count !== 0
+    )
+      throw new Error('Application fixture requires an idle disposable queue.');
+    fixtureWorker = await startApplicationFixtureWorker(
+      async (id) =>
+        (
+          await admin.query(
+            'SELECT id FROM app_documents WHERE id=$1 AND organization_id=ANY($2::uuid[])',
+            [id, [orgA, orgB]],
+          )
+        ).rowCount === 1,
+    );
+    vi.stubEnv('PROCESSOR_URL', fixtureWorker.endpoint);
   }, 30000);
   afterAll(async () => {
+    await fixtureWorker?.stop();
     if (admin) {
       const c = await admin.connect();
       try {
         await c.query('BEGIN');
+        // Only the positively guarded disposable fixture administrator may
+        // remove its own append-only test history during teardown.
+        await c.query("SET LOCAL session_replication_role = 'replica'");
         for (const table of [
           'app_job_queue',
+          'app_review_versions',
           'app_accepted_facts',
           'app_audit',
           'app_jobs',
@@ -559,13 +586,36 @@ suite('real application database and worker boundaries', () => {
     );
     expect(uploaded.status).toBeLessThan(300);
     const correction = await uploaded.json();
-    expect((await waitForReview(correction.jobId)).status).toBe(
-      'awaiting_review',
+    const correctionJob = await waitForReview(correction.jobId);
+    expect(correctionJob.status).toBe('awaiting_review');
+    const correctedOriginal = await documentGet.GET(
+      request('/api/documents/' + correction.documentId),
+      { params: Promise.resolve({ id: correction.documentId }) },
     );
+    expect(correctedOriginal.status).toBe(200);
+    expect(await correctedOriginal.text()).toContain('8,400,000.00');
     const accepted = await review.PATCH(
       request(
         '/api/processing/' + correction.jobId,
-        { action: 'accept', selections: [{ factIndex: 0, holdingId }] },
+        {
+          action: 'review',
+          expectedRevision: correctionJob.review.revision,
+          decisions: [
+            {
+              factIndex: 0,
+              holdingId,
+              status: 'accepted',
+              evidenceVerified: true,
+              rationale:
+                'Reviewed revised statement against the retained original.',
+              correction: {
+                expectedValueEUR: 8250000,
+                reason:
+                  'Revised source corrects the previously reported NAV on the same date.',
+              },
+            },
+          ],
+        },
         userA,
         'PATCH',
       ),

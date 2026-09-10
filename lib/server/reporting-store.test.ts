@@ -10,6 +10,10 @@ import type { ReportingRequest } from '../reporting-contract';
 import { RISK_PRESETS } from '../risk-engine';
 import { projectPortfolioHistory } from '../portfolio-history';
 import { emptyFinanceState } from '../ledger-contract';
+import { currentStressInputs } from '../reporting';
+import { buildTotalExposure, runStressScenario } from '../risk-engine';
+import { emptyHistoryLifecycle } from '../portfolio-history-lifecycle-contract';
+import { historyPositionDetails } from '../portfolio-history-lifecycle';
 const f = vi.hoisted(() => ({
   state: {} as WorkspaceState,
   revision: 0,
@@ -267,6 +271,59 @@ describe('immutable reporting snapshots', () => {
       read.snapshot?.kind === 'stress' && read.snapshot.result.stress.beforeEUR,
     ).toBe(before);
     expect(read.snapshot?.inputDigest).toBe(snapshot.inputDigest);
+  });
+  it('saves the same closed-position-adjusted stress result as the current preview, preserving its basis', async () => {
+    const data = deriveWorkspace(f.state),
+      closed = data.holdings[0];
+    f.state.historyLifecycle = emptyHistoryLifecycle();
+    f.state.historyLifecycle.records.push({
+      id: 'sourced-exit',
+      holdingId: closed.id,
+      kind: 'closed',
+      effectiveDate: '2026-09-09',
+      recordedAt: '2026-09-09T12:00:00Z',
+      actorId: 'reviewer',
+      registeredDetails: historyPositionDetails(closed),
+      details: null,
+      sourceId: closed.sourceId,
+      documentId: 'exit-doc',
+      sourceSha256: 'a'.repeat(64),
+      page: 1,
+      quote: 'Position fully exited.',
+      reason: 'Synthetic consistency regression.',
+      correctionOf: null,
+    });
+    const input = request();
+    if (input.action !== 'saveStress')
+      throw new Error('Stress request expected');
+    const preview = currentStressInputs(
+      data,
+      input.scope,
+      f.state.riskData,
+      f.state.historyLifecycle,
+      '2026-09-10',
+    );
+    const expected = runStressScenario(
+      buildTotalExposure(preview.holdings, preview.riskData, preview.asOfDate),
+      input.scenario,
+    );
+    const saved = (await saveReporting(ctx, input)).snapshot!;
+    if (saved.kind !== 'stress') throw new Error('Stress snapshot expected');
+    expect(saved.result.stress).toEqual(expected);
+    expect(
+      saved.inputs.holdings.some((holding) => holding.id === closed.id),
+    ).toBe(false);
+    expect(saved.inputs.ownershipBasis?.excludedCount).toBe(1);
+    expect(saved.inputs.lifecycle?.records[0].documentId).toBe('exit-doc');
+    expect(saved.result.stress.beforeEUR).toBeLessThan(
+      data.holdings
+        .filter((holding) => input.scope.familyIds.includes(holding.familyId))
+        .reduce((sum, holding) => sum + holding.valueEUR, 0),
+    );
+    expect(snapshotIntegrity(saved)).toBe(true);
+    f.state.historyLifecycle!.records[0].effectiveDate = '2027-01-01';
+    const reopened = (await readReporting(ctx, undefined, saved.id)).snapshot!;
+    expect(reopened).toEqual(saved);
   });
   it('does not duplicate concurrent exact retries and rejects reused keys with changed scenario instructions', async () => {
     const [a, b] = await Promise.all([

@@ -16,6 +16,8 @@ import {
   type LiquidityGroup,
 } from './reporting-contract';
 import { emptyRiskData, type RiskData } from './risk-contract';
+import { currentReportHoldings } from './report-value';
+import type { HistoryLifecycleState } from './portfolio-history-lifecycle-contract';
 
 export const RETURN_METHODOLOGY_URL =
   'https://www.gipsstandards.org/standards/gips-standards-for-asset-owners/gips-standards-handbook-for-asset-owners/';
@@ -54,6 +56,35 @@ export function reportingHoldings(
       scope.familyIds.includes(holding.familyId) &&
       (!scope.entityIds || scope.entityIds.includes(holding.entityId)),
   );
+}
+
+/** One current cohort for the live stress preview and immutable stress snapshot. */
+export function currentStressInputs(
+  portfolio: PortfolioRecords,
+  scope: ReportingScope,
+  riskData: RiskData | undefined,
+  lifecycle: HistoryLifecycleState | undefined,
+  asOfDate: string,
+) {
+  const scoped = reportingHoldings(portfolio, scope),
+    scopedIds = new Set(scoped.map((holding) => holding.id)),
+    selected = currentReportHoldings(scoped, lifecycle, asOfDate),
+    ids = new Set(selected.holdings.map((holding) => holding.id));
+  return structuredClone({
+    ...selected,
+    evidence: portfolio.evidence.filter((source) => ids.has(source.holdingId)),
+    riskData: scopedRiskData(riskData, selected.holdings),
+    asOfDate,
+    lifecycle: lifecycle
+      ? {
+          ...lifecycle,
+          records: lifecycle.records.filter((record) =>
+            scopedIds.has(record.holdingId),
+          ),
+          receipts: [],
+        }
+      : null,
+  });
 }
 
 /** Uses exact dated source records, never interpolated history or assumed zero opening value. */
@@ -549,6 +580,7 @@ export function evaluatePeriod(
     gaps,
     liquidity: liquidity(portfolio, finance, query, selected),
     assumptions: [
+      'Period analysis uses the selected registered positions as a fixed cohort. It does not reconstruct which positions were owned during the period; the Portfolio history view provides sourced ownership-date selection.',
       'Opening and closing values require accepted sources on the exact requested dates. No interpolation, stale-value carry-forward or zero opening value is used for performance.',
       'External cash flows are deposits and withdrawals across the selected entities’ portfolio boundary. Calls, investment purchases, sales, distributions and internal cash transfers are internal; fees remain in investment results.',
       'The opening date is an end-of-day valuation. Flows after that date through the closing date are included and weighted as end-of-day flows. Returns are not annualized; this estimate is not exact TWR or a GIPS compliance claim.',

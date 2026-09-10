@@ -162,6 +162,11 @@ export type StressSnapshot = SnapshotBase & {
     riskData: RiskData;
     scenario: z.infer<typeof riskScenarioSchema>;
     asOfDate: string;
+    /** Absent on older snapshots, whose original register cohort is preserved. */
+    ownershipBasis?: import('./report-value').CurrentReportOwnershipBasis;
+    lifecycle?:
+      | import('./portfolio-history-lifecycle-contract').HistoryLifecycleState
+      | null;
   };
   result: { exposure: TotalExposure; stress: StressResult };
 };

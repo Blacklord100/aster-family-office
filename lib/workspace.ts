@@ -44,6 +44,7 @@ export type SavedReport = {
   createdAt: string;
   totalValueEUR: number | null;
   valuationCoverage?: import('./finance').MetricCoverage;
+  ownershipBasis?: import('./report-value').CurrentReportOwnershipBasis;
   holdingCount: number;
   holdings: Holding[];
   history: {

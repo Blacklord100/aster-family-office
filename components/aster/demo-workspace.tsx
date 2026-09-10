@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Picker } from './primitives';
+import { useWorkspaceRequest } from './use-workspace-request';
 import styles from './connections.module.css';
 
 import type {
@@ -29,31 +30,31 @@ import type {
   DemoWorkspaceState,
 } from '@/lib/demo-contract';
 
-async function demoAction(
-  body:
-    | { action: 'start'; dataset?: DemoDataset }
-    | { action: 'leave' }
-    | { action: 'select'; organizationId: string },
-) {
-  const response = await fetch('/api/demo', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json().catch(() => {
-    throw new Error(
-      'This service is temporarily unavailable. Please try again.',
+type DemoAction =
+  | { action: 'start'; dataset?: DemoDataset }
+  | { action: 'leave' }
+  | { action: 'select'; organizationId: string };
+function useDemoAction() {
+  const { request } = useWorkspaceRequest();
+  return async (body: DemoAction) => {
+    await request(
+      '/api/demo',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      'json',
+      120_000,
     );
-  });
-  if (!response.ok)
-    throw new Error(result.message || 'Could not change the demo workspace.');
-  // A new authenticated workspace selection applies to every data source together.
-  window.location.assign(
-    '/?view=' + (body.action === 'leave' ? 'overview' : 'connections'),
-  );
+    window.location.assign(
+      '/?view=' + (body.action === 'leave' ? 'overview' : 'connections'),
+    );
+  };
 }
 
 export function DemoWorkspaceBanner({ demo }: { demo: DemoWorkspaceState }) {
+  const demoAction = useDemoAction();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function leave() {
@@ -101,6 +102,12 @@ export function DemoWorkspaceBanner({ demo }: { demo: DemoWorkspaceState }) {
 }
 
 export function DemoLauncher() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedDemoLauncher key={key} />;
+}
+function ScopedDemoLauncher() {
+  const { request } = useWorkspaceRequest();
+  const demoAction = useDemoAction();
   const [snapshot, setSnapshot] = useState<DemoResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -112,19 +119,9 @@ export function DemoLauncher() {
     const controller = new AbortController();
     async function load() {
       try {
-        const response = await fetch('/api/demo', {
-          cache: 'no-store',
+        const result = await request<DemoResponse>('/api/demo', {
           signal: controller.signal,
         });
-        const result = await response.json().catch(() => {
-          throw new Error(
-            'This service is temporarily unavailable. Please try again.',
-          );
-        });
-        if (!response.ok)
-          throw new Error(
-            result.message || 'Could not load the demo workspace.',
-          );
         if (!controller.signal.aborted) setSnapshot(result);
       } catch (issue) {
         if (!controller.signal.aborted)
@@ -137,7 +134,7 @@ export function DemoLauncher() {
     }
     void load();
     return () => controller.abort();
-  }, []);
+  }, [request]);
   async function run(
     body:
       | { action: 'start'; dataset?: DemoDataset }

@@ -17,9 +17,8 @@ import {
 } from '../reporting-contract';
 import {
   evaluatePeriod,
-  reportingHoldings,
+  currentStressInputs,
   scopedReportingInputs,
-  scopedRiskData,
 } from '../reporting';
 import { buildTotalExposure, runStressScenario } from '../risk-engine';
 import { LedgerError } from '../ledger';
@@ -312,26 +311,24 @@ export async function saveReporting(
           resultDigest: sha256(JSON.stringify(result)),
         };
       } else {
-        const holdings = reportingHoldings(data, input.scope);
-        if (!holdings.length)
+        const current = currentStressInputs(
+          data,
+          input.scope,
+          state.riskData,
+          state.historyLifecycle,
+          at.slice(0, 10),
+        );
+        if (!current.holdings.length)
           throw new AccessError(
             400,
             'NO_HOLDINGS',
-            'Select registered holdings before saving a stress run.',
+            'Select current registered holdings before saving a stress run. Sourced exits and future acquisitions are excluded.',
           );
-        const holdingIds = new Set(holdings.map((h) => h.id)),
-          inputs = {
-            scope: input.scope,
-            holdings: structuredClone(holdings),
-            evidence: structuredClone(
-              data.evidence.filter((source) =>
-                holdingIds.has(source.holdingId),
-              ),
-            ),
-            riskData: scopedRiskData(state.riskData, holdings),
-            scenario: input.scenario,
-            asOfDate: at.slice(0, 10),
-          };
+        const inputs = {
+          scope: input.scope,
+          ...current,
+          scenario: input.scenario,
+        };
         const exposure = buildTotalExposure(
             inputs.holdings,
             inputs.riskData,

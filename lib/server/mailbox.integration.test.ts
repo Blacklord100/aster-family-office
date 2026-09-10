@@ -1,3 +1,4 @@
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -18,7 +19,7 @@ import {
   importMailboxMessage,
   releaseMailboxClaim,
 } from './mailbox-sync';
-import { decrypt, encrypt } from './crypto';
+import { decrypt, encrypt, sha256 } from './crypto';
 import { saveEngine } from './engine-store';
 import { pool, withTenant } from './db';
 import { MailboxError } from './mailbox-provider';
@@ -66,20 +67,7 @@ describe.skipIf(!enabled)(
       'From: synthetic-manager@example.invalid\r\nSubject: Meridian quarterly NAV report\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nMeridian Fund net asset value (NAV) EUR 2,800,000 as of 2026-09-08.\r\n',
     );
     beforeAll(async () => {
-      for (const name of ['MIGRATION_DATABASE_URL', 'DATABASE_URL']) {
-        const value = process.env[name];
-        if (!value)
-          throw new Error('Explicit disposable database credentials required');
-        const url = new URL(value);
-        if (
-          !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-          url.port !== '55439' ||
-          url.pathname !== '/aster'
-        )
-          throw new Error(
-            'Mailbox integration requires the isolated local Aster database on 55439',
-          );
-      }
+      assertDisposableDatabase();
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
       });
@@ -281,6 +269,201 @@ describe.skipIf(!enabled)(
       ).rejects.toThrow();
       await releaseMailboxClaim(replacement!);
     });
+    it('shares the original-byte lock with uploads and schedules an existing retained original once', async () => {
+      await admin.query(
+        'UPDATE app_mailbox_queue SET available_at=clock_timestamp() WHERE id=$1',
+        [mailboxId],
+      );
+      const claim = await claimMailbox(worker);
+      const bytes = Buffer.from(
+        source.toString().replace('quarterly NAV', 'concurrent retained NAV'),
+      );
+      const hash = sha256(bytes),
+        documentId = randomUUID();
+      const upload = await admin.connect();
+      await upload.query('BEGIN');
+      await upload.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+        [org + hash],
+      );
+      let finished = false;
+      const pending = importMailboxMessage(
+        claim!,
+        1,
+        'concurrent-upload',
+        bytes,
+      ).then(() => {
+        finished = true;
+      });
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        expect(finished).toBe(false);
+        await upload.query(
+          "INSERT INTO app_documents(id,organization_id,created_by,filename,mime_type,content_hash,byte_size,payload) VALUES($1,$2,$3,'retained.eml','message/rfc822',$4,$5,$6)",
+          [
+            documentId,
+            org,
+            user,
+            hash,
+            bytes.length,
+            encrypt(bytes, 'document:' + org + ':' + documentId),
+          ],
+        );
+        await upload.query('COMMIT');
+        await pending;
+      } finally {
+        await upload.query('ROLLBACK');
+        upload.release();
+      }
+      expect(
+        (
+          await admin.query(
+            'SELECT id FROM app_documents WHERE organization_id=$1 AND content_hash=$2',
+            [org, hash],
+          )
+        ).rows,
+      ).toEqual([{ id: documentId }]);
+      expect(
+        (
+          await admin.query(
+            'SELECT id FROM app_jobs WHERE organization_id=$1 AND document_id=$2',
+            [org, documentId],
+          )
+        ).rowCount,
+      ).toBe(1);
+      await importMailboxMessage(claim!, 1, 'same-bytes-another-email', bytes);
+      expect(
+        (
+          await admin.query(
+            'SELECT id FROM app_jobs WHERE organization_id=$1 AND document_id=$2',
+            [org, documentId],
+          )
+        ).rowCount,
+      ).toBe(1);
+      await releaseMailboxClaim(claim!);
+    });
+    it('rolls back every import side effect when its lease expires while the audit commit is blocked', async () => {
+      await admin.query(
+        'UPDATE app_mailbox_queue SET available_at=clock_timestamp() WHERE id=$1',
+        [mailboxId],
+      );
+      const claim = await claimMailbox(worker);
+      const before = (
+        await admin.query(
+          'SELECT imported_count FROM app_mailboxes WHERE id=$1',
+          [mailboxId],
+        )
+      ).rows[0].imported_count;
+      const lock = await admin.connect();
+      await lock.query('BEGIN');
+      await lock.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        org,
+      ]);
+      await admin.query(
+        "UPDATE app_mailbox_queue SET lease_until=clock_timestamp()+interval '500 milliseconds' WHERE id=$1",
+        [mailboxId],
+      );
+      const bytes = Buffer.from(
+        source.toString().replace('quarterly NAV', 'expired commit NAV'),
+      );
+      const pending = importMailboxMessage(
+        claim!,
+        1,
+        'expired-during-commit',
+        bytes,
+      ).then(
+        () => null,
+        (error) => error,
+      );
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        await lock.query('COMMIT');
+        expect(await pending).toBeInstanceOf(Error);
+      } finally {
+        await lock.query('ROLLBACK');
+        lock.release();
+      }
+      expect(
+        (
+          await admin.query(
+            'SELECT id FROM app_documents WHERE organization_id=$1 AND content_hash=$2',
+            [org, sha256(bytes)],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await admin.query(
+            'SELECT 1 FROM app_mailbox_receipts WHERE mailbox_id=$1 AND message_id=$2',
+            [mailboxId, 'expired-during-commit'],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await admin.query(
+            'SELECT imported_count FROM app_mailboxes WHERE id=$1',
+            [mailboxId],
+          )
+        ).rows[0].imported_count,
+      ).toBe(before);
+      expect(
+        await releaseMailboxClaim(claim!, new MailboxError('REAUTH_REQUIRED')),
+      ).toBe(false);
+      expect(
+        (
+          await admin.query('SELECT status FROM app_mailboxes WHERE id=$1', [
+            mailboxId,
+          ])
+        ).rows[0].status,
+      ).toBe('active');
+    });
+    it('refuses a newly restricted connecting member and pauses the mailbox without importing the source', async () => {
+      await admin.query(
+        'UPDATE app_mailbox_queue SET available_at=clock_timestamp(),lease_owner=NULL,lease_until=NULL WHERE id=$1',
+        [mailboxId],
+      );
+      const claim = await claimMailbox(worker);
+      await admin.query(
+        "UPDATE app_memberships SET role='viewer',data_scope=$3 WHERE organization_id=$1 AND user_id=$2",
+        [org, user, { familyIds: ['restricted-family'] }],
+      );
+      try {
+        const error = await importMailboxMessage(
+          claim!,
+          1,
+          'after-scope-change',
+          source,
+        ).then(
+          () => null,
+          (cause) => cause,
+        );
+        expect(error).toBeInstanceOf(Error);
+        expect(await releaseMailboxClaim(claim!, error)).toBe(true);
+        expect(
+          (
+            await admin.query(
+              'SELECT status,error_code FROM app_mailboxes WHERE id=$1',
+              [mailboxId],
+            )
+          ).rows[0],
+        ).toEqual({ status: 'paused', error_code: 'MEMBERSHIP_REVOKED' });
+        expect(
+          (
+            await admin.query(
+              'SELECT 1 FROM app_mailbox_receipts WHERE mailbox_id=$1 AND message_id=$2',
+              [mailboxId, 'after-scope-change'],
+            )
+          ).rowCount,
+        ).toBe(0);
+      } finally {
+        await admin.query(
+          "UPDATE app_memberships SET role='owner',data_scope=NULL WHERE organization_id=$1 AND user_id=$2",
+          [org, user],
+        );
+        await updateMailbox(context, mailboxId, 'resume');
+      }
+    });
     it('preserves progress across provider failure and honors throttled retry scheduling', async () => {
       await admin.query(
         'UPDATE app_mailbox_queue SET available_at=now() WHERE id=$1',
@@ -403,7 +586,7 @@ describe.skipIf(!enabled)(
             [org],
           )
         ).rowCount,
-      ).toBe(1);
+      ).toBe(2);
     });
     it('connects a separate Microsoft account with delegated read-only scopes', async () => {
       vi.stubEnv('MICROSOFT_CLIENT_ID', 'synthetic-ms-client');

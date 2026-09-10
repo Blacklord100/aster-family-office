@@ -1,9 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from './workspace-context';
 import { DataAccessSettings } from './data-access-settings';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 type Member = {
   id: string;
   name: string;
@@ -19,6 +23,11 @@ type Event = {
   resourceId: string;
 };
 export function TeamSettings() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedTeamSettings key={key} />;
+}
+function ScopedTeamSettings() {
+  const { request } = useWorkspaceRequest();
   const { state } = useWorkspace(),
     admin = ['owner', 'admin'].includes(state.identity?.role ?? '');
   const [members, setMembers] = useState<Member[]>([]),
@@ -26,21 +35,38 @@ export function TeamSettings() {
     [error, setError] = useState(''),
     [link, setLink] = useState(''),
     [busy, setBusy] = useState(false);
-  async function load() {
-    try {
-      const [team, audit] = await Promise.all([
-        fetch('/api/team'),
-        fetch('/api/audit'),
-      ]);
-      const t = await team.json(),
-        a = await audit.json();
-      if (!team.ok) throw new Error(t.message);
-      setMembers(t.members);
-      if (audit.ok) setEvents(a.events);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load team');
-    }
-  }
+  const [loading, setLoading] = useState(true),
+    [copied, setCopied] = useState(false);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError('');
+      try {
+        const [team, audit] = await Promise.all([
+          request<{ members: Member[] }>('/api/team', { signal }),
+          request<{ events: Event[] }>('/api/audit', { signal }),
+        ]);
+        if (!Array.isArray(team.members) || !Array.isArray(audit.events))
+          throw new Error('The team response was incomplete. Try again.');
+        setMembers(team.members);
+        setEvents(audit.events);
+      } catch (e) {
+        if (signal?.aborted) return;
+        if (
+          e instanceof WorkspaceRequestError &&
+          [401, 403].includes(e.status)
+        ) {
+          setMembers([]);
+          setEvents([]);
+          setLink('');
+        }
+        setError(e instanceof Error ? e.message : 'Could not load team');
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [request],
+  );
   async function updateMember(
     userId: string,
     action: 'role' | 'remove' | 'restore',
@@ -49,15 +75,21 @@ export function TeamSettings() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/api/team', {
+      await request('/api/team', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, role }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message);
       await load();
     } catch (error) {
+      if (
+        error instanceof WorkspaceRequestError &&
+        [401, 403].includes(error.status)
+      ) {
+        setMembers([]);
+        setEvents([]);
+        setLink('');
+      }
       setError(
         error instanceof Error ? error.message : 'Could not update access',
       );
@@ -66,9 +98,11 @@ export function TeamSettings() {
     }
   }
   useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler -- Synchronizes remote team state after an awaited network request.
-    if (admin) void load();
-  }, [admin]);
+    const controller = new AbortController();
+    // oxlint-disable-next-line react/react-compiler -- Remote data is synchronized after the network request.
+    if (admin) void load(controller.signal);
+    return () => controller.abort();
+  }, [admin, load]);
   if (!admin)
     return (
       <p className="text-sm text-muted-foreground">
@@ -76,13 +110,18 @@ export function TeamSettings() {
       </p>
     );
   return (
-    <section className="space-y-4 border-t pt-5">
+    <section className="flex flex-col gap-4 border-t pt-5">
       <div>
         <h3 className="font-medium">Team & access</h3>
         <p className="text-xs text-muted-foreground">
           Invite-only accounts. Every member sets up an authenticator.
         </p>
       </div>
+      {loading ? (
+        <output className="text-xs text-muted-foreground">
+          Loading team and audit records…
+        </output>
+      ) : null}
       {members.map((m) => (
         <div
           key={m.id}
@@ -144,27 +183,37 @@ export function TeamSettings() {
           setLink('');
           const form = new FormData(e.currentTarget);
           try {
-            const r = await fetch('/api/team', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                name: form.get('name'),
-                email: form.get('email'),
-                role: form.get('role'),
-              }),
-            });
-            const body = await r.json();
-            if (!r.ok) throw new Error(body.message);
+            const body = await request<{ invitation: { url: string } }>(
+              '/api/team',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: form.get('name'),
+                  email: form.get('email'),
+                  role: form.get('role'),
+                }),
+              },
+            );
             setLink(body.invitation.url);
+            setCopied(false);
             await load();
           } catch (e) {
+            if (
+              e instanceof WorkspaceRequestError &&
+              [401, 403].includes(e.status)
+            ) {
+              setMembers([]);
+              setEvents([]);
+              setLink('');
+            }
             setError(e instanceof Error ? e.message : 'Could not invite');
           } finally {
             setBusy(false);
           }
         }}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Input
             name="name"
             aria-label="Invitee name"
@@ -180,7 +229,7 @@ export function TeamSettings() {
             required
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             name="role"
             aria-label="Invitation role"
@@ -207,15 +256,27 @@ export function TeamSettings() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void navigator.clipboard.writeText(link)}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(link);
+                setCopied(true);
+              } catch {
+                setError(
+                  'Copy failed. Select and copy the invitation link manually.',
+                );
+              }
+            }}
           >
-            Copy invitation
+            {copied ? 'Copied' : 'Copy invitation'}
           </Button>
         </div>
       ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
+          <Button variant="link" size="sm" onClick={() => void load()}>
+            Reload team
+          </Button>
         </p>
       ) : null}
       <details>

@@ -10,8 +10,7 @@ import { withTenant } from './db';
 import { decrypt, encrypt, sha256 } from './crypto';
 import { audit, rateLimit } from './audit';
 import { readBody } from './http';
-import { hasDemoSourceVerification } from './demo-review-policy';
-import { loadDemoCatalog } from './demo-corpus';
+import { verifiedDemoIndexSource } from './demo-index-policy';
 import {
   activeEngine,
   assertEngineEnabled,
@@ -192,11 +191,12 @@ export async function indexDocument(ctx: WorkspaceContext, documentId: string) {
       )
     ).rows[0];
     if (!row) throw new AccessError(404, 'NOT_FOUND', 'Document not found.');
-    const verifiedDemo =
-      (await hasDemoSourceVerification(c, ctx, documentId)) &&
-      (await loadDemoCatalog()).documents.some(
-        (source) => source.sha256 === row.content_hash,
-      );
+    const verifiedDemo = await verifiedDemoIndexSource(
+      c,
+      ctx,
+      documentId,
+      row.content_hash,
+    );
     if (
       !(await rateLimit(
         c,

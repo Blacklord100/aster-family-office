@@ -1,3 +1,4 @@
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { randomUUID } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer, type Server, type ServerResponse } from 'node:http';
@@ -246,16 +247,7 @@ suite('real durable worker lifecycle', () => {
         'Set runtime/admin PostgreSQL URLs, encryption key, and processor token in a private environment.',
       );
     }
-    for (const key of ['DATABASE_URL', 'MIGRATION_DATABASE_URL']) {
-      if (
-        !['127.0.0.1', 'localhost', '[::1]'].includes(
-          new URL(process.env[key]!).hostname,
-        )
-      )
-        throw new Error(
-          'Worker integration requires a local PostgreSQL instance.',
-        );
-    }
+    assertDisposableDatabase();
     temp = await mkdtemp(join(tmpdir(), 'aster-worker-lifecycle-'));
     admin = new Pool({
       connectionString: process.env.MIGRATION_DATABASE_URL,
@@ -600,6 +592,40 @@ suite('real durable worker lifecycle', () => {
       pipeline.jobs.filter((row: { result: unknown }) => row.result !== null),
     ).toHaveLength(1);
     expect(oldWorker.stderrBytes + newWorker.stderrBytes).toBe(0);
+  }, 20000);
+
+  it('never renews or accepts a result after lease expiry, even before replacement ownership', async () => {
+    const job = await fixture(),
+      worker = startWorker();
+    const request = await firstRequest(job.documentId);
+    const owner = (await state(job.id)).lease_owner!;
+    await admin.query(
+      "UPDATE app_job_queue SET lease_until=clock_timestamp()-interval '1 second',available_at=clock_timestamp()+interval '1 hour' WHERE id=$1 AND organization_id=$2",
+      [job.id, org],
+    );
+    const { renewDocumentLease } = await import('./worker-scope');
+    expect(await renewDocumentLease(db.pool, job.id, owner)).toBe(false);
+    const sentinel = await fixture('success');
+    request.release('expired result must never appear');
+    await eventually(
+      () => state(sentinel.id),
+      (value) => value.status === 'awaiting_review',
+      'worker continuing after expired response',
+    );
+    expect(await state(job.id)).toMatchObject({
+      status: 'processing',
+      result: null,
+      lease_owner: owner,
+    });
+    const audits = (
+      await admin.query(
+        'SELECT action FROM app_audit WHERE organization_id=$1 AND resource_id=$2 ORDER BY sequence',
+        [org, job.id],
+      )
+    ).rows.map((row) => row.action);
+    expect(audits).toEqual(['processing.started']);
+    await stopWorker(worker);
+    expect(worker.stderrBytes).toBe(0);
   }, 20000);
 
   it('backs off twice, fails on attempt three, and resets attempts only on explicit retry', async () => {

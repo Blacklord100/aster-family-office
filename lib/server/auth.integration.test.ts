@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { hashPassword } from 'better-auth/crypto';
 import { createOTP } from '@better-auth/utils/otp';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 
 vi.mock('server-only', () => ({}));
 
@@ -64,6 +65,8 @@ class BrowserSession {
 suite('real PostgreSQL Better Auth integration', () => {
   beforeAll(async () => {
     vi.stubEnv('DATABASE_URL', databaseURL!);
+    vi.stubEnv('MIGRATION_DATABASE_URL', adminURL!);
+    assertDisposableDatabase();
     vi.stubEnv('BETTER_AUTH_URL', origin);
     vi.stubEnv(
       'BETTER_AUTH_SECRET',

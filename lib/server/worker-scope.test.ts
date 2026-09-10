@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { claimDocumentJob, workerOrganizationScope } from './worker-scope';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 
 describe('dedicated worker organization routing', () => {
   it('leaves the deployment default unrestricted only when the option is absent', () => {
@@ -56,15 +57,7 @@ describe.skipIf(process.env.ASTER_WORKER_SCOPE_INTEGRATION !== '1')(
       );
     }
     beforeAll(async () => {
-      for (const key of ['MIGRATION_DATABASE_URL', 'DATABASE_URL']) {
-        const url = new URL(process.env[key] ?? 'https://invalid');
-        if (
-          !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-          url.port !== '55439' ||
-          url.pathname !== '/aster'
-        )
-          throw new Error('Explicit isolated local Aster DB required.');
-      }
+      assertDisposableDatabase();
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
       });

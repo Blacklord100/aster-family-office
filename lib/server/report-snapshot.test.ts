@@ -3,6 +3,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { holdings } from '../../data/portfolio';
 import { reportValue } from '../report-value';
+import { emptyHistoryLifecycle } from '../portfolio-history-lifecycle-contract';
+import { historyPositionDetails } from '../portfolio-history-lifecycle';
 import {
   initialWorkspace,
   deriveWorkspace,
@@ -35,6 +37,12 @@ vi.mock('../../components/aster/charts', () => ({
 }));
 import { POST } from '../../app/api/workspace/route';
 import { ReportsView, PrintableReport } from '../../components/aster/reports';
+import { StressSummary } from '../../components/aster/reporting-workbench';
+import {
+  buildTotalExposure,
+  RISK_PRESETS,
+  runStressScenario,
+} from '../risk-engine';
 const known = {
   ...holdings[0],
   id: 'known',
@@ -94,6 +102,101 @@ async function save() {
   );
 }
 describe('source-derived report snapshots', () => {
+  it('renders missing stress values as unavailable and partial values as known subtotals', () => {
+    const scenario = RISK_PRESETS[0],
+      empty = renderToStaticMarkup(
+        createElement(StressSummary, {
+          result: runStressScenario(buildTotalExposure([unknown]), scenario),
+          inputs: {
+            holdings: [unknown],
+            ownershipBasis: {
+              asOfDate: '2026-09-10',
+              excludedCount: 1,
+              unknownOwnershipCount: 1,
+            },
+          },
+        }),
+      );
+    expect(empty).toContain('0 of 1 positions valued');
+    expect(empty).toContain('Not reported');
+    expect(empty).toContain('Unavailable');
+    expect(empty).not.toContain('class="metric-value">€0');
+    const partial = renderToStaticMarkup(
+      createElement(StressSummary, {
+        result: runStressScenario(
+          buildTotalExposure([known, unknown]),
+          scenario,
+        ),
+        inputs: { holdings: [known, unknown] },
+      }),
+    );
+    expect(partial).toContain('Before scenario · known subtotal');
+    expect(partial).toContain('1 of 2 positions valued');
+    expect(partial).toContain('Original saved register cohort');
+    expect(partial).not.toContain('999,900');
+  });
+  it('excludes sourced exits from live and newly saved reports without reinterpreting older snapshots', async () => {
+    const closed = {
+      ...known,
+      id: 'closed',
+      name: 'Exited position',
+      valueEUR: 800,
+    };
+    state.portfolio!.holdings.push(closed);
+    state.historyLifecycle = emptyHistoryLifecycle();
+    state.historyLifecycle.records.push({
+      id: 'exit',
+      holdingId: closed.id,
+      kind: 'closed',
+      effectiveDate: '2020-01-01',
+      recordedAt: '2020-01-01T12:00:00Z',
+      actorId: 'reviewer',
+      registeredDetails: historyPositionDetails(closed),
+      details: null,
+      sourceId: closed.sourceId,
+      documentId: 'exit-document',
+      sourceSha256: 'a'.repeat(64),
+      page: 1,
+      quote: 'Position was fully exited.',
+      reason: 'Synthetic report regression.',
+      correctionOf: null,
+    });
+    const original: SavedReport = {
+      id: 'old',
+      name: 'Original register snapshot',
+      family: 'all',
+      range: 'YTD',
+      synthetic: false,
+      createdAt: '2019-12-01T12:00:00Z',
+      holdingCount: 1,
+      totalValueEUR: 800,
+      holdings: [closed],
+      history: [],
+    };
+    const live = renderToStaticMarkup(
+      createElement(PrintableReport, { family: 'all', saved: null }),
+    );
+    expect(live).not.toContain('Exited position');
+    expect(live).toContain('1 sourced exits or future acquisitions excluded');
+    expect(live).toContain('2 positions retain unknown ownership dates');
+    const old = renderToStaticMarkup(
+      createElement(PrintableReport, { family: 'all', saved: original }),
+    );
+    expect(old).toContain('Exited position');
+    expect(old).toContain('€800');
+    expect(old).toContain('Original saved register cohort');
+    await save();
+    expect(state.reports[0].holdings.map((holding) => holding.id)).toEqual([
+      'known',
+      'unknown',
+    ]);
+    expect(state.reports[0].totalValueEUR).toBe(100);
+    expect(state.reports[0].ownershipBasis).toMatchObject({
+      excludedCount: 1,
+      unknownOwnershipCount: 2,
+    });
+    expect(original.holdings).toEqual([closed]);
+  });
   it('persists a known subtotal and explicit coverage, preserving the original holding flags', async () => {
     const response = await save();
     expect(response.status).toBe(200);
@@ -162,7 +265,9 @@ describe('source-derived report snapshots', () => {
       createElement(PrintableReport, { family: 'all', saved: snapshot }),
     );
     expect(printed).toContain('Known portfolio subtotal');
-    expect(printed).toContain('<span>Known portfolio subtotal</span><strong>€100</strong>');
+    expect(printed).toContain(
+      '<span>Known portfolio subtotal</span><strong>€100</strong>',
+    );
     expect(printed).not.toContain('999,900');
     expect(printed).not.toContain('1,000,000');
     expect(printed).not.toContain('NaN');

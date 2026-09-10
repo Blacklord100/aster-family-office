@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import Link from 'next/link';
 import {
+  useWorkspaceRequest,
+  WorkspaceRequestError as ProcessingRequestError,
+} from './use-workspace-request';
+import {
   AlertCircle,
   Check,
   ChevronLeft,
@@ -109,38 +113,6 @@ type ReviewResponse = {
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const isActive = (job: ProcessingJob) =>
   job.status === 'queued' || job.status === 'processing';
-class ProcessingRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-  }
-}
-async function requestJson<T>(
-  url: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message =
-      payload &&
-      typeof payload === 'object' &&
-      'message' in payload &&
-      typeof payload.message === 'string'
-        ? payload.message
-        : 'The request could not be completed. Please try again.';
-    throw new ProcessingRequestError(message, response.status);
-  }
-  if (payload === null)
-    throw new Error('Aster returned an empty response. Please refresh.');
-  return payload as T;
-}
 function errorMessage(error: unknown) {
   return error instanceof ProcessingRequestError
     ? error.message
@@ -150,6 +122,15 @@ function errorMessage(error: unknown) {
 export function ProcessingView({
   initialJobId = null,
 }: { initialJobId?: string | null } = {}) {
+  const { key } = useWorkspaceRequest();
+  return <ProcessingWorkspace key={key} initialJobId={initialJobId} />;
+}
+function ProcessingWorkspace({
+  initialJobId,
+}: {
+  initialJobId: string | null;
+}) {
+  const { request: requestJson } = useWorkspaceRequest();
   const { data, reload } = useWorkspace();
   const [snapshot, setSnapshot] = useState<ProcessingResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialJobId);
@@ -249,7 +230,7 @@ export function ProcessingView({
       clearTimeout(timer);
       controller?.abort();
     };
-  }, [refreshKey, selectedId, stage, search, offset]);
+  }, [refreshKey, selectedId, stage, search, offset, requestJson]);
   async function mutate<T>(
     key: string,
     run: () => Promise<T>,

@@ -37,11 +37,12 @@ type MailboxRow = {
   generation: number;
 };
 export class MailboxLeaseLost extends Error {}
+class MailboxMembershipRevoked extends Error {}
 export async function claimMailbox(
   workerId: string,
 ): Promise<MailboxClaim | undefined> {
   const result = await pool.query<MailboxClaim>(
-    `WITH candidate AS (SELECT id FROM app_mailbox_queue WHERE available_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE app_mailbox_queue q SET lease_owner=$1,lease_until=now()+interval '90 seconds' FROM candidate c WHERE q.id=c.id RETURNING q.id,q.organization_id,q.lease_owner`,
+    `WITH candidate AS (SELECT id FROM app_mailbox_queue WHERE available_at<=clock_timestamp() AND (lease_until IS NULL OR lease_until<clock_timestamp()) ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE app_mailbox_queue q SET lease_owner=$1,lease_until=clock_timestamp()+interval '90 seconds' FROM candidate c WHERE q.id=c.id RETURNING q.id,q.organization_id,q.lease_owner`,
     [workerId],
   );
   return result.rows[0];
@@ -52,12 +53,17 @@ async function assertClaim(
   generation?: number,
 ): Promise<MailboxRow> {
   const result = await client.query<MailboxRow>(
-    `SELECT m.* FROM app_mailboxes m JOIN app_mailbox_queue q ON q.id=m.id JOIN app_memberships member ON member.organization_id=m.organization_id AND member.user_id=m.connected_by WHERE m.id=$1 AND m.organization_id=$2 AND m.status='active' AND m.credentials IS NOT NULL AND q.lease_owner=$3 AND q.lease_until>now() AND member.revoked_at IS NULL AND member.role IN ('owner','admin','analyst') ${generation === undefined ? '' : 'AND m.generation=$4'} FOR UPDATE OF m,q`,
+    `SELECT m.* FROM app_mailboxes m JOIN app_mailbox_queue q ON q.id=m.id AND q.organization_id=m.organization_id WHERE m.id=$1 AND m.organization_id=$2 AND m.status='active' AND m.credentials IS NOT NULL AND q.lease_owner=$3 AND q.lease_until>clock_timestamp() ${generation === undefined ? '' : 'AND m.generation=$4'} FOR UPDATE OF m,q`,
     generation === undefined
       ? [claim.id, claim.organization_id, claim.lease_owner]
       : [claim.id, claim.organization_id, claim.lease_owner, generation],
   );
   if (!result.rows[0]) throw new MailboxLeaseLost();
+  const membership = await client.query(
+    "SELECT 1 FROM app_memberships WHERE organization_id=$1 AND user_id=$2 AND revoked_at IS NULL AND data_scope IS NULL AND role IN ('owner','admin','analyst') FOR SHARE",
+    [claim.organization_id, result.rows[0].connected_by],
+  );
+  if (!membership.rowCount) throw new MailboxMembershipRevoked();
   return result.rows[0];
 }
 export async function importMailboxMessage(
@@ -88,7 +94,7 @@ export async function importMailboxMessage(
         const hash = sha256(bytes);
         await client.query(
           'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
-          [claim.organization_id + ':' + hash],
+          [claim.organization_id + hash],
         );
         const existing = await client.query<{ id: string }>(
           'SELECT id FROM app_documents WHERE organization_id=$1 AND content_hash=$2',
@@ -111,6 +117,12 @@ export async function importMailboxMessage(
               ),
             ],
           );
+        }
+        const existingJob = await client.query(
+          'SELECT 1 FROM app_jobs WHERE organization_id=$1 AND document_id=$2 LIMIT 1',
+          [claim.organization_id, documentId],
+        );
+        if (!existingJob.rowCount) {
           const policy = await client.query<{
             processing_mode: string;
             policy_revision: number;
@@ -152,7 +164,7 @@ export async function importMailboxMessage(
       [claim.organization_id, claim.id, messageId, documentId, outcome],
     );
     await client.query(
-      `UPDATE app_mailboxes SET imported_count=imported_count+$2,skipped_count=skipped_count+$3,updated_at=now() WHERE id=$1`,
+      `UPDATE app_mailboxes SET imported_count=imported_count+$2,skipped_count=skipped_count+$3,updated_at=clock_timestamp() WHERE id=$1`,
       [
         claim.id,
         outcome === 'imported' ? 1 : 0,
@@ -167,6 +179,11 @@ export async function importMailboxMessage(
       documentId ?? claim.id,
       { mailboxId: claim.id },
     );
+    const fenced = await client.query(
+      'SELECT 1 FROM app_mailbox_queue WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp()',
+      [claim.id, claim.organization_id, claim.lease_owner],
+    );
+    if (!fenced.rowCount) throw new MailboxLeaseLost();
   });
 }
 export async function syncMailboxPage(
@@ -206,7 +223,7 @@ export async function syncMailboxPage(
         fetcher,
       );
       await client.query(
-        'UPDATE app_mailboxes SET credentials=$2,updated_at=now() WHERE id=$1',
+        'UPDATE app_mailboxes SET credentials=$2,updated_at=clock_timestamp() WHERE id=$1',
         [
           claim.id,
           encrypt(
@@ -215,6 +232,11 @@ export async function syncMailboxPage(
           ),
         ],
       );
+      const fenced = await client.query(
+        'SELECT 1 FROM app_mailbox_queue WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp()',
+        [claim.id, claim.organization_id, claim.lease_owner],
+      );
+      if (!fenced.rowCount) throw new MailboxLeaseLost();
       return refreshed;
     });
   }
@@ -280,7 +302,7 @@ export async function syncMailboxPage(
   await withTenant(claim.organization_id, async (client) => {
     await assertClaim(client, claim, mailbox.generation);
     await client.query(
-      'UPDATE app_mailboxes SET cursor=$2,last_synced_at=CASE WHEN $3 THEN now() ELSE last_synced_at END,error_code=null,updated_at=now() WHERE id=$1',
+      'UPDATE app_mailboxes SET cursor=$2,last_synced_at=CASE WHEN $3 THEN clock_timestamp() ELSE last_synced_at END,error_code=null,updated_at=clock_timestamp() WHERE id=$1',
       [
         claim.id,
         encrypt(
@@ -290,10 +312,11 @@ export async function syncMailboxPage(
         page.complete,
       ],
     );
-    await client.query(
-      "UPDATE app_mailbox_queue SET available_at=now()+$2*interval '1 second',lease_owner=null,lease_until=null,attempts=0 WHERE id=$1 AND lease_owner=$3",
+    const finished = await client.query(
+      "UPDATE app_mailbox_queue SET available_at=clock_timestamp()+$2*interval '1 second',lease_owner=null,lease_until=null,attempts=0 WHERE id=$1 AND lease_owner=$3 AND lease_until>clock_timestamp()",
       [claim.id, page.complete ? 300 : 1, claim.lease_owner],
     );
+    if (!finished.rowCount) throw new MailboxLeaseLost();
   });
   return { complete: page.complete, messages: page.messageIds.length };
 }
@@ -301,37 +324,63 @@ export async function releaseMailboxClaim(
   claim: MailboxClaim,
   error?: unknown,
 ) {
-  await withTenant(claim.organization_id, async (client) => {
-    if (!error || error instanceof MailboxLeaseLost) {
-      await client.query(
-        "UPDATE app_mailbox_queue SET lease_owner=null,lease_until=null,available_at=now()+interval '5 seconds' WHERE id=$1 AND organization_id=$2 AND lease_owner=$3",
-        [claim.id, claim.organization_id, claim.lease_owner],
-      );
-      return;
-    }
-    const code = error instanceof MailboxError ? error.code : 'SYNC_FAILED';
+  return withTenant(claim.organization_id, async (client) => {
+    // Keep the same mailbox -> queue -> membership ordering as import and UI mutations.
+    await client.query(
+      'SELECT id FROM app_mailboxes WHERE id=$1 AND organization_id=$2 FOR UPDATE',
+      [claim.id, claim.organization_id],
+    );
     const matched = await client.query(
-      'SELECT 1 FROM app_mailbox_queue WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 FOR UPDATE',
+      'SELECT 1 FROM app_mailbox_queue WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp() FOR UPDATE',
       [claim.id, claim.organization_id, claim.lease_owner],
     );
-    if (!matched.rowCount) return;
+    if (!matched.rowCount) return false;
+    if (error instanceof MailboxMembershipRevoked) {
+      await client.query(
+        "UPDATE app_mailboxes SET status='paused',generation=generation+1,error_code='MEMBERSHIP_REVOKED',updated_at=clock_timestamp() WHERE id=$1 AND organization_id=$2",
+        [claim.id, claim.organization_id],
+      );
+      const finished = await client.query(
+        'DELETE FROM app_mailbox_queue WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp()',
+        [claim.id, claim.organization_id, claim.lease_owner],
+      );
+      if (!finished.rowCount) throw new MailboxLeaseLost();
+      return true;
+    }
+    if (!error || error instanceof MailboxLeaseLost) {
+      const finished = await client.query(
+        "UPDATE app_mailbox_queue SET lease_owner=null,lease_until=null,available_at=clock_timestamp()+interval '5 seconds' WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp()",
+        [claim.id, claim.organization_id, claim.lease_owner],
+      );
+      if (!finished.rowCount) throw new MailboxLeaseLost();
+      return true;
+    }
+    const code = error instanceof MailboxError ? error.code : 'SYNC_FAILED';
     if (['REAUTH_REQUIRED', 'PROVIDER_FORBIDDEN'].includes(code)) {
       await client.query(
         "UPDATE app_mailboxes SET status='reauth_required',generation=generation+1,error_code=$2 WHERE id=$1",
         [claim.id, code],
       );
-      await client.query('DELETE FROM app_mailbox_queue WHERE id=$1', [
-        claim.id,
-      ]);
+      const finished = await client.query(
+        'DELETE FROM app_mailbox_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
+        [claim.id, claim.lease_owner],
+      );
+      if (!finished.rowCount) throw new MailboxLeaseLost();
     } else {
       await client.query('UPDATE app_mailboxes SET error_code=$2 WHERE id=$1', [
         claim.id,
         code,
       ]);
-      await client.query(
-        "UPDATE app_mailbox_queue SET attempts=attempts+1,available_at=now()+GREATEST($2,LEAST(3600,30*power(2,LEAST(attempts,7)))+random()*10)*interval '1 second',lease_owner=null,lease_until=null WHERE id=$1",
-        [claim.id, error instanceof MailboxError ? error.retryAfter : 0],
+      const finished = await client.query(
+        "UPDATE app_mailbox_queue SET attempts=attempts+1,available_at=clock_timestamp()+GREATEST($2,LEAST(3600,30*power(2,LEAST(attempts,7)))+random()*10)*interval '1 second',lease_owner=null,lease_until=null WHERE id=$1 AND lease_owner=$3 AND lease_until>clock_timestamp()",
+        [
+          claim.id,
+          error instanceof MailboxError ? error.retryAfter : 0,
+          claim.lease_owner,
+        ],
       );
+      if (!finished.rowCount) throw new MailboxLeaseLost();
     }
+    return true;
   });
 }

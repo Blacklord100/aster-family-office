@@ -29,13 +29,15 @@ import {
   type ReportingSnapshot,
   type PeriodReport,
   type ReportingScope,
+  type StressSnapshot,
 } from '@/lib/reporting-contract';
 import {
   RISK_PRESETS,
   buildTotalExposure,
   runStressScenario,
 } from '@/lib/risk-engine';
-import { scopedRiskData } from '@/lib/reporting';
+import { currentStressInputs } from '@/lib/reporting';
+import { reportValue } from '@/lib/report-value';
 import type { RiskScenario, StressResult } from '@/lib/risk-contract';
 import {
   FamilyPicker,
@@ -473,7 +475,15 @@ function PeriodResults({
     </div>
   );
 }
-function StressSummary({ result }: { result: StressResult }) {
+export function StressSummary({
+  result,
+  inputs,
+}: {
+  result: StressResult;
+  inputs: Pick<StressSnapshot['inputs'], 'holdings' | 'ownershipBasis'>;
+}) {
+  const valuation = reportValue(inputs.holdings),
+    hasValue = valuation.valueEUR !== null;
   const shocks = [
     ...Object.entries(result.scenario.assetClassShocks).map(
       ([name, value]) => ({ name: 'Asset class · ' + name, value }),
@@ -499,18 +509,22 @@ function StressSummary({ result }: { result: StressResult }) {
       </div>
       <div className="metrics-row">
         <Metric
-          label="Before scenario"
-          value={money(result.beforeEUR)}
-          note="Current modeled EUR value"
+          label={
+            valuation.coverage.complete
+              ? 'Before scenario'
+              : 'Before scenario · known subtotal'
+          }
+          value={hasValue ? money(result.beforeEUR) : 'Not reported'}
+          note={`${valuation.coverage.knownCount} of ${valuation.coverage.totalCount} positions valued · EUR`}
         />
         <Metric
           label="After valuation shocks"
-          value={money(result.afterEUR)}
+          value={hasValue ? money(result.afterEUR) : 'Unavailable'}
           note="Hypothetical valuation only"
         />
         <Metric
           label="Hypothetical valuation loss"
-          value={money(result.lossEUR)}
+          value={hasValue ? money(result.lossEUR) : 'Unavailable'}
           note={
             result.lossPercent === null
               ? 'No starting NAV'
@@ -519,10 +533,17 @@ function StressSummary({ result }: { result: StressResult }) {
         />
         <Metric
           label="Unresolved look-through"
-          value={money(result.unresolvedExposureEUR)}
+          value={hasValue ? money(result.unresolvedExposureEUR) : 'Unavailable'}
           note="Kept explicit in the model"
         />
       </div>
+      <p className={styles.note}>
+        {inputs.ownershipBasis
+          ? `Current position cohort as of ${dateLabel(inputs.ownershipBasis.asOfDate)}. ${inputs.ownershipBasis.excludedCount} sourced exits or future acquisitions excluded; ${inputs.ownershipBasis.unknownOwnershipCount} positions retained with unknown ownership dates.`
+          : 'Original saved register cohort. Ownership dates were not applied when this snapshot was created; it may include positions now closed.'}{' '}
+        Latest recorded marks retain their own valuation dates. Missing NAV is
+        unknown exposure, not zero.
+      </p>
       <p className={styles.note}>
         {result.scenario.description} Hypothetical capital calls:{' '}
         {money(result.liquidity.capitalCallsEUR)}. These are separate from
@@ -705,30 +726,31 @@ function ReportingWorkbenchContent({
     [state.riskScenarios],
   );
   const scenario = scenarios.find((s) => s.id === scenarioId) ?? scenarios[0];
-  const selectedHoldings = useMemo(
-    () =>
-      data.holdings.filter(
-        (h) =>
-          (family === 'all' || h.familyId === family) &&
-          (selectedEntity === 'all' || h.entityId === selectedEntity),
-      ),
-    [data.holdings, family, selectedEntity],
-  );
   const stressPreview = useMemo(() => {
     try {
+      const inputs = currentStressInputs(
+        data,
+        {
+          familyIds: data.families
+            .filter((f) => family === 'all' || f.id === family)
+            .map((f) => f.id),
+          ...(selectedEntity === 'all' ? {} : { entityIds: [selectedEntity] }),
+        },
+        state.riskData,
+        state.historyLifecycle,
+        today(),
+      );
       return {
+        inputs,
         result: runStressScenario(
-          buildTotalExposure(
-            selectedHoldings,
-            scopedRiskData(state.riskData, selectedHoldings),
-            today(),
-          ),
+          buildTotalExposure(inputs.holdings, inputs.riskData, inputs.asOfDate),
           scenario,
         ),
         error: '',
       };
     } catch (cause) {
       return {
+        inputs: null,
         result: null,
         error:
           cause instanceof Error
@@ -736,7 +758,14 @@ function ReportingWorkbenchContent({
             : 'The risk mapping is invalid.',
       };
     }
-  }, [selectedHoldings, state.riskData, scenario]);
+  }, [
+    data,
+    family,
+    selectedEntity,
+    state.riskData,
+    state.historyLifecycle,
+    scenario,
+  ]);
   const shownPeriod = opened?.kind === 'period' ? opened.result : period,
     filtersChanged =
       !!period && JSON.stringify(period.query) !== JSON.stringify(query);
@@ -1109,7 +1138,7 @@ function ReportingWorkbenchContent({
                     busy ||
                     !!opened ||
                     !stressPreview.result ||
-                    !selectedHoldings.length ||
+                    !stressPreview.inputs?.holdings.length ||
                     !name.trim()
                   }
                   onClick={() =>
@@ -1126,9 +1155,15 @@ function ReportingWorkbenchContent({
             </div>
           </Panel>
           {opened?.kind === 'stress' ? (
-            <StressSummary result={opened.result.stress} />
+            <StressSummary
+              result={opened.result.stress}
+              inputs={opened.inputs}
+            />
           ) : stressPreview.result ? (
-            <StressSummary result={stressPreview.result} />
+            <StressSummary
+              result={stressPreview.result}
+              inputs={stressPreview.inputs!}
+            />
           ) : null}
         </TabsContent>
         <TabsContent value="snapshots">

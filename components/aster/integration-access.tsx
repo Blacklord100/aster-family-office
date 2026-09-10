@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bot, Copy, KeyRound, Plus, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,10 @@ import type {
 } from '@/lib/integration-contract';
 import { useWorkspace } from './workspace-context';
 import { Panel, Picker, Status } from './primitives';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 
 const scopes: { id: IntegrationScope; label: string; description: string }[] = [
   {
@@ -61,6 +65,12 @@ const when = (value: string) =>
   });
 
 export function IntegrationAccess() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedIntegrationAccess key={key} />;
+}
+function ScopedIntegrationAccess() {
+  const { request } = useWorkspaceRequest();
+  const createController = useRef<AbortController | null>(null);
   const { state } = useWorkspace();
   const admin = ['owner', 'admin'].includes(state.identity?.role ?? '');
   const [data, setData] = useState<{
@@ -78,23 +88,32 @@ export function IntegrationAccess() {
   ]);
   const [secret, setSecret] = useState(''),
     [copied, setCopied] = useState(false);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const response = await fetch('/api/integrations/tokens', {
-        signal,
-        cache: 'no-store',
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.message ?? 'Could not load access settings.');
-      setData({ ...payload, checkedAt: Date.now() });
-    } catch (e) {
-      if (!signal?.aborted)
-        setError(
-          e instanceof Error ? e.message : 'Could not load access settings.',
-        );
-    }
-  }, []);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const payload = await request<{
+          tokens: IntegrationTokenInfo[];
+          endpoint: string;
+        }>('/api/integrations/tokens', { signal });
+        setError('');
+        setData({ ...payload, checkedAt: Date.now() });
+      } catch (e) {
+        if (
+          e instanceof WorkspaceRequestError &&
+          [401, 403].includes(e.status)
+        ) {
+          setData(null);
+          setSecret('');
+          setOpen(false);
+        }
+        if (!signal?.aborted)
+          setError(
+            e instanceof Error ? e.message : 'Could not load access settings.',
+          );
+      }
+    },
+    [request],
+  );
   useEffect(() => {
     const controller = new AbortController();
     // oxlint-disable-next-line react/react-compiler -- Remote state updates occur after awaiting the network response.
@@ -104,6 +123,7 @@ export function IntegrationAccess() {
   const close = (value: boolean) => {
     setOpen(value);
     if (!value) {
+      createController.current?.abort();
       setSecret('');
       setCopied(false);
     }
@@ -112,23 +132,33 @@ export function IntegrationAccess() {
     event.preventDefault();
     setBusy(true);
     setError('');
+    const controller = new AbortController();
+    createController.current?.abort();
+    createController.current = controller;
     try {
-      const response = await fetch('/api/integrations/tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          scopes: selected,
-          expiresInDays: Number(days),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.message ?? 'Could not create access.');
+      const payload = await request<{ token: string }>(
+        '/api/integrations/tokens',
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            scopes: selected,
+            expiresInDays: Number(days),
+          }),
+        },
+      );
       setSecret(payload.token);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create access.');
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setSecret('');
+        setOpen(false);
+      }
+      if (!controller.signal.aborted)
+        setError(e instanceof Error ? e.message : 'Could not create access.');
     } finally {
       setBusy(false);
     }
@@ -137,16 +167,18 @@ export function IntegrationAccess() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/api/integrations/tokens', {
+      await request('/api/integrations/tokens', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.message ?? 'Could not revoke access.');
       await load();
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setSecret('');
+        setOpen(false);
+      }
       setError(e instanceof Error ? e.message : 'Could not revoke access.');
     } finally {
       setBusy(false);
@@ -168,6 +200,8 @@ export function IntegrationAccess() {
         action={
           <Button
             onClick={() => {
+              setSecret('');
+              setCopied(false);
               setName('');
               setSelected(['portfolio:read']);
               setDays('7');
@@ -204,13 +238,21 @@ export function IntegrationAccess() {
             <span className="text-muted-foreground">MCP endpoint</span>
             <code className="mt-1 block break-all">{data.endpoint}</code>
           </div>
-        ) : (
+        ) : error ? null : (
           <Skeleton className="mt-5 h-14" />
         )}
       </Panel>
       {error && !open ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            Reload access
+          </Button>
         </Alert>
       ) : null}
       <Panel
@@ -218,7 +260,11 @@ export function IntegrationAccess() {
         subtitle="Tokens are shown once and stored as hashes."
         className="mt-5"
       >
-        {!data ? (
+        {!data && error ? (
+          <p className="text-sm text-muted-foreground">
+            Access settings are unavailable. Reload to try again.
+          </p>
+        ) : !data ? (
           <Skeleton className="h-24" />
         ) : data.tokens.length === 0 ? (
           <Empty>

@@ -17,7 +17,19 @@ import {
   modifiedDietz,
   scopedReportingInputs,
   scopedRiskData,
+  currentStressInputs,
 } from './reporting';
+import { currentRiskHoldings } from './family-exposure';
+import {
+  buildTotalExposure,
+  RISK_PRESETS,
+  runStressScenario,
+} from './risk-engine';
+import {
+  emptyHistoryLifecycle,
+  type HistoryLifecycleRecord,
+} from './portfolio-history-lifecycle-contract';
+import { historyPositionDetails } from './portfolio-history-lifecycle';
 import type { PeriodQuery } from './reporting-contract';
 const at = '2026-09-10T12:00:00Z';
 const meta = (id: string): LedgerMeta => ({ id, actorId: 'reviewer', at });
@@ -338,6 +350,94 @@ describe('custom-period financial truth', () => {
   });
 });
 describe('dated liquidity and snapshot scoping', () => {
+  it('uses the risk view’s exact current cohort and known NAV, with scoped lifecycle evidence', () => {
+    const state = fixture(),
+      future = {
+        ...h('future', 'Private equity', 400),
+        sourceId: 'future-source',
+      },
+      unknown = {
+        ...h('unknown', 'Private equity', 999_900),
+        valuationStatus: 'unknown' as const,
+      },
+      hidden = {
+        ...h('hidden', 'Private equity', 8000),
+        familyId: 'hidden-family',
+      };
+    state.portfolio.holdings.push(future, unknown, hidden);
+    const lifecycle = emptyHistoryLifecycle();
+    const record = (
+      holding: Holding,
+      kind: 'opened' | 'closed',
+      effectiveDate: string,
+    ): HistoryLifecycleRecord => ({
+      id: kind + holding.id,
+      holdingId: holding.id,
+      kind,
+      effectiveDate,
+      recordedAt: at,
+      actorId: 'reviewer',
+      registeredDetails: historyPositionDetails(holding),
+      details: null,
+      sourceId: holding.sourceId,
+      documentId: 'doc-' + holding.id,
+      sourceSha256: 'a'.repeat(64),
+      page: 1,
+      quote: 'Sourced ownership declaration.',
+      reason: 'Synthetic financial consistency regression.',
+      correctionOf: null,
+    });
+    lifecycle.records = [
+      record(state.portfolio.holdings[1], 'closed', '2026-09-09'),
+      record(future, 'opened', '2026-10-01'),
+      record(hidden, 'closed', '2026-09-09'),
+    ];
+    const inputs = currentStressInputs(
+      state.portfolio,
+      query,
+      undefined,
+      lifecycle,
+      query.to,
+    );
+    expect(inputs.holdings.map((holding) => holding.id)).toEqual([
+      'cash',
+      'unknown',
+    ]);
+    expect(inputs.ownershipBasis).toEqual({
+      asOfDate: query.to,
+      excludedCount: 2,
+      unknownOwnershipCount: 2,
+    });
+    expect(JSON.stringify(inputs)).not.toContain('hidden');
+    expect(inputs.lifecycle?.records).toHaveLength(2);
+    const riskView = runStressScenario(
+      buildTotalExposure(
+        currentRiskHoldings(
+          state.portfolio.holdings.filter(
+            (holding) => holding.familyId === 'family',
+          ),
+          lifecycle,
+          query.to,
+        ).holdings,
+        inputs.riskData,
+        query.to,
+      ),
+      RISK_PRESETS[0],
+    );
+    const preview = runStressScenario(
+      buildTotalExposure(inputs.holdings, inputs.riskData, inputs.asOfDate),
+      RISK_PRESETS[0],
+    );
+    expect(preview).toEqual(riskView);
+    expect(preview.beforeEUR).toBe(600);
+    expect(
+      preview.warnings.some(
+        (warning) => warning.code === 'VALUATION_COVERAGE_INCOMPLETE',
+      ),
+    ).toBe(true);
+    lifecycle.records[0].effectiveDate = '2027-01-01';
+    expect(inputs.lifecycle?.records[0].effectiveDate).toBe('2026-09-09');
+  });
   it('excludes future inflows into restricted accounts and exposes newly blocked obligations', () => {
     const state = fixture();
     state.finance.accounts.account.restricted = true;

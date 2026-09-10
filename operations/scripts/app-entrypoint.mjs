@@ -76,6 +76,10 @@ try {
     delete process.env.MAILBOX_PROVIDERS_FILE;
   }
   if (process.env.DB_PASSWORD_FILE) {
+    if (process.env.DATABASE_URL)
+      throw new Error(
+        'Configure either DATABASE_URL or DB_PASSWORD_FILE, not both',
+      );
     const password = secret('DB_PASSWORD');
     const url = new URL('postgresql://postgres:5432/aster');
     url.username = process.env.DB_USER || 'aster_runtime';
@@ -87,6 +91,13 @@ try {
     delete process.env.DB_PASSWORD;
   }
   if (process.env.ASTER_DB_MIGRATION === '1') {
+    if (
+      process.env.MIGRATION_DATABASE_URL ||
+      process.env.BOOTSTRAP_DATABASE_URL
+    )
+      throw new Error(
+        'Migration mode requires one database configuration source',
+      );
     process.env.MIGRATION_DATABASE_URL = process.env.DATABASE_URL;
     process.env.BOOTSTRAP_DATABASE_URL = process.env.DATABASE_URL;
   }

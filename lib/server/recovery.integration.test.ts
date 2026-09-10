@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, it, expect, vi } from 'vitest';
 import { randomUUID, randomBytes } from 'node:crypto';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { hashPassword, verifyPassword } from 'better-auth/crypto';
 vi.mock('server-only', () => ({}));
 import { pool } from './db';
@@ -14,18 +15,14 @@ describe.skipIf(!enabled)(
       oldPassword = randomBytes(30).toString('base64url'),
       nextPassword = randomBytes(30).toString('base64url');
     let auth: ReturnType<typeof createAsterAuth>, token: string;
+    let fixtureAuthorized = false;
     const headers = new Headers({
       origin: 'http://localhost:3000',
       'content-type': 'application/json',
     });
     beforeAll(async () => {
-      const url = new URL(process.env.DATABASE_URL!);
-      if (
-        !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-        url.port !== '55439' ||
-        url.pathname !== '/aster'
-      )
-        throw new Error('Explicit isolated local test credentials required');
+      assertDisposableDatabase();
+      fixtureAuthorized = true;
       vi.stubEnv('EMAIL_DELIVERY_ENABLED', 'true');
       auth = createAsterAuth();
       await pool.query(
@@ -42,6 +39,10 @@ describe.skipIf(!enabled)(
       );
     });
     afterAll(async () => {
+      if (!fixtureAuthorized) {
+        await pool.end();
+        return;
+      }
       await pool.query(
         'DELETE FROM app_delivery_outbox WHERE recipient_hash=$1',
         [sha256(email)],

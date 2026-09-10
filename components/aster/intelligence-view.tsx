@@ -43,28 +43,16 @@ import { emptyRiskData } from '@/lib/risk-contract';
 import { PageHeading, Picker, money, dateLabel as date } from './primitives';
 import { useWorkspace } from './workspace-context';
 import styles from './intelligence.module.css';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 type Collection = 'managers' | 'contacts' | 'mandates';
 const titles: Record<Collection, string> = {
   managers: 'Managers',
   contacts: 'Contacts',
   mandates: 'Mandates',
 };
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(path, {
-    method: body ? 'POST' : 'GET',
-    cache: 'no-store',
-    credentials: 'same-origin',
-    ...(body
-      ? {
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }
-      : {}),
-  });
-  const value = await r.json();
-  if (!r.ok) throw new Error(value.message ?? 'Request failed.');
-  return value;
-}
 const blankRecord = (): RelationshipRecord => ({
   id: crypto.randomUUID(),
   name: '',
@@ -86,6 +74,29 @@ function Blank({ title, description }: { title: string; description: string }) {
   );
 }
 export function IntelligenceView({ family = 'all' }: { family?: string }) {
+  const { key } = useWorkspaceRequest();
+  return <ScopedIntelligenceView key={key + family} family={family} />;
+}
+function ScopedIntelligenceView({ family }: { family: string }) {
+  const { request } = useWorkspaceRequest();
+  const api = useCallback(
+    <T,>(path: string, body?: unknown): Promise<T> =>
+      request<T>(
+        path,
+        {
+          method: body ? 'POST' : 'GET',
+          ...(body
+            ? {
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+              }
+            : {}),
+        },
+        'json',
+        path === '/api/intelligence/index' ? 600_000 : 20_000,
+      ),
+    [request],
+  );
   const workspace = useWorkspace();
   const [snapshot, setSnapshot] = useState<IntelligenceResponse | null>(null),
     [error, setError] = useState<string | null>(null),
@@ -104,7 +115,7 @@ export function IntelligenceView({ family = 'all' }: { family?: string }) {
     [canonical, setCanonical] = useState<Record<string, string>>({});
   const load = useCallback(async () => {
     setSnapshot(await api<IntelligenceResponse>('/api/intelligence'));
-  }, []);
+  }, [api]);
   useEffect(() => {
     let alive = true;
     api<IntelligenceResponse>('/api/intelligence')
@@ -120,7 +131,7 @@ export function IntelligenceView({ family = 'all' }: { family?: string }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [api]);
   const run = async (label: string, work: () => Promise<void>) => {
     if (busy) return;
     setBusy(label);
@@ -129,6 +140,14 @@ export function IntelligenceView({ family = 'all' }: { family?: string }) {
     try {
       await work();
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setSnapshot(null);
+        setResults(null);
+        setRecord(null);
+        setDeal(null);
+        setDraft(null);
+        setAlias(null);
+      }
       setError(e instanceof Error ? e.message : 'Request failed.');
     } finally {
       setBusy(null);

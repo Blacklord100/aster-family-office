@@ -39,7 +39,7 @@ async function main() {
       renewing = true;
       void pool
         .query(
-          "UPDATE app_mailbox_queue SET lease_until=now()+interval '90 seconds' WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>now() RETURNING id",
+          "UPDATE app_mailbox_queue SET lease_until=clock_timestamp()+interval '90 seconds' WHERE id=$1 AND organization_id=$2 AND lease_owner=$3 AND lease_until>clock_timestamp() RETURNING id",
           [claim.id, claim.organization_id, workerId],
         )
         .then(async (result) => {

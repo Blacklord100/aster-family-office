@@ -62,6 +62,10 @@ import type {
 } from '@/lib/processing-contract';
 import { Panel, Picker, Status } from './primitives';
 import styles from './engines.module.css';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 
 const providerName: Record<EngineProvider, string> = {
   ollama: 'Ollama · local',
@@ -86,31 +90,40 @@ const emptyDraft = (): Draft => ({
   apiKey: '',
   hasSecret: false,
 });
-async function api<T>(
-  url: string,
-  method = 'GET',
-  body?: unknown,
-  signal?: AbortSignal,
-): Promise<T> {
-  const response = await fetch(url, {
-    method,
-    cache: 'no-store',
-    credentials: 'same-origin',
-    signal,
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }),
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok)
-    throw new Error(payload?.message ?? 'The request could not be completed.');
-  return payload as T;
-}
-
 export function EnginesView() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedEnginesView key={key} />;
+}
+function ScopedEnginesView() {
+  const { request } = useWorkspaceRequest();
+  const api = useCallback(
+    <T,>(
+      url: string,
+      method = 'GET',
+      body?: unknown,
+      signal?: AbortSignal,
+    ): Promise<T> =>
+      request<T>(
+        url,
+        {
+          method,
+          signal,
+          ...(body === undefined
+            ? {}
+            : {
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+              }),
+        },
+        'json',
+        url.endsWith('/test')
+          ? 160_000
+          : url.endsWith('/inspect')
+            ? 35_000
+            : 20_000,
+      ),
+    [request],
+  );
   const [snapshot, setSnapshot] = useState<EnginesResponse | null>(null);
   const [policy, setPolicy] = useState<ProcessingPolicy | null>(null);
   const [models, setModels] = useState<EngineModel[]>([]);
@@ -143,7 +156,7 @@ export function EnginesView() {
     setRemove(null);
     setAcknowledged(false);
     setDraft((current) => ({ ...current, apiKey: '' }));
-  }, []);
+  }, [api]);
   useEffect(() => {
     let cancelled = false;
     api<EnginesResponse>('/api/engines')
@@ -170,7 +183,7 @@ export function EnginesView() {
       cancelled = true;
       inspectionRequest.current?.abort();
     };
-  }, []);
+  }, [api]);
   useEffect(() => {
     if (editing) nameInput.current?.focus();
   }, [editing, draft.id]);
@@ -182,6 +195,14 @@ export function EnginesView() {
     try {
       await operation();
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setSnapshot(null);
+        setModels([]);
+        setPolicy(null);
+        setInspection(null);
+        setEditing(false);
+        setDraft(emptyDraft());
+      }
       setError(
         e instanceof Error ? e.message : 'The change could not be completed.',
       );

@@ -18,6 +18,10 @@ import type { EnginesResponse } from '@/lib/engine-contract';
 import { useWorkspace } from './workspace-context';
 import { Status, Picker, money } from './primitives';
 import styles from './intelligence.module.css';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 const prompts = [
   { text: 'What is our recorded portfolio value?', icon: PieChart },
   { text: 'How much cash is recorded?', icon: Wallet },
@@ -30,10 +34,10 @@ export function AssistantPanel({
   family: string;
   onSource: (id: string) => void;
 }) {
-  const { state } = useWorkspace();
+  const { key } = useWorkspaceRequest();
   return (
     <AssistantConversation
-      key={(state.identity?.organizationId ?? '') + ':' + family}
+      key={key + ':' + family}
       family={family}
       onSource={onSource}
     />
@@ -47,6 +51,7 @@ function AssistantConversation({
   onSource: (id: string) => void;
 }) {
   const { state, data } = useWorkspace();
+  const { request } = useWorkspaceRequest();
   const [input, setInput] = useState(''),
     [messages, setMessages] = useState<
       { question: string; answer: KnowledgeAnswer }[]
@@ -58,17 +63,11 @@ function AssistantConversation({
   const pending = useRef<AbortController | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/engines', {
-      cache: 'no-store',
-      credentials: 'same-origin',
-      signal: controller.signal,
-    })
-      .then(async (r) => {
-        if (r.ok) setEngine(((await r.json()) as EnginesResponse).active);
-      })
+    request<EnginesResponse>('/api/engines', { signal: controller.signal })
+      .then((result) => setEngine(result.active))
       .catch(() => {});
     return () => controller.abort();
-  }, [state.identity?.organizationId]);
+  }, [request]);
   useEffect(() => {
     return () => pending.current?.abort();
   }, []);
@@ -80,18 +79,18 @@ function AssistantConversation({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch('/api/intelligence/ask', {
-        method: 'POST',
-        credentials: 'same-origin',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, familyId: family, mode }),
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(
-          payload.message ?? 'The question could not be completed.',
-        );
+      const payload = await request<KnowledgeAnswer>(
+        '/api/intelligence/ask',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: text, familyId: family, mode }),
+        },
+        'json',
+        600_000,
+      );
       if (!controller.signal.aborted) {
         setMessages((current) => [
           ...current.slice(-9),
@@ -101,6 +100,10 @@ function AssistantConversation({
         setInput('');
       }
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setMessages([]);
+        setEngine(null);
+      }
       if (!controller.signal.aborted)
         setError(
           e instanceof Error
@@ -285,10 +288,24 @@ function AssistantConversation({
         </Button>
       </form>
       {busy ? (
-        <output className={styles.answerMeta}>
-          Reading accessible evidence with the selected engine. Local inference
-          may take several minutes.
-        </output>
+        <div className="flex items-center justify-between gap-3">
+          <output className={styles.answerMeta}>
+            Reading accessible evidence with the selected engine. Local
+            inference may take several minutes.
+          </output>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              pending.current?.abort();
+              setBusy(false);
+              setError('Question stopped. No records were changed.');
+            }}
+          >
+            Stop
+          </Button>
+        </div>
       ) : null}
       <p className="assistant-footnote">
         {state.sampleData ? 'Includes sample holding records · ' : ''}Family

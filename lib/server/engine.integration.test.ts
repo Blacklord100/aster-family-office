@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 vi.mock('server-only', () => ({}));
 vi.mock('./auth', () => ({}));
 import { pool, withTenant } from './db';
@@ -34,13 +35,7 @@ describe.skipIf(!enabled)(
     };
     let admin: Pool;
     beforeAll(async () => {
-      for (const name of ['DATABASE_URL', 'MIGRATION_DATABASE_URL']) {
-        const value = process.env[name];
-        if (!value || new URL(value).port !== '55439')
-          throw new Error(
-            'Explicit Aster test cluster55439 credentials required',
-          );
-      }
+      assertDisposableDatabase();
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
       });

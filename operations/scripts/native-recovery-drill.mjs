@@ -4,7 +4,10 @@ import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { mkdtemp, writeFile, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { closeRestoreDatabase } from './recovery-connection.mjs';
+import {
+  closeRestoreDatabase,
+  nativeRecoverySource,
+} from './recovery-connection.mjs';
 import {
   encryptedTables,
   decrypt,
@@ -60,17 +63,7 @@ async function dumpTable(client, name) {
   ).rows[0].data;
 }
 async function main() {
-  if (process.env.ASTER_NATIVE_RECOVERY_DRILL !== '1')
-    throw new Error('Explicit drill opt-in is required');
-  const url = new URL(process.env.MIGRATION_DATABASE_URL);
-  if (
-    !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-    url.port !== '55439' ||
-    url.pathname !== '/aster'
-  )
-    throw new Error(
-      'This development drill only targets the isolated local Aster database on 55439',
-    );
+  const url = nativeRecoverySource();
   const appKey = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'base64');
   if (appKey.length !== 32)
     throw new Error('Application encryption key required');
@@ -141,8 +134,13 @@ async function main() {
     if (!recovered.equals(plaintext))
       throw new Error('Encrypted backup round-trip mismatch');
     stage = 'disposable-database-creation';
-    await source.query('CREATE DATABASE ' + quote(dbName));
+    await source.query(
+      'CREATE DATABASE ' + quote(dbName) + ' CONNECTION LIMIT 0',
+    );
     created = true;
+    await source.query(
+      'REVOKE ALL ON DATABASE ' + quote(dbName) + ' FROM PUBLIC',
+    );
     const destination = new URL(url);
     destination.pathname = '/' + dbName;
     restored = new Client({ connectionString: destination.toString() });
@@ -210,8 +208,7 @@ async function main() {
     try {
       await sourceClient.query('ROLLBACK').catch(() => {});
       sourceClient.release();
-      if (created)
-        await closeRestoreDatabase(restored, source, dbName);
+      if (created) await closeRestoreDatabase(restored, source, dbName);
     } finally {
       try {
         await source.end();

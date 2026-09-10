@@ -430,7 +430,10 @@ export async function indexDemoJobSources(
           c,
           organizationId,
           ctx.user.id,
-          'demo.intelligence_failed',
+          error instanceof AccessError &&
+            ['RATE_LIMITED', 'PROCESSOR_BUSY'].includes(error.code)
+            ? 'demo.intelligence_deferred'
+            : 'demo.intelligence_failed',
           documentId!,
           {
             reason:
@@ -462,7 +465,7 @@ export async function indexReadyDemoSources(scope: string[] | null) {
         AND EXISTS(SELECT 1 FROM app_audit a WHERE a.organization_id=$1 AND a.resource_id=j.document_id::text AND a.action='demo.source_verified' AND a.actor_id=$2)
         AND NOT EXISTS(SELECT 1 FROM app_audit a WHERE a.organization_id=$1 AND a.resource_id=j.document_id::text AND a.action='demo.intelligence_complete')
         AND NOT EXISTS(SELECT 1 FROM app_audit a WHERE a.organization_id=$1 AND a.resource_id=j.document_id::text AND a.action IN ('demo.intelligence_failed','demo.intelligence_deferred') AND a.created_at>now()-interval '5 minutes')
-        AND (SELECT count(*) FROM app_audit a WHERE a.organization_id=$1 AND a.resource_id=j.document_id::text AND a.action='demo.intelligence_failed')<3
+        AND (SELECT count(*) FROM app_audit a WHERE a.organization_id=$1 AND a.resource_id=j.document_id::text AND a.action='demo.intelligence_failed' AND COALESCE(a.details->>'reason','') NOT IN ('RATE_LIMITED','PROCESSOR_BUSY'))<3
        ORDER BY j.document_id,j.created_at DESC,j.id DESC LIMIT 2`,
             [id, demoActorId(id)],
           )

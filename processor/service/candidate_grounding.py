@@ -150,7 +150,7 @@ def candidate_source_events(text, fact):
             if any(min(start+predicate.start(),name.start) < other.start <= position
                    and normalize(other.name).casefold() != canonical for other in names):
                 continue
-            effective,due = _dates_for(safe,start,end,fact.kind,names,name,position)
+            effective,due = _dates_for(safe,start,end,fact.kind,names,name,position,predicate_matches=_positions)
             currency = token.currency if token else None
             if token and currency is None:
                 contextual = _currency_context(_entity_context(safe,names,name,position))

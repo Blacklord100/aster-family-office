@@ -1,5 +1,15 @@
 # Processor release blockers
 
+## Reverified 10 September 2026
+
+The latest completed [release run 34447324893](https://github.com/Blacklord100/aster-family-office/actions/runs/34447324893), commit `dc2c654`, passed the application job, both image builds, nonroot/read-only probes, network-disabled processor tests, web-image scan and repository secret scan. Its retained processor scan, created at `2026-09-10T07:02:54.833984113Z`, still reports exactly the three HIGH findings below with no `FixedVersion`; the package-coverage validator remains failed because these findings remain open. This is evidence for that commit, not for later local changes.
+
+Current primary records still list Debian 13 TIFF as vulnerable for [36849](https://security-tracker.debian.org/tracker/CVE-2026-36849) and [52490](https://security-tracker.debian.org/tracker/CVE-2026-52490), while the unstable/testing release has fixed packages. The [Tesseract tracker](https://security-tracker.debian.org/tracker/CVE-2026-73066) still lists Debian packages as unfixed; the [upstream advisory](https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-7j76-5rq5-5jg8) continues to identify 5.5.3 as patched. Switching the production base to a development distribution is not an established remediation.
+
+The local host has no Docker, Trivy, Grype or Syft executable, so no new local Linux image scan was claimed. No findings, statuses, component identities or security gates were suppressed. A new candidate must still pass the qualification requirements below.
+
+## Earlier authenticated build evidence
+
 Verified on 9 September 2026. [CI run 34403006395](https://github.com/Blacklord100/aster-family-office/actions/runs/34403006395), commit `c9864ee`, built and exercised the authenticated upstream replacements. Source authentication, actual native versions, image decoding, OCR and all 589 processor tests passed. The scan still reports **three HIGH advisories** against their canonical Debian identities. These findings remain release blockers; functional tests and an upstream version change do not clear the strict scan gate.
 
 | Retained package | Installed version | CVE                                                                          | Debian scan status |

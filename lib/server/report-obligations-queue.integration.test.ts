@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 
 vi.mock('server-only', () => ({}));
 // Explicit opt-in after migration 011. Every read/write/claim is restricted to
@@ -30,6 +31,7 @@ async function read(org: string) {
 
 suite('report monitor PostgreSQL leases and tenant boundary', () => {
   beforeAll(async () => {
+    assertDisposableDatabase();
     const runtimeURL = process.env.DATABASE_URL;
     const adminURL = process.env.MIGRATION_DATABASE_URL;
     if (!runtimeURL || !adminURL)

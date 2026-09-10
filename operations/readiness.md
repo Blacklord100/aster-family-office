@@ -4,6 +4,23 @@ This file describes the operations package and the native worker lifecycle check
 
 The September 2026 [live folder demo validation](../VALIDATION-LIVE-DEMO.md) adds native folder/demo/MCP integration, actual local Gemma ingestion, desktop/mobile UI checks and a 34-table encrypted recovery drill. Earlier evidence below records the versions and schemas tested at that time; target-host qualification remains required.
 
+## Family-office pilot priorities — 10 September 2026
+
+This audit improves the application candidate; it does not approve an installation for confidential client data. Priorities are ordered by the consequence of a failure, rather than by feature count.
+
+| Priority | Requirement | Current disposition |
+| --- | --- | --- |
+| P0 | Prevent cross-office access and stale privileged screens | Administrative requests explicitly bind the displayed office, abort on identity/scope changes, and clear retained data on denied access. Workspace responses cannot roll back a newer accepted revision. Restricted direct routes are gated before protected components mount. |
+| P0 | Runtime database role must not own or bypass the application | Startup rejects direct/inherited ownership, elevated predefined roles, replication privileges and schema/database creation. Restore targets remain closed until restore and access controls complete. Conflicting direct/file database credentials are refused. |
+| P0 | Complete native dependency and deployment qualification | **Open release gate:** see [processor findings](processor-release-blockers.md). Full Compose boot, actual host isolation/TLS, load and encrypted recovery qualification remain required on the selected host. |
+| P1 | Ingestion must not duplicate records or commit expired work | Shared import deduplication, orphan-job scheduling, consistent mailbox/queue lock order, membership revalidation and final-commit lease fencing are implemented. Disposable PostgreSQL tests exercise the actual compiled workers and rollback paths. |
+| P1 | Financial views must agree about which positions are current | Exposure, stress preview, newly saved stress runs, live report previews and live CSV exports use the same sourced lifecycle selection. Closed and future positions are excluded; unknown dates remain explicit. Older saved reports retain their original cohort. Register cash/commitment summaries are labelled as register metrics. |
+| P1 | Preserve source facts and require review where evidence is incomplete | The completed expanded Gemma baseline recovered 93 exact facts out of 111 expected (83.78% recall), with 96 returned facts across receipt scoring (96.875% precision). Three accepted distribution facts omitted source-stated payment dates; they were draft notices, with no settled cash. Source grounding now preserves deadlines and corrected NAVs, handles explicitly owned bank balances and emits acquisition notices as news. Automatic demo acceptance defers deadline-bearing cash facts with missing dates. Model-free regression and model inference are separate checks; a held-out client-representative evaluation remains required. |
+| P1 | Every ingested source must remain retrievable for cited answers | The history demo now uses its pinned source catalog. Index rate limiting is retryable capacity pressure, so it does not permanently exhaust a source's attempt budget. |
+| P2 | Navigation, mobile and operating workflow coherence | History dates survive Portfolio-to-deal navigation; global search includes retained documents/evidence; cash reconciliation tabs fit mobile screens. The audit covers all main routes, secondary tabs, read-only access, administrative forms and auth entry states. |
+
+Before using a real client mailbox, qualify that provider's OAuth/SMTP account, scopes, refresh/revocation and error behavior with authorized synthetic data. Local fixtures validate the adapters and workflow, not a particular provider account. Keep human financial review and reconciliation in the pilot; source-extraction success is not proof of accounting completeness. SSO/SCIM, independent security assessment, operational ownership and agreed recovery objectives remain priorities for broader rollout.
+
 ## Checks completed here
 
 - Read current official Next.js, Docker, Ollama, PostgreSQL, Caddy and OWASP guidance; links are in architecture.md.
@@ -46,14 +63,18 @@ The September 2026 [live folder demo validation](../VALIDATION-LIVE-DEMO.md) add
 
 ## Repeating the native worker checks
 
-The opt-in suite is `lib/server/worker-lifecycle.integration.test.ts`. Use a local migrated disposable PostgreSQL database with `DATABASE_URL` set to its restricted runtime role and `MIGRATION_DATABASE_URL` set to a fixture-cleanup administrator. Provide private `ENCRYPTION_KEY` and `PROCESSOR_TOKEN` values. Pause other workers and uploads first; the suite refuses other queued work, owns port 8012 temporarily, and never calls the real model. Build the current worker, then run:
+The opt-in suite is `lib/server/worker-lifecycle.integration.test.ts`. Integration fixtures now require a positively identified **disposable** PostgreSQL cluster. Do not load `.env.local` or use the live development database for these tests.
+
+For a local fixture, provision an isolated loopback cluster on a random port other than 55439, with a database named `aster_fixture_` followed by 16 lowercase hexadecimal characters. Set `ASTER_DISPOSABLE_INTEGRATION=1`, `DATABASE_URL` to its restricted runtime role, and `MIGRATION_DATABASE_URL` to its fixture administrator. Both URLs must refer to the same fixture, with no query or fragment. Generate fresh test-only `ENCRYPTION_KEY` and `PROCESSOR_TOKEN` values, apply migrations, and set the explicitly required integration flags. Destroy the entire fixture after the run. The guard does not make production credentials safe for testing.
+
+The suite owns port 8012 temporarily and uses an authenticated fake processor; it does not call the live model. Build services first, then run in the isolated fixture environment:
 
 ```sh
 npm run build:services
-ASTER_WORKER_INTEGRATION=1 node --env-file=.env.local node_modules/vitest/vitest.mjs run lib/server/worker-lifecycle.integration.test.ts
+ASTER_WORKER_INTEGRATION=1 node node_modules/vitest/vitest.mjs run lib/server/worker-lifecycle.integration.test.ts
 ```
 
-Restart the normal worker afterward. Ordinary `npm test` skips this opt-in suite.
+The [release workflow](../.github/workflows/verify.yml) provisions its own PostgreSQL service with exact synthetic credentials and runs all database integration suites serially. Ordinary `npm test` intentionally skips environment-gated suites; its pass count alone is not evidence that those integrations ran.
 
 ## Limits
 

@@ -1,4 +1,8 @@
 'use client';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, FileText, Loader2, Plus, Save } from 'lucide-react';
@@ -916,6 +920,7 @@ function CreateLinkedHolding({
   onCreated: (id: string) => void;
   onCancel: () => void;
 }) {
+  const { request } = useWorkspaceRequest();
   const [snapshot, setSnapshot] = useState<LedgerResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -938,25 +943,26 @@ function CreateLinkedHolding({
   const key = useRef(crypto.randomUUID());
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/ledger', { cache: 'no-store', signal: controller.signal })
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok)
-          throw new Error(
-            body.message ?? 'Could not load the investment register.',
-          );
+    request<LedgerResponse>('/api/ledger', { signal: controller.signal })
+      .then((body) => {
         setSnapshot(body);
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          if (
+            error instanceof WorkspaceRequestError &&
+            [401, 403].includes(error.status)
+          )
+            setSnapshot(null);
           setError(
             error instanceof Error
               ? error.message
               : 'Could not load the investment register.',
           );
+        }
       });
     return () => controller.abort();
-  }, [refreshKey]);
+  }, [refreshKey, request]);
   async function create() {
     if (!snapshot || lock.current) return;
     const parsed = ledgerRequestSchema.safeParse({
@@ -990,20 +996,22 @@ function CreateLinkedHolding({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch('/api/ledger', {
+      const body = await request<LedgerResponse>('/api/ledger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
-      const body = await response.json();
-      if (!response.ok)
-        throw new Error(body.message ?? 'Could not create the investment.');
       if (typeof body.resultId !== 'string')
         throw new Error(
           'The investment response did not include its link. Refresh before retrying.',
         );
       onCreated(body.resultId);
     } catch (error) {
+      if (
+        error instanceof WorkspaceRequestError &&
+        [401, 403].includes(error.status)
+      )
+        setSnapshot(null);
       setError(
         error instanceof Error
           ? error.message

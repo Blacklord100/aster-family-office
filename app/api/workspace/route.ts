@@ -8,7 +8,7 @@ import {
 import { rangeStartDate } from '@/lib/date-ranges';
 import { aggregateRecordedMarks } from '@/lib/recorded-marks';
 import { aggregateValuationHistory } from '@/lib/finance';
-import { reportValue } from '@/lib/report-value';
+import { currentReportHoldings, reportValue } from '@/lib/report-value';
 import {
   requireWorkspace,
   clearStaleWorkspaceCookie,
@@ -336,16 +336,21 @@ export async function POST(request: Request) {
                 'INVALID_FAMILY',
                 'Choose a family in this workspace.',
               );
-            const positions = data.holdings.filter(
-              (h) => input.family === 'all' || h.familyId === input.family,
-            );
-            const valuation = reportValue(positions);
             const completeSample =
               s.sampleData && !data.evidence.some((e) => !e.synthetic);
             const asOf = completeSample
                 ? '2026-09-07'
                 : new Date().toISOString().slice(0, 10),
               start = rangeStartDate(asOf, input.range);
+            const { holdings: positions, ownershipBasis } =
+              currentReportHoldings(
+                data.holdings.filter(
+                  (h) => input.family === 'all' || h.familyId === input.family,
+                ),
+                s.historyLifecycle,
+                asOf,
+              );
+            const valuation = reportValue(positions);
             const points = aggregateValuationHistory(
                 data.history,
                 positions.map((h) => h.id),
@@ -381,6 +386,7 @@ export async function POST(request: Request) {
                   createdAt: new Date().toISOString(),
                   totalValueEUR: valuation.valueEUR,
                   valuationCoverage: valuation.coverage,
+                  ownershipBasis,
                   holdingCount: positions.length,
                   holdings: positions,
                   history,

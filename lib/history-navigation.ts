@@ -7,7 +7,7 @@ export function copyHistoryNavigation(
 ) {
   const samePosition =
     before.view === after.view && before.holding === after.holding;
-  const historyViews = new Set(['portfolio', 'investments']);
+  const historyViews = new Set(['overview', 'portfolio', 'investments']);
   const crossHistory =
     historyViews.has(before.view) && historyViews.has(after.view);
   const shared = new Set([

@@ -12,7 +12,7 @@ The seven-item expansion adds a sourced investment register and transaction ledg
 
 The [100-email mailroom demonstration](benchmark/mailroom-v1/README.md) supplies three fictional offices, nine inboxes, messy originals and a reproducible four-configuration local-model comparison. See [the collection harness](benchmark/mailroom-v1/HARNESS.md) for execution and preserved scoring, and [the offline LP packaging plan](operations/offline-lp-packaging.md) for the proposed disconnected appliance. The offline appliance is a delivery plan, not a deployed or certified installation.
 
-The preserved [original baseline](benchmark/mailroom-v1/RESULTS.md) records all 388 processing outcomes before the extraction fixes: each configuration recovered 60/90 expected facts. The latest [live Gemma folder run](VALIDATION-LIVE-DEMO.md) recovered 90/90 exact grounded facts, accepted 72 and deferred 18 for review. This is a synthetic combined rules/model evaluation, not an independent estimate of client-document accuracy.
+The preserved [original baseline](benchmark/mailroom-v1/RESULTS.md) records all 388 processing outcomes before the extraction fixes: each configuration recovered 60/90 expected facts. The earlier [live Gemma folder run](VALIDATION-LIVE-DEMO.md) recovered 90/90 exact grounded facts on that corpus, accepted 72 and deferred 18 for review. The expanded history corpus subsequently exposed missed corrections, payment deadlines, bank facts and acquisition news; the [readiness record](operations/readiness.md) tracks those findings and their fixes. Synthetic combined rules/model results are not an independent estimate of client-document accuracy.
 
 ## What is implemented
 

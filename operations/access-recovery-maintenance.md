@@ -2,6 +2,10 @@
 
 These controls are implemented in the application. Their presence does not establish that a particular host, mail relay or backup destination is correctly operated. The local validation record separates exercised behavior from deployment gates.
 
+## Runtime database credentials
+
+Production rejects schema/database CREATE rights, ownership of public application objects, elevated role memberships and the SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION flags. Checking flags alone would incorrectly allow the supplied schema-owning migrator. A NOINHERIT role that can switch to an owner is also rejected. The guard runs on initial runtime use; changing database privileges requires a controlled restart and requalification. A restricted role complements the existing transaction-local tenant context and database RLS. The secret adapter refuses mixed `DATABASE_URL` / password-file configuration and conflicting maintenance URLs instead of silently selecting another database.
+
 ## Client viewers in a multi-family office
 
 Workspace settings → Family & entity access assigns an existing **viewer** to one or more families and optionally a subset of their legal entities. An empty entity selection means every entity in the selected families. An empty family list is refused. Saving access revokes the member's current sessions. Analysts, administrators and owners have workspace-wide access; promoting a scoped viewer removes their restriction.
@@ -67,7 +71,7 @@ The Operations panel reads tenant-specific job/storage/mailbox counts, processor
 
 `backup.sh DESTINATION AGE_RECIPIENTS_FILE [RECEIPT_FILE]` streams encrypted output, checks its checksum and writes a receipt only after success. Optional `ASTER_BACKUP_REPLICA_DIR` copies the encrypted artifact to a separately operated mounted destination and verifies its checksum. Merely using another directory does not establish off-host storage or independent deletion controls. Restore drills remain mandatory.
 
-The repository's `Verify release` workflow uses read-only GitHub permissions and pinned action commits. It prepares a synthetic PostgreSQL fixture, runs application/processor tests, migrations and opt-in database suites, builds images without application secrets, checks runtime identities/filesystem controls, scans dependencies/images/secrets and retains an SBOM. No publish/deploy step exists. GitHub Actions has not run while the repository is local; review its first Linux run and make it a required branch check after repository creation. Action pinning follows [GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+The repository's `Verify release` workflow uses read-only GitHub permissions and pinned action commits. It prepares a synthetic PostgreSQL fixture, runs application/processor tests, migrations and opt-in database suites, builds images without application secrets, checks runtime identities/filesystem controls, scans dependencies/images/secrets and retains an SBOM. No publish/deploy step exists. The latest completed [Linux run 34447324893](https://github.com/Blacklord100/aster-family-office/actions/runs/34447324893) passed the application job but remains blocked by the [processor image findings](processor-release-blockers.md). Configure successful release verification as a required branch check; local changes need their own new run. Action pinning follows [GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
 On the target host, run the full Compose startup/TLS/recovery checks in readiness.md. To collect bounded transport evidence from the local processor network, run the reviewed egress probe there:
 

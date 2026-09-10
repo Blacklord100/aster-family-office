@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, it, expect, vi } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { dropTestDatabase } from '../test-support/database-cleanup';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
@@ -43,13 +44,7 @@ describe.skipIf(!enabled)(
     };
     const originalKey = process.env.ENCRYPTION_KEY;
     beforeAll(async () => {
-      const url = new URL(process.env.MIGRATION_DATABASE_URL!);
-      if (
-        !['localhost', '127.0.0.1'].includes(url.hostname) ||
-        url.port !== '55439' ||
-        url.pathname !== '/aster'
-      )
-        throw new Error('Explicit isolated local test credentials required');
+      const url = assertDisposableDatabase().admin;
       admin = new Pool({ connectionString: url.toString() });
       dbName = 'aster_operations_' + randomBytes(8).toString('hex');
       await admin.query('CREATE DATABASE ' + dbName);
@@ -152,8 +147,7 @@ describe.skipIf(!enabled)(
       if (client) client.release();
       if (target) await target.end();
       if (admin) {
-        if (dbName)
-          await dropTestDatabase(admin, dbName);
+        if (dbName) await dropTestDatabase(admin, dbName);
         await admin.end();
       }
     }, 30000);

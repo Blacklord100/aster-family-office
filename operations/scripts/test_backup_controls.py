@@ -78,5 +78,67 @@ class BackupControls(unittest.TestCase):
         self.assert_clean()
 
 
+class RestoreControls(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="aster-restore-controls-")
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name)
+        self.bin = root / "bin"
+        self.bin.mkdir()
+        self.log = root / "commands.log"
+        self.backup = root / "synthetic.age"
+        self.backup.write_text("synthetic encrypted input")
+        self.identity = root / "identity"
+        self.identity.write_text("synthetic identity")
+        self.mock("docker", '''printf '%s\\n' "$*" >> "$ASTER_TEST_LOG"
+case "$*" in
+  *createdb*) test "$ASTER_FAIL_STAGE" != create ;;
+  *pg_restore*) cat >/dev/null; test "$ASTER_FAIL_STAGE" != restore ;;
+  *psql*) cat >> "$ASTER_TEST_LOG" ;;
+esac''')
+        self.mock("age", 'test "$ASTER_FAIL_STAGE" != decrypt || exit 8; printf "synthetic decrypted dump\\n"')
+
+    def mock(self, name, body):
+        script = self.bin / name
+        script.write_text("#!/bin/sh\n" + body + "\n")
+        script.chmod(0o700)
+
+    def run_restore(self, fail=""):
+        return subprocess.run(
+            ["bash", str(Path(__file__).with_name("restore-drill.sh")), str(self.backup), str(self.identity), "aster_restore_fixture"],
+            env={**os.environ, "PATH": str(self.bin) + os.pathsep + os.environ["PATH"], "ASTER_TEST_LOG": str(self.log), "ASTER_FAIL_STAGE": fail},
+            capture_output=True, text=True, timeout=10,
+        )
+
+    def test_restored_database_is_closed_until_access_controls_are_applied(self):
+        result = self.run_restore()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = self.log.read_text()
+        self.assertLess(commands.index("--connection-limit=0"), commands.index("pg_restore"))
+        self.assertLess(commands.index("REVOKE ALL"), commands.index("pg_restore"))
+        self.assertLess(commands.index("pg_restore"), commands.index("GRANT CONNECT"))
+        self.assertLess(commands.index("GRANT CONNECT"), commands.index("CONNECTION LIMIT -1"))
+
+    def test_failed_restore_or_decryption_never_reopens_database(self):
+        for stage in ["restore", "decrypt"]:
+            with self.subTest(stage=stage):
+                self.log.unlink(missing_ok=True)
+                result = self.run_restore(stage)
+                self.assertNotEqual(result.returncode, 0)
+                commands = self.log.read_text()
+                self.assertIn("--connection-limit=0", commands)
+                self.assertNotIn("CONNECTION LIMIT -1", commands)
+                self.assertNotIn("GRANT CONNECT", commands)
+                self.assertNotIn("dropdb", commands)
+
+    def test_failed_creation_does_not_touch_existing_database(self):
+        result = self.run_restore("create")
+        self.assertNotEqual(result.returncode, 0)
+        commands = self.log.read_text()
+        self.assertNotIn("pg_restore", commands)
+        self.assertNotIn("REVOKE ALL", commands)
+        self.assertNotIn("dropdb", commands)
+
+
 if __name__ == "__main__":
     unittest.main()

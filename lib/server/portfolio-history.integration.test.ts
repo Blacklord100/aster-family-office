@@ -5,6 +5,7 @@ import { initialWorkspace, type PortfolioRecords } from '../workspace';
 import { emptyFinanceState } from '../ledger-contract';
 import { historyPositionDetails } from '../portfolio-history-lifecycle';
 import type { WorkspaceContext } from './access';
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 vi.mock('server-only', () => ({}));
 const actor = vi.hoisted(() => ({ id: '', session: '', role: 'owner' }));
 vi.mock('./auth', () => ({
@@ -56,17 +57,7 @@ describe.skipIf(!enabled)(
       scope: { familyIds: ['family'] },
     };
     beforeAll(async () => {
-      for (const setting of ['DATABASE_URL', 'MIGRATION_DATABASE_URL']) {
-        const value = process.env[setting];
-        if (!value) throw new Error('Disposable database required');
-        const url = new URL(value);
-        if (
-          url.hostname !== '127.0.0.1' ||
-          !/^\/history_fixture_[a-f0-9]+$/.test(url.pathname) ||
-          url.port === '55439'
-        )
-          throw new Error('Refusing any non-disposable history test database');
-      }
+      assertDisposableDatabase();
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
         max: 2,

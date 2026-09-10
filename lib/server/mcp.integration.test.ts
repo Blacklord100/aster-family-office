@@ -1,3 +1,4 @@
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -78,8 +79,7 @@ describe.skipIf(!enabled)(
       return client;
     }
     beforeAll(async () => {
-      if (!process.env.MIGRATION_DATABASE_URL || !process.env.DATABASE_URL)
-        throw new Error('Explicit disposable database credentials required');
+      assertDisposableDatabase();
       admin = new Pool({
         connectionString: process.env.MIGRATION_DATABASE_URL,
         max: 1,

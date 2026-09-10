@@ -1,3 +1,4 @@
+import { assertDisposableDatabase } from '../test-support/disposable-database';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
@@ -128,22 +129,7 @@ describe.skipIf(!enabled)(
       );
     }
     beforeAll(async () => {
-      for (const key of ['MIGRATION_DATABASE_URL', 'DATABASE_URL']) {
-        const value = process.env[key];
-        if (!value)
-          throw new Error(
-            'Explicit local isolated-database credentials required',
-          );
-        const url = new URL(value);
-        if (
-          !['localhost', '127.0.0.1'].includes(url.hostname) ||
-          url.port !== '55439' ||
-          url.pathname !== '/aster'
-        )
-          throw new Error(
-            'Demo integration only creates an isolated database on the local Aster cluster',
-          );
-      }
+      assertDisposableDatabase();
       const adminUrl = new URL(process.env.MIGRATION_DATABASE_URL!),
         runtimeUrl = new URL(process.env.DATABASE_URL!);
       admin = new Pool({ connectionString: adminUrl.toString(), max: 1 });
@@ -204,8 +190,7 @@ describe.skipIf(!enabled)(
       await db?.pool.end();
       await target?.end();
       if (admin) {
-        if (databaseName)
-          await dropTestDatabase(admin, databaseName);
+        if (databaseName) await dropTestDatabase(admin, databaseName);
         await admin.end();
       }
       if (intake) await rm(intake, { recursive: true, force: true });

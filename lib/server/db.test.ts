@@ -12,7 +12,12 @@ vi.mock('pg', () => ({
     connect = mocked.connect;
   },
 }));
-import { assertDatabaseRole, withTenant } from './db';
+import {
+  assertDatabaseRole,
+  isRestrictedRuntimeRole,
+  type RuntimeRolePrivileges,
+  withTenant,
+} from './db';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -99,5 +104,32 @@ describe('tenant transactions', () => {
     await expect(assertDatabaseRole()).rejects.toThrow(
       'restricted runtime role',
     );
+  });
+});
+
+describe('production runtime privilege boundaries', () => {
+  const restricted: RuntimeRolePrivileges = {
+    rolsuper: false,
+    rolbypassrls: false,
+    rolcreaterole: false,
+    rolcreatedb: false,
+    rolreplication: false,
+    database_create: false,
+    schema_create: false,
+    elevated_membership: false,
+    owns_application_objects: false,
+  };
+  it.each(Object.keys(restricted) as (keyof RuntimeRolePrivileges)[])(
+    'rejects %s even when the other privileges are restricted',
+    (key) => {
+      expect(isRestrictedRuntimeRole({ ...restricted, [key]: true })).toBe(
+        false,
+      );
+    },
+  );
+  it('rejects absent or incomplete privilege evidence and permits the exact restricted profile', () => {
+    expect(isRestrictedRuntimeRole(undefined)).toBe(false);
+    expect(isRestrictedRuntimeRole({} as RuntimeRolePrivileges)).toBe(false);
+    expect(isRestrictedRuntimeRole(restricted)).toBe(true);
   });
 });

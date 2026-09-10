@@ -35,6 +35,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWorkspace } from './workspace-context';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 import { PageHeading, Panel, Status, Metric, Picker } from './primitives';
 import { IntegrationAccess } from './integration-access';
 import { FolderConnections } from './folder-connections';
@@ -97,7 +101,13 @@ const EnginesView = dynamic(
   { loading: () => <Skeleton className="h-52 w-full" /> },
 );
 
-export function ConnectionsView({
+export function ConnectionsView(
+  props: Parameters<typeof ScopedConnectionsView>[0],
+) {
+  const { key } = useWorkspaceRequest();
+  return <ScopedConnectionsView key={key} {...props} />;
+}
+function ScopedConnectionsView({
   tab,
   onTabChange,
   onDocuments,
@@ -106,6 +116,7 @@ export function ConnectionsView({
   onTabChange: (tab: ConnectionTab) => void;
   onDocuments: () => void;
 }) {
+  const { request } = useWorkspaceRequest();
   const { state } = useWorkspace();
   const [data, setData] = useState<ConnectionsData | null>(null),
     [error, setError] = useState(''),
@@ -119,29 +130,34 @@ export function ConnectionsView({
     state.identity?.role ?? '',
   );
   const admin = ['owner', 'admin'].includes(state.identity?.role ?? '');
-  const load = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const response = await fetch('/api/mailboxes', {
-        cache: 'no-store',
-        signal,
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(
-          payload.message ?? 'Could not load mailbox connections.',
-        );
-      if (signal?.aborted) return;
-      setData(payload);
-      setError('');
-    } catch (e) {
-      if (!signal?.aborted)
-        setError(
-          e instanceof Error
-            ? e.message
-            : 'Could not load mailbox connections.',
-        );
-    }
-  }, []);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const payload = await request<ConnectionsData>('/api/mailboxes', {
+          signal,
+        });
+        if (signal?.aborted) return;
+        setData(payload);
+        setError('');
+      } catch (e) {
+        if (
+          e instanceof WorkspaceRequestError &&
+          [401, 403].includes(e.status)
+        ) {
+          setData(null);
+          setSetup(null);
+          setDisconnect(null);
+        }
+        if (!signal?.aborted)
+          setError(
+            e instanceof Error
+              ? e.message
+              : 'Could not load mailbox connections.',
+          );
+      }
+    },
+    [request],
+  );
   useEffect(() => {
     if (tab !== 'mailboxes') return;
     const controller = new AbortController();
@@ -178,17 +194,17 @@ export function ConnectionsView({
     setError('');
     setNotice('');
     try {
-      const response = await fetch('/api/mailboxes/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          historyDays: history === 'all' ? 'all' : Number(history),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.message ?? 'Could not start authorization.');
+      const payload = await request<{ authorizationUrl: string }>(
+        '/api/mailboxes/connect',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider,
+            historyDays: history === 'all' ? 'all' : Number(history),
+          }),
+        },
+      );
       const destination = new URL(payload.authorizationUrl);
       if (
         !['accounts.google.com', 'login.microsoftonline.com'].includes(
@@ -201,6 +217,11 @@ export function ConnectionsView({
         );
       window.location.assign(destination.toString());
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setSetup(null);
+        setDisconnect(null);
+      }
       setError(
         e instanceof Error ? e.message : 'Could not connect this account.',
       );
@@ -215,14 +236,11 @@ export function ConnectionsView({
     setError('');
     setNotice('');
     try {
-      const response = await fetch('/api/mailboxes/' + mailbox.id, {
+      await request('/api/mailboxes/' + mailbox.id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.message ?? 'Could not update this mailbox.');
       setDisconnect(null);
       setNotice(
         action === 'sync'
@@ -235,6 +253,11 @@ export function ConnectionsView({
       );
       await load();
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setSetup(null);
+        setDisconnect(null);
+      }
       setError(
         e instanceof Error ? e.message : 'Could not update this mailbox.',
       );

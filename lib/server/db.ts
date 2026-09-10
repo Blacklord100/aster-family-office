@@ -14,6 +14,61 @@ export const pool = new Pool({
 
 let roleCheck: Promise<void> | undefined;
 
+export const RUNTIME_ROLE_QUERY = `
+  SELECT r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb, r.rolreplication,
+    has_database_privilege(current_user, current_database(), 'CREATE') AS database_create,
+    has_schema_privilege(current_user, 'public', 'CREATE') AS schema_create,
+    EXISTS (
+      SELECT 1 FROM pg_roles elevated
+      WHERE pg_has_role(current_user, elevated.oid, 'MEMBER')
+        AND (elevated.rolsuper OR elevated.rolbypassrls OR elevated.rolcreaterole
+          OR elevated.rolcreatedb OR elevated.rolreplication
+          OR elevated.rolname IN ('pg_read_all_data', 'pg_write_all_data',
+            'pg_read_server_files', 'pg_write_server_files', 'pg_execute_server_program',
+            'pg_signal_backend', 'pg_checkpoint', 'pg_maintain', 'pg_create_subscription'))
+    ) AS elevated_membership,
+    EXISTS (
+      SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND pg_has_role(current_user, c.relowner, 'MEMBER')
+      UNION ALL
+      SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND pg_has_role(current_user, p.proowner, 'MEMBER')
+    ) AS owns_application_objects
+  FROM pg_roles r WHERE r.rolname = current_user`;
+
+export type RuntimeRolePrivileges = {
+  rolsuper: boolean;
+  rolbypassrls: boolean;
+  rolcreaterole: boolean;
+  rolcreatedb: boolean;
+  rolreplication: boolean;
+  database_create: boolean;
+  schema_create: boolean;
+  elevated_membership: boolean;
+  owns_application_objects: boolean;
+};
+
+export function isRestrictedRuntimeRole(
+  role: RuntimeRolePrivileges | undefined,
+): boolean {
+  return (
+    !!role &&
+    (
+      [
+        'rolsuper',
+        'rolbypassrls',
+        'rolcreaterole',
+        'rolcreatedb',
+        'rolreplication',
+        'database_create',
+        'schema_create',
+        'elevated_membership',
+        'owns_application_objects',
+      ] as const
+    ).every((key) => role[key] === false)
+  );
+}
+
 export function validateDatabaseEnvironment(): void {
   const value = process.env.DATABASE_URL;
   if (!value)
@@ -28,24 +83,11 @@ export async function assertDatabaseRole(): Promise<void> {
   validateDatabaseEnvironment();
   if (process.env.NODE_ENV !== 'production') return;
   roleCheck ??= (async () => {
-    const result = await pool.query<{
-      rolsuper: boolean;
-      rolbypassrls: boolean;
-      rolcreaterole: boolean;
-      rolcreatedb: boolean;
-    }>(
-      'SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = current_user',
-    );
+    const result = await pool.query<RuntimeRolePrivileges>(RUNTIME_ROLE_QUERY);
     const role = result.rows[0];
-    if (
-      !role ||
-      role.rolsuper ||
-      role.rolbypassrls ||
-      role.rolcreaterole ||
-      role.rolcreatedb
-    ) {
+    if (!isRestrictedRuntimeRole(role)) {
       throw new Error(
-        'DATABASE_URL must use a restricted runtime role without SUPERUSER, BYPASSRLS, CREATEROLE, or CREATEDB. Use MIGRATION_DATABASE_URL only for migrations.',
+        'DATABASE_URL must use a restricted runtime role without elevated role membership, schema/database CREATE privileges, application-object ownership, SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB, or REPLICATION. Use MIGRATION_DATABASE_URL only for migrations.',
       );
     }
   })().catch((error: unknown) => {

@@ -32,7 +32,7 @@ describe('participation navigation keeps the dated financial comparison', () => 
     copyHistoryNavigation(
       source,
       out,
-      { view: 'portfolio', holding: null, family: 'all' },
+      { view: 'overview', holding: null, family: 'all' },
       { view: 'investments', holding: 'b', family: 'all' },
     );
     expect(out.get('historyAsOf')).toBe('2026-06-30');

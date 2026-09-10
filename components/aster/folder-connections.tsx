@@ -48,6 +48,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useWorkspace } from './workspace-context';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 import { DemoLauncher } from './demo-workspace';
 import styles from './connections.module.css';
 
@@ -79,6 +83,11 @@ const stamp = (value: string | null) =>
     : 'Waiting for first scan';
 
 export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
+  const { key } = useWorkspaceRequest();
+  return <ScopedFolderConnections key={key} refresh={refresh} />;
+}
+function ScopedFolderConnections({ refresh }: { refresh: number }) {
+  const { request } = useWorkspaceRequest();
   const { reload } = useWorkspace();
   const [snapshot, setSnapshot] = useState<FolderResponse | null>(null);
   const [error, setError] = useState('');
@@ -87,33 +96,35 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
   const [disconnect, setDisconnect] = useState<FolderConnection | null>(null);
   const lock = useRef(false);
   const epoch = useRef(0);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    const version = epoch.current;
-    try {
-      const response = await fetch('/api/folders', {
-        cache: 'no-store',
-        signal,
-      });
-      const result = await response.json().catch(() => {
-        throw new Error(
-          'This service is temporarily unavailable. Please try again.',
-        );
-      });
-      if (!response.ok)
-        throw new Error(result.message || 'Could not load folder connections.');
-      if (!signal?.aborted && version === epoch.current) {
-        setSnapshot(result);
-        setError('');
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const version = epoch.current;
+      try {
+        const result = await request<FolderResponse>('/api/folders', {
+          signal,
+        });
+        if (!signal?.aborted && version === epoch.current) {
+          setSnapshot(result);
+          setError('');
+        }
+      } catch (issue) {
+        if (
+          issue instanceof WorkspaceRequestError &&
+          [401, 403].includes(issue.status)
+        ) {
+          setSnapshot(null);
+          setDisconnect(null);
+        }
+        if (!signal?.aborted && version === epoch.current)
+          setError(
+            issue instanceof Error
+              ? issue.message
+              : 'Could not load folder connections.',
+          );
       }
-    } catch (issue) {
-      if (!signal?.aborted && version === epoch.current)
-        setError(
-          issue instanceof Error
-            ? issue.message
-            : 'Could not load folder connections.',
-        );
-    }
-  }, []);
+    },
+    [request],
+  );
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -141,18 +152,11 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
     setError('');
     setNotice('');
     try {
-      const response = await fetch(url, {
+      await request(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const result = await response.json().catch(() => {
-        throw new Error(
-          'This service is temporarily unavailable. Please try again.',
-        );
-      });
-      if (!response.ok)
-        throw new Error(result.message || 'Could not update this folder.');
       setDisconnect(null);
       const action = (body as { action?: FolderAction }).action;
       setNotice(
@@ -167,6 +171,13 @@ export function FolderConnections({ refresh = 0 }: { refresh?: number }) {
       await load();
       reload();
     } catch (issue) {
+      if (
+        issue instanceof WorkspaceRequestError &&
+        [401, 403].includes(issue.status)
+      ) {
+        setSnapshot(null);
+        setDisconnect(null);
+      }
       setError(
         issue instanceof Error
           ? issue.message

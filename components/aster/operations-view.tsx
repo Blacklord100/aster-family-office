@@ -10,15 +10,16 @@ import type {
   OperationalPolicy,
 } from '@/lib/operations-contract';
 import styles from './operations.module.css';
-async function fetchOperations(
-  signal?: AbortSignal,
-): Promise<OperationsStatus> {
-  const response = await fetch('/api/operations', { signal });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.message);
-  return body;
-}
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 export function OperationsView() {
+  const { key } = useWorkspaceRequest();
+  return <ScopedOperationsView key={key} />;
+}
+function ScopedOperationsView() {
+  const { request } = useWorkspaceRequest();
   const { state } = useWorkspace(),
     admin = ['owner', 'admin'].includes(state.identity?.role ?? '');
   const [data, setData] = useState<OperationsStatus | null>(null),
@@ -30,17 +31,25 @@ export function OperationsView() {
     [notice, setNotice] = useState('');
   async function load() {
     try {
-      const body = await fetchOperations();
+      setError('');
+      const body = await request<OperationsStatus>('/api/operations');
       setData(body);
       setPolicy(body.policy);
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setPolicy(null);
+        setPreview(null);
+      }
       setError(e instanceof Error ? e.message : 'Could not load operations');
     }
   }
   useEffect(() => {
     if (!admin) return;
     const controller = new AbortController();
-    void fetchOperations(controller.signal)
+    void request<OperationsStatus>('/api/operations', {
+      signal: controller.signal,
+    })
       .then((body) => {
         setData(body);
         setPolicy(body.policy);
@@ -52,19 +61,20 @@ export function OperationsView() {
           );
       });
     return () => controller.abort();
-  }, [admin]);
+  }, [admin, request]);
   async function act(body: object) {
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      const r = await fetch('/api/operations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const result = await r.json();
-      if (!r.ok) throw new Error(result.message);
+      const result = await request<RetentionPreview | { purged?: number }>(
+        '/api/operations',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      );
       if ('digest' in result) setPreview(result);
       else {
         setPreview(null);
@@ -77,6 +87,12 @@ export function OperationsView() {
         await load();
       }
     } catch (e) {
+      if (e instanceof WorkspaceRequestError && [401, 403].includes(e.status)) {
+        setData(null);
+        setPolicy(null);
+        setPreview(null);
+        setConfirmation('');
+      }
       setError(e instanceof Error ? e.message : 'The action failed');
     } finally {
       setBusy(false);

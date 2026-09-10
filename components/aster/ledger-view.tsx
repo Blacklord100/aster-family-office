@@ -9,6 +9,7 @@ import {
   type SubmitEvent,
 } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   BookOpen,
   CheckCircle2,
@@ -1452,45 +1453,68 @@ export function LedgerView({
   }
   return (
     <div className={styles.root}>
-      <PageHeading
-        title={mode === 'setup' ? 'Office setup' : 'Cash & commitments'}
-        subtitle={
-          mode === 'setup'
-            ? 'Families, legal entities, accounts and registered opening balances'
-            : 'Source notices, expected payments and confirmed cash movements'
-        }
-      >
-        <FamilyPicker value={family} onChange={onFamily} />
-        <Button
-          variant="outline"
-          disabled={loading}
-          onClick={() => {
-            setLoading(true);
-            void load();
-          }}
-        >
-          <RefreshCw data-icon="inline-start" />
-          Reload
-        </Button>
-        {response?.canWrite && mode === 'setup' ? (
-          <Button
-            onClick={() => open('createHolding')}
-            disabled={!accounts.length}
+      {mode === 'setup' ? (
+        <div className={styles.setupToolbar}>
+          <p className={styles.note}>
+            {holdings.length} registered holdings · {entities.length} entities ·{' '}
+            {accounts.length} accounts
+          </p>
+          <div className={styles.actions}>
+            <FamilyPicker value={family} onChange={onFamily} />
+            <Button
+              variant="outline"
+              disabled={loading}
+              onClick={() => {
+                setLoading(true);
+                void load();
+              }}
+            >
+              <RefreshCw data-icon="inline-start" />
+              Reload
+            </Button>
+            {response?.canWrite && mode === 'setup' ? (
+              <Button
+                onClick={() => open('createHolding')}
+                disabled={!accounts.length}
+              >
+                <Plus data-icon="inline-start" />
+                Add holding
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <>
+          <PageHeading
+            title="Cash & commitments"
+            subtitle="Source notices, expected payments and confirmed cash movements"
           >
-            <Plus data-icon="inline-start" />
-            Add holding
-          </Button>
-        ) : null}
-      </PageHeading>
-      <Alert className={styles.intro}>
-        <BookOpen />
-        <AlertTitle>Financial records with an explicit review trail</AlertTitle>
-        <AlertDescription>
-          Recording a notice changes no balance. Settlement records confirmed
-          activity; it never initiates a payment. Source currencies, conversions
-          and reversals remain visible.
-        </AlertDescription>
-      </Alert>
+            <FamilyPicker value={family} onChange={onFamily} />
+            <Button
+              variant="outline"
+              disabled={loading}
+              onClick={() => {
+                setLoading(true);
+                void load();
+              }}
+            >
+              <RefreshCw data-icon="inline-start" />
+              Reload
+            </Button>
+          </PageHeading>
+          <Alert className={styles.intro}>
+            <BookOpen />
+            <AlertTitle>
+              Financial records with an explicit review trail
+            </AlertTitle>
+            <AlertDescription>
+              Recording a notice changes no balance. Settlement records
+              confirmed activity; it never initiates a payment. Source
+              currencies, conversions and reversals remain visible.
+            </AlertDescription>
+          </Alert>
+        </>
+      )}
       {error ? (
         <Alert variant="destructive">
           <AlertTitle>Ledger needs attention</AlertTitle>
@@ -1508,51 +1532,53 @@ export function LedgerView({
       ) : null}
       {portfolio && finance ? (
         <>
-          <div className="metrics-row">
-            <Metric
-              label="Recorded holdings"
-              value={String(holdings.length)}
-              note={`${entities.length} entities · ${accounts.length} accounts`}
-            />
-            <Metric
-              label="Recorded cash"
-              value={
-                !holdings.some((h) => h.assetClass === 'Cash')
-                  ? 'Not recorded'
-                  : holdings.some(
-                        (h) =>
-                          h.assetClass === 'Cash' &&
-                          h.valuationStatus === 'unknown',
-                      )
+          {mode === 'cash' ? (
+            <div className="metrics-row">
+              <Metric
+                label="Recorded holdings"
+                value={String(holdings.length)}
+                note={`${entities.length} entities · ${accounts.length} accounts`}
+              />
+              <Metric
+                label="Registered cash balances"
+                value={
+                  !holdings.some((h) => h.assetClass === 'Cash')
+                    ? 'Not recorded'
+                    : holdings.some(
+                          (h) =>
+                            h.assetClass === 'Cash' &&
+                            h.valuationStatus === 'unknown',
+                        )
+                      ? 'Incomplete'
+                      : money(
+                          holdings
+                            .filter((h) => h.assetClass === 'Cash')
+                            .reduce((sum, h) => sum + h.valueEUR, 0),
+                        )
+                }
+                note="Latest register values · may include closed accounts · restrictions still apply"
+              />
+              <Metric
+                label="Reviewed cash outflows"
+                value={money(outflows)}
+                note={`${reviewed.length} unsettled transactions · no payment initiated`}
+              />
+              <Metric
+                label="Registered commitments"
+                value={
+                  holdings.some((h) => h.unfundedStatus === 'unknown')
                     ? 'Incomplete'
                     : money(
-                        holdings
-                          .filter((h) => h.assetClass === 'Cash')
-                          .reduce((sum, h) => sum + h.valueEUR, 0),
+                        holdings.reduce(
+                          (sum, h) => sum + h.unfundedCommitmentEUR,
+                          0,
+                        ),
                       )
-              }
-              note="Account restrictions still apply"
-            />
-            <Metric
-              label="Reviewed cash outflows"
-              value={money(outflows)}
-              note={`${reviewed.length} unsettled transactions · no payment initiated`}
-            />
-            <Metric
-              label="Unfunded commitments"
-              value={
-                holdings.some((h) => h.unfundedStatus === 'unknown')
-                  ? 'Incomplete'
-                  : money(
-                      holdings.reduce(
-                        (sum, h) => sum + h.unfundedCommitmentEUR,
-                        0,
-                      ),
-                    )
-              }
-              note="Updated only by explicit posted movements"
-            />
-          </div>
+                }
+                note="Unfunded register amounts · closure does not settle a commitment"
+              />
+            </div>
+          ) : null}
           <Tabs
             value={
               mode === 'setup'
@@ -1564,20 +1590,18 @@ export function LedgerView({
             onValueChange={setTab}
             className={styles.stack}
           >
-            <TabsList variant="line">
-              {mode === 'setup' ? (
-                <TabsTrigger value="register">Ownership & accounts</TabsTrigger>
-              ) : (
-                <>
+            {mode === 'cash' ? (
+              <div className={styles.tabScroll}>
+                <TabsList variant="line" aria-label="Cash record sections">
                   <TabsTrigger value="obligations">
                     Obligation drafts
                   </TabsTrigger>
                   <TabsTrigger value="transactions">Transactions</TabsTrigger>
                   <TabsTrigger value="valuations">Valuations</TabsTrigger>
                   <TabsTrigger value="coverage">Reconciliation</TabsTrigger>
-                </>
-              )}
-            </TabsList>
+                </TabsList>
+              </div>
+            ) : null}
             <TabsContent value="obligations" className={styles.stack}>
               <Panel
                 title="Accepted cash notices"
@@ -1914,7 +1938,11 @@ export function LedgerView({
                 </Panel>
               ) : null}
             </TabsContent>
-            <TabsContent value="register" className={styles.stack}>
+            <TabsContent
+              value="register"
+              className={styles.stack}
+              aria-label="Families and accounts"
+            >
               <div className={styles.grid}>
                 <Panel
                   title="Ownership & accounts"
@@ -2261,9 +2289,36 @@ export function LedgerView({
                   </Table>
                 ) : (
                   <Blank>
-                    Review a deposit, withdrawal, capital call, distribution,
-                    trade, fee or cash transfer. Settlement is a separate
-                    action.
+                    {!holdings.some(
+                      (holding) => holding.assetClass === 'Cash',
+                    ) ? (
+                      <>
+                        Register a sourced cash balance before reviewing cash
+                        transactions. Choose its legal entity, account and
+                        currency in Office setup.
+                        {response.canWrite ? (
+                          <Button
+                            variant="link"
+                            render={
+                              <Link
+                                href={
+                                  '/?view=setup&family=' +
+                                  encodeURIComponent(family)
+                                }
+                              />
+                            }
+                          >
+                            Open Office setup
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        Review a deposit, withdrawal, capital call,
+                        distribution, trade, fee or cash transfer. Settlement is
+                        a separate action.
+                      </>
+                    )}
                   </Blank>
                 )}
               </Panel>
@@ -2485,8 +2540,34 @@ export function LedgerView({
                   </Table>
                 ) : (
                   <Blank>
-                    No period is asserted complete. Unknown external flows stay
-                    unknown.
+                    {!holdings.some(
+                      (holding) => holding.assetClass === 'Cash',
+                    ) ? (
+                      <>
+                        Register a sourced cash balance and its account in
+                        Office setup before reconciling a statement period.
+                        {response.canWrite ? (
+                          <Button
+                            variant="link"
+                            render={
+                              <Link
+                                href={
+                                  '/?view=setup&family=' +
+                                  encodeURIComponent(family)
+                                }
+                              />
+                            }
+                          >
+                            Open Office setup
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        No period is asserted complete. Unknown external flows
+                        stay unknown.
+                      </>
+                    )}
                   </Blank>
                 )}
               </Panel>

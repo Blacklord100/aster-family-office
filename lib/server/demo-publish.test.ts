@@ -92,13 +92,32 @@ describe('synthetic demo publication evidence policy', () => {
   it('permits supported non-EUR facts only with an explicit scenario FX basis', () => {
     expect(demoFactIssue(result, { ...fact, currency: 'CHF' })).toBeNull();
     expect(demoFactIssue(result, { ...fact, currency: 'JPY' })).not.toBeNull();
-    expect(demoFactIssue(result, { ...fact, kind: 'capital_call', currency: 'JPY' })).not.toBeNull();
-    expect(demoFactIssue(result, { ...fact, kind: 'distribution', currency: 'JPY' })).not.toBeNull();
+    expect(
+      demoFactIssue(result, { ...fact, kind: 'capital_call', currency: 'JPY' }),
+    ).not.toBeNull();
+    expect(
+      demoFactIssue(result, { ...fact, kind: 'distribution', currency: 'JPY' }),
+    ).not.toBeNull();
   });
   it('requires dates, amount and currency on call notices without treating a notice as payment', () =>
     expect(
       demoFactIssue(result, { ...fact, kind: 'capital_call', amount: null }),
     ).not.toBeNull());
+  it('holds a distribution when its evidence mentions a payment deadline omitted from extraction', () => {
+    const notice = {
+      ...fact,
+      kind: 'distribution' as const,
+      dueDate: null,
+      evidence: {
+        ...fact.evidence,
+        quote: fact.evidence.quote + ' Payment due date 2026-09-20.',
+      },
+    };
+    expect(demoFactIssue(result, notice)).toContain('deadline');
+    expect(
+      demoFactIssue(result, { ...notice, dueDate: '2026-09-20' }),
+    ).toBeNull();
+  });
   it('keeps dated news optional and uses descriptive class suggestions only', () => {
     expect(
       demoFactIssue(result, {

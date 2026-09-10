@@ -1,4 +1,8 @@
 'use client';
+import {
+  useWorkspaceRequest,
+  WorkspaceRequestError,
+} from './use-workspace-request';
 
 import {
   useCallback,
@@ -95,6 +99,8 @@ export const reportTypeLabel = (value: string) =>
 
 /** One visible view owns one request stream. Polls cannot overwrite a mutation or a newer response. */
 export function useReportObligations() {
+  const { request: transport, key: scopeKey } = useWorkspaceRequest();
+  const [responseKey, setResponseKey] = useState('');
   const [response, setResponse] = useState<ReportObligationsResponse | null>(
     null,
   );
@@ -109,10 +115,14 @@ export function useReportObligations() {
   );
   const mounted = useRef(true);
   const sequence = useRef(0);
-  const accept = useCallback((value: ReportObligationsResponse) => {
-    current.current = value;
-    setResponse(value);
-  }, []);
+  const accept = useCallback(
+    (value: ReportObligationsResponse) => {
+      current.current = value;
+      setResponseKey(scopeKey);
+      setResponse(value);
+    },
+    [scopeKey],
+  );
   const refresh = useCallback(async () => {
     if (mutation.current) return;
     request.current?.abort();
@@ -120,16 +130,12 @@ export function useReportObligations() {
     request.current = controller;
     const version = ++sequence.current;
     try {
-      const result = await fetch('/api/report-obligations', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-        signal: controller.signal,
-      });
-      const body = await result.json();
-      if (!result.ok)
-        throw new Error(
-          body.message ?? 'Reporting operations could not be loaded.',
-        );
+      const body = await transport<ReportObligationsResponse>(
+        '/api/report-obligations',
+        {
+          signal: controller.signal,
+        },
+      );
       if (mounted.current && version === sequence.current) {
         accept(body);
         setError(null);
@@ -139,16 +145,20 @@ export function useReportObligations() {
         mounted.current &&
         !controller.signal.aborted &&
         version === sequence.current
-      )
+      ) {
+        current.current = null;
+        setResponse(null);
+        setResponseKey(scopeKey);
         setError(
           cause instanceof Error
             ? cause.message
             : 'Reporting operations could not be loaded.',
         );
+      }
     } finally {
       if (mounted.current && version === sequence.current) setLoading(false);
     }
-  }, [accept]);
+  }, [accept, transport, scopeKey]);
   const cancelRequests = useCallback(() => {
     ++sequence.current;
     request.current?.abort();
@@ -171,7 +181,8 @@ export function useReportObligations() {
   }, [refresh, cancelRequests]);
   const mutate = useCallback<ObligationsMutation>(
     async (input) => {
-      if (!current.current || mutation.current) return false;
+      if (!current.current || mutation.current || responseKey !== scopeKey)
+        return false;
       mutation.current = true;
       setBusy(true);
       setError(null);
@@ -188,36 +199,51 @@ export function useReportObligations() {
         retryIdentity.current = { fingerprint, key: crypto.randomUUID() };
       const idempotencyKey = retryIdentity.current.key;
       try {
-        const result = await fetch('/api/report-obligations', {
-          method: 'POST',
-          cache: 'no-store',
-          credentials: 'same-origin',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, idempotencyKey }),
-        });
-        const body = await result.json();
-        if (!result.ok)
-          throw new Error(body.message ?? 'The change could not be saved.');
+        const body = await transport<ReportObligationsResponse>(
+          '/api/report-obligations',
+          {
+            method: 'POST',
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, idempotencyKey }),
+          },
+        );
         retryIdentity.current = null;
         if (mounted.current) accept(body);
         return true;
       } catch (cause) {
-        if (mounted.current && !controller.signal.aborted)
+        if (mounted.current && !controller.signal.aborted) {
+          if (
+            cause instanceof WorkspaceRequestError &&
+            [401, 403].includes(cause.status)
+          ) {
+            current.current = null;
+            setResponse(null);
+          }
           setError(
             cause instanceof Error
               ? cause.message
               : 'The change could not be saved.',
           );
+        }
         return false;
       } finally {
         mutation.current = false;
         if (mounted.current) setBusy(false);
       }
     },
-    [accept],
+    [accept, transport, scopeKey, responseKey],
   );
-  return { response, error, loading, busy, refresh, mutate };
+  return {
+    response: responseKey === scopeKey ? response : null,
+    error: responseKey === scopeKey ? error : null,
+    loading: loading || responseKey !== scopeKey,
+    busy,
+    refresh,
+    mutate,
+  };
 }
 
 export function OperationsFeedback({

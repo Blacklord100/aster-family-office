@@ -14,6 +14,7 @@ import { ConnectionsView } from './connections-view';
 import { ProcessingView } from './processing-view';
 import { TeamSettings } from './team-settings';
 import { PrintableReport, downloadHoldings } from './reports';
+import { currentReportHoldings } from '@/lib/report-value';
 import { EvidencePanel } from './evidence';
 import { AssistantPanel } from './assistant';
 import { DemoWorkspaceBanner } from './demo-workspace';
@@ -59,6 +60,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   canonicalWorkspaceView,
   connectionTabFor,
@@ -106,6 +108,7 @@ export function AsterApp() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false),
+    [searchTerm, setSearchTerm] = useState(''),
     [askOpen, setAskOpen] = useState(false),
     [source, setSource] = useState<string | null>(null),
     [settingsOpen, setSettingsOpen] = useState(false),
@@ -118,27 +121,114 @@ export function AsterApp() {
   const identityRole = state.identity?.role;
   const hasDataScope = Boolean(state.identity?.dataScope);
   const data = useMemo(() => deriveWorkspace(state), [state]);
-  const loadInFlight = useRef(false);
+  const loadInFlight = useRef<AbortController | null>(null);
+  const mutationInFlight = useRef(false);
+  const boundOrganization = useRef<string | null>(null);
+  const acceptedIdentity = useRef('');
+  const lastRevision = useRef(-1);
+  const pendingRequests = useRef(new Set<AbortController>());
+  const mounted = useRef(true);
   const stateEpoch = useRef(0);
+  const clearPrivateViews = useCallback(() => {
+    setSource(null);
+    setSearchOpen(false);
+    setSearchTerm('');
+    setAskOpen(false);
+    setReportOpen(false);
+    setSavedReport(null);
+    setSettingsOpen(false);
+    setResetConfirm(false);
+    setWorkspaceName('Aster Family Office');
+  }, []);
+  const clearAccess = useCallback(() => {
+    stateEpoch.current += 1;
+    acceptedIdentity.current = '';
+    lastRevision.current = -1;
+    clearPrivateViews();
+    setState(initialWorkspace(false));
+  }, [clearPrivateViews]);
+  const acceptSnapshot = useCallback(
+    (next: WorkspaceState) => {
+      const identity = next.identity;
+      if (
+        !identity?.organizationId ||
+        !identity.user?.id ||
+        !identity.role ||
+        next.version !== 1 ||
+        !Number.isInteger(next.workspaceRevision) ||
+        !next.engine ||
+        !next.taskStatus ||
+        !next.reviews ||
+        !Array.isArray(next.reports)
+      )
+        throw new Error('The workspace response was incomplete. Try again.');
+      if (
+        boundOrganization.current &&
+        identity.organizationId !== boundOrganization.current
+      ) {
+        clearAccess();
+        throw new Error(
+          'Your workspace selection changed. Reload the page before continuing.',
+        );
+      }
+      const key = JSON.stringify([
+        identity.organizationId,
+        identity.user.id,
+        identity.role,
+        identity.dataScope ?? null,
+      ]);
+      // A delayed response may never replace newer accepted financial records.
+      if (
+        acceptedIdentity.current === key &&
+        next.workspaceRevision! < lastRevision.current
+      )
+        return;
+      if (acceptedIdentity.current && acceptedIdentity.current !== key) {
+        stateEpoch.current += 1;
+        clearPrivateViews();
+      }
+      boundOrganization.current = identity.organizationId;
+      acceptedIdentity.current = key;
+      lastRevision.current = next.workspaceRevision!;
+      setState(next);
+      setError(null);
+    },
+    [clearAccess, clearPrivateViews],
+  );
   const load = useCallback(async () => {
     if (loadInFlight.current) return;
-    loadInFlight.current = true;
     const epoch = stateEpoch.current;
+    const controller = new AbortController();
+    loadInFlight.current = controller;
+    pendingRequests.current.add(controller);
     try {
-      const response = await fetch('/api/workspace', { cache: 'no-store' });
+      const response = await fetch('/api/workspace', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(20_000),
+        ]),
+        headers: boundOrganization.current
+          ? { 'x-aster-organization': boundOrganization.current }
+          : {},
+      });
+      if (!mounted.current || controller.signal.aborted) return;
       if (response.status === 401) {
-        setState(initialWorkspace(false));
+        clearAccess();
         window.location.assign('/login');
         return;
       }
       if (response.status === 403) {
-        setState(initialWorkspace(false));
-        const body = await response.json();
+        clearAccess();
+        const body = await response.json().catch(() => ({}));
         if (body.error === 'MFA_REQUIRED') {
           window.location.assign('/account');
           return;
         }
-        throw new Error(body.message);
+        throw new Error(
+          body.message ?? 'Your workspace access is no longer available.',
+        );
       }
       if (!response.ok)
         throw new Error('Workspace storage is temporarily unavailable.');
@@ -146,56 +236,104 @@ export function AsterApp() {
         error?: string;
         message?: string;
       };
-      if (epoch === stateEpoch.current) {
-        setState(next);
-        setError(null);
-      }
+      if (
+        mounted.current &&
+        !controller.signal.aborted &&
+        epoch === stateEpoch.current
+      )
+        acceptSnapshot(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load workspace');
+      if (mounted.current && !controller.signal.aborted)
+        setError(
+          e instanceof Error && !['AbortError', 'TimeoutError'].includes(e.name)
+            ? e.message
+            : 'Workspace loading timed out. Please retry.',
+        );
     } finally {
-      loadInFlight.current = false;
-      setLoading(false);
+      pendingRequests.current.delete(controller);
+      if (loadInFlight.current === controller) loadInFlight.current = null;
+      if (mounted.current && !loadInFlight.current) setLoading(false);
     }
-  }, []);
-  const mutate = useCallback(async (input: Record<string, unknown>) => {
-    stateEpoch.current += 1;
-    try {
-      const response = await fetch('/api/workspace', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-      const next = (await response.json()) as WorkspaceState & {
-        error?: string;
-        message?: string;
-      };
-      if (!response.ok) throw new Error(next.message || 'Could not save');
-      stateEpoch.current += 1;
-      setState(next);
-      setError(null);
-      if (!['advance', 'run'].includes(String(input.type)))
+  }, [acceptSnapshot, clearAccess]);
+  const mutate = useCallback(
+    async (input: Record<string, unknown>) => {
+      if (!boundOrganization.current || !acceptedIdentity.current) return false;
+      if (mutationInFlight.current) {
         toast.add({
-          title:
-            input.type === 'report'
-              ? 'Report snapshot saved'
-              : input.type === 'sync'
-                ? 'Demo sync complete'
-                : input.type === 'reset'
-                  ? 'Sample data cleared'
-                  : 'Changes saved',
-          type: 'success',
+          title: 'A change is still saving. Try again when it finishes.',
+          type: 'error',
         });
-      return true;
-    } catch (e) {
-      toast.add({
-        title: e instanceof Error ? e.message : 'Could not save the change',
-        type: 'error',
-      });
-      return false;
-    }
-  }, []);
+        return false;
+      }
+      mutationInFlight.current = true;
+      stateEpoch.current += 1;
+      const epoch = stateEpoch.current;
+      const controller = new AbortController();
+      pendingRequests.current.add(controller);
+      try {
+        const response = await fetch('/api/workspace', {
+          method: 'POST',
+          credentials: 'same-origin',
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(30_000),
+          ]),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-aster-organization': boundOrganization.current,
+          },
+          body: JSON.stringify(input),
+        });
+        if (!mounted.current || controller.signal.aborted) return false;
+        if ([401, 403].includes(response.status)) clearAccess();
+        const next = (await response.json()) as WorkspaceState & {
+          error?: string;
+          message?: string;
+        };
+        if (!response.ok) throw new Error(next.message || 'Could not save');
+        if (
+          !mounted.current ||
+          controller.signal.aborted ||
+          epoch !== stateEpoch.current
+        )
+          return false;
+        stateEpoch.current += 1;
+        acceptSnapshot(next);
+        if (!['advance', 'run'].includes(String(input.type)))
+          toast.add({
+            title:
+              input.type === 'report'
+                ? 'Report snapshot saved'
+                : input.type === 'sync'
+                  ? 'Demo sync complete'
+                  : input.type === 'reset'
+                    ? 'Sample data cleared'
+                    : 'Changes saved',
+            type: 'success',
+          });
+        return true;
+      } catch (e) {
+        if (mounted.current && !controller.signal.aborted)
+          toast.add({
+            title:
+              e instanceof Error &&
+              !['AbortError', 'TimeoutError'].includes(e.name)
+                ? e.message
+                : 'The save response timed out. Refresh and check whether it was saved before retrying.',
+            type: 'error',
+          });
+        return false;
+      } finally {
+        pendingRequests.current.delete(controller);
+        mutationInFlight.current = false;
+      }
+    },
+    [acceptSnapshot, clearAccess],
+  );
   // oxlint-disable-next-line react/react-compiler -- Load durable state from the server after hydration.
   useEffect(() => {
+    mounted.current = true;
+    const requests = pendingRequests.current;
     // oxlint-disable-next-line react/react-compiler -- Async server hydration; state changes after the fetch resolves.
     void load();
     const timer = window.setInterval(() => {
@@ -206,6 +344,10 @@ export function AsterApp() {
     };
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
+      mounted.current = false;
+      for (const controller of requests) controller.abort();
+      requests.clear();
+      loadInFlight.current = null;
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
@@ -315,10 +457,43 @@ export function AsterApp() {
   const pendingReviews = data.evidence.filter(
     (e) => (state.reviews[e.id] ?? e.status) === 'Needs review',
   ).length;
+  const searchText = searchTerm.trim().toLocaleLowerCase();
+  const familyNames = new Map(
+    data.families.map((family) => [family.id, family.name]),
+  );
+  const searchHoldings = data.holdings
+    .filter((holding) =>
+      [
+        holding.name,
+        holding.manager,
+        holding.ticker,
+        familyNames.get(holding.familyId),
+      ].some((value) => value?.toLocaleLowerCase().includes(searchText)),
+    )
+    .slice(0, 40);
+  const searchSources = data.evidence
+    .filter((evidence) =>
+      [
+        evidence.filename,
+        evidence.subject,
+        evidence.sender,
+        evidence.excerpt,
+        familyNames.get(evidence.familyId),
+      ].some((value) => value?.toLocaleLowerCase().includes(searchText)),
+    )
+    .slice(0, 40);
   return (
     <TooltipProvider>
       <Toaster>
-        <WorkspaceContext.Provider value={context}>
+        <WorkspaceContext.Provider
+          key={JSON.stringify([
+            state.identity?.organizationId,
+            state.identity?.user.id,
+            state.identity?.role,
+            state.identity?.dataScope ?? null,
+          ])}
+          value={context}
+        >
           <Shell
             view={route.view}
             family={route.family}
@@ -355,161 +530,182 @@ export function AsterApp() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {route.view === 'overview' ? (
-              <Overview
-                family={route.family}
-                onFamily={family}
-                onNavigate={navigate}
-                onHolding={openHolding}
-                onSource={openSource}
-                onExport={() => preview(null)}
-                taskStatus={state.taskStatus}
-              />
+            {loading ? (
+              <section
+                aria-busy="true"
+                aria-label="Loading workspace"
+                className="space-y-6 py-8"
+              >
+                <Skeleton className="h-12 w-60" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-80 w-full" />
+                <span className="sr-only">Loading your private workspace…</span>
+              </section>
             ) : null}
-            {route.view === 'investments' ? (
-              activeHolding ? (
-                <InvestmentDetail
-                  key={activeHolding.id}
-                  id={activeHolding.id}
-                  onBack={() => navigate('investments')}
-                  onSource={openSource}
-                  onHolding={openHolding}
-                />
-              ) : (
-                <InvestmentsView
-                  family={route.family}
-                  onFamily={family}
-                  onHolding={openHolding}
-                  onExport={() => preview(null)}
-                  onManagers={() => navigate('intelligence')}
-                  onSource={openSource}
-                />
-              )
-            ) : null}
-            {route.view === 'timeline' ? (
-              <TimelineView
-                family={route.family}
-                onFamily={family}
-                onSource={openSource}
-              />
-            ) : null}
-            {route.view === 'inbox' && state.identity?.dataScope ? (
-              <InboxView
-                family={route.family}
-                onFamily={family}
-                onHolding={openHolding}
-              />
-            ) : null}
-            {route.view === 'ledger' ? (
-              <LedgerView family={route.family} onFamily={family} />
-            ) : null}
-            {route.view === 'exceptions' ? (
-              <ExceptionInboxView
-                family={route.family}
-                onFamily={family}
-                onHolding={openHolding}
-                onSource={openOriginal}
-                onReview={openReview}
-              />
-            ) : null}
-            {route.view === 'calendar' ? (
-              <ReportingCalendarView
-                family={route.family}
-                onFamily={family}
-                onHolding={openHolding}
-                onSource={openOriginal}
-                onReview={openReview}
-              />
-            ) : null}
-            {route.view === 'intelligence' && !state.identity?.dataScope ? (
+            {!loading && viewAllowed && state.identity ? (
               <>
-                <div className="workspace-subnavigation">
-                  <Button
-                    variant="ghost"
-                    onClick={() => navigate('investments')}
-                  >
-                    Back to investments
-                  </Button>
-                </div>
-                <IntelligenceView family={route.family} />
-              </>
-            ) : null}
-            {route.view === 'operations' && canAdmin ? (
-              <OperationsView />
-            ) : null}
-            {route.view === 'setup' && !hasDataScope ? (
-              <Tabs defaultValue="register">
-                <PageHeading
-                  title="Office setup"
-                  subtitle="Families, legal entities, accounts and workspace administration."
-                />
-                <TabsList variant="line" className="workspace-subnavigation">
-                  <TabsTrigger value="register">
-                    Families & accounts
-                  </TabsTrigger>
-                  {canAdmin ? (
-                    <TabsTrigger value="operations">
-                      Service operations
-                    </TabsTrigger>
-                  ) : null}
-                  <TabsTrigger value="team">Team & access</TabsTrigger>
-                </TabsList>
-                <TabsContent value="register">
-                  <LedgerView
+                {route.view === 'overview' ? (
+                  <Overview
                     family={route.family}
                     onFamily={family}
-                    mode="setup"
+                    onNavigate={navigate}
+                    onHolding={openHolding}
+                    onSource={openSource}
+                    onExport={() => preview(null)}
+                    taskStatus={state.taskStatus}
                   />
-                </TabsContent>
-                {canAdmin ? (
-                  <TabsContent value="operations">
-                    <OperationsView />
-                  </TabsContent>
                 ) : null}
-                <TabsContent value="team">
-                  <TeamSettings />
-                </TabsContent>
-              </Tabs>
-            ) : null}
-            {route.view === 'agents' && state.identity && !hasDataScope ? (
-              <ProcessingView
-                key={route.jobId ?? 'processing'}
-                initialJobId={route.jobId}
-              />
-            ) : null}
-            {route.view === 'risk' ? (
-              <RiskView family={route.family} onFamily={family} />
-            ) : null}
-            {route.view === 'connections' && state.identity && !hasDataScope ? (
-              <ConnectionsView
-                tab={route.connectionsTab}
-                onTabChange={(connectionsTab) =>
-                  changeRoute({ connectionsTab })
-                }
-                onDocuments={() => navigate('agents')}
-              />
-            ) : null}
-            {route.view === 'reports' ? (
-              <>
-                <PageHeading
-                  title="Reports"
-                  subtitle="Reproducible reporting, reconciled cash flows and portfolio scenarios."
-                >
-                  <FamilyPicker value={route.family} onChange={family} />
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('calendar')}
-                  >
-                    Reporting calendar
-                  </Button>
-                </PageHeading>
-                <ReportingWorkbench
-                  key={`${state.identity?.organizationId ?? 'loading'}:${route.family}`}
-                  family={route.family}
-                  onFamily={family}
-                  onSource={openSource}
-                  onLegacyPreview={preview}
-                />
+                {route.view === 'investments' ? (
+                  activeHolding ? (
+                    <InvestmentDetail
+                      key={activeHolding.id}
+                      id={activeHolding.id}
+                      onBack={() => navigate('investments')}
+                      onSource={openSource}
+                      onHolding={openHolding}
+                    />
+                  ) : (
+                    <InvestmentsView
+                      family={route.family}
+                      onFamily={family}
+                      onHolding={openHolding}
+                      onExport={() => preview(null)}
+                      onManagers={() => navigate('intelligence')}
+                      onSource={openSource}
+                    />
+                  )
+                ) : null}
+                {route.view === 'timeline' ? (
+                  <TimelineView
+                    family={route.family}
+                    onFamily={family}
+                    onSource={openSource}
+                  />
+                ) : null}
+                {route.view === 'inbox' && state.identity?.dataScope ? (
+                  <InboxView
+                    family={route.family}
+                    onFamily={family}
+                    onHolding={openHolding}
+                  />
+                ) : null}
+                {route.view === 'ledger' ? (
+                  <LedgerView family={route.family} onFamily={family} />
+                ) : null}
+                {route.view === 'exceptions' ? (
+                  <ExceptionInboxView
+                    family={route.family}
+                    onFamily={family}
+                    onHolding={openHolding}
+                    onSource={openOriginal}
+                    onReview={openReview}
+                  />
+                ) : null}
+                {route.view === 'calendar' ? (
+                  <ReportingCalendarView
+                    family={route.family}
+                    onFamily={family}
+                    onHolding={openHolding}
+                    onSource={openOriginal}
+                    onReview={openReview}
+                  />
+                ) : null}
+                {route.view === 'intelligence' && !state.identity?.dataScope ? (
+                  <>
+                    <div className="workspace-subnavigation">
+                      <Button
+                        variant="ghost"
+                        onClick={() => navigate('investments')}
+                      >
+                        Back to investments
+                      </Button>
+                    </div>
+                    <IntelligenceView family={route.family} />
+                  </>
+                ) : null}
+                {route.view === 'operations' && canAdmin ? (
+                  <OperationsView />
+                ) : null}
+                {route.view === 'setup' && !hasDataScope ? (
+                  <Tabs defaultValue="register">
+                    <PageHeading
+                      title="Office setup"
+                      subtitle="Families, legal entities, accounts and workspace administration."
+                    />
+                    <TabsList
+                      variant="line"
+                      className="workspace-subnavigation"
+                    >
+                      <TabsTrigger value="register">
+                        Families & accounts
+                      </TabsTrigger>
+                      {canAdmin ? (
+                        <TabsTrigger value="operations">
+                          Service operations
+                        </TabsTrigger>
+                      ) : null}
+                      <TabsTrigger value="team">Team & access</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="register">
+                      <LedgerView
+                        family={route.family}
+                        onFamily={family}
+                        mode="setup"
+                      />
+                    </TabsContent>
+                    {canAdmin ? (
+                      <TabsContent value="operations">
+                        <OperationsView />
+                      </TabsContent>
+                    ) : null}
+                    <TabsContent value="team">
+                      <TeamSettings />
+                    </TabsContent>
+                  </Tabs>
+                ) : null}
+                {route.view === 'agents' && state.identity && !hasDataScope ? (
+                  <ProcessingView
+                    key={route.jobId ?? 'processing'}
+                    initialJobId={route.jobId}
+                  />
+                ) : null}
+                {route.view === 'risk' ? (
+                  <RiskView family={route.family} onFamily={family} />
+                ) : null}
+                {route.view === 'connections' &&
+                state.identity &&
+                !hasDataScope ? (
+                  <ConnectionsView
+                    tab={route.connectionsTab}
+                    onTabChange={(connectionsTab) =>
+                      changeRoute({ connectionsTab })
+                    }
+                    onDocuments={() => navigate('agents')}
+                  />
+                ) : null}
+                {route.view === 'reports' ? (
+                  <>
+                    <PageHeading
+                      title="Reports"
+                      subtitle="Reproducible reporting, reconciled cash flows and portfolio scenarios."
+                    >
+                      <FamilyPicker value={route.family} onChange={family} />
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate('calendar')}
+                      >
+                        Reporting calendar
+                      </Button>
+                    </PageHeading>
+                    <ReportingWorkbench
+                      key={`${state.identity?.organizationId ?? 'loading'}:${route.family}`}
+                      family={route.family}
+                      onFamily={family}
+                      onSource={openSource}
+                      onLegacyPreview={preview}
+                    />
+                  </>
+                ) : null}
               </>
             ) : null}
           </Shell>
@@ -521,37 +717,65 @@ export function AsterApp() {
                   Find investments, sources and workspace pages.
                 </DialogDescription>
               </DialogHeader>
-              <Command>
+              <Command shouldFilter={false}>
                 <CommandInput
                   placeholder="Search investments, documents, anything…"
                   aria-label="Search Aster"
+                  value={searchTerm}
+                  onValueChange={setSearchTerm}
                 />
                 <CommandList>
                   <CommandEmpty>No matching records.</CommandEmpty>
                   <CommandGroup heading="Workspace">
-                    {navigationFor(state.identity).map((n) => (
-                      <CommandItem
-                        key={n.id}
-                        onSelect={() => {
-                          navigate(n.id);
-                          setSearchOpen(false);
-                        }}
-                      >
-                        <n.icon />
-                        {n.label}
-                      </CommandItem>
-                    ))}
+                    {navigationFor(state.identity)
+                      .filter((n) =>
+                        n.label.toLocaleLowerCase().includes(searchText),
+                      )
+                      .map((n) => (
+                        <CommandItem
+                          key={n.id}
+                          onSelect={() => {
+                            navigate(n.id);
+                            setSearchOpen(false);
+                          }}
+                        >
+                          <n.icon />
+                          {n.label}
+                        </CommandItem>
+                      ))}
                   </CommandGroup>
                   <CommandGroup heading="Investments">
-                    {data.holdings.map((h) => (
+                    {searchHoldings.map((h) => (
                       <CommandItem
                         key={h.id}
-                        value={h.name + ' ' + h.manager + ' ' + h.familyId}
+                        value={'holding:' + h.id}
                         onSelect={() => openHolding(h.id)}
                       >
                         <FileText />
                         <span>{h.name}</span>
-                        <span className="command-meta">{h.familyId}</span>
+                        <span className="command-meta">
+                          {familyNames.get(h.familyId) ?? 'Family not reported'}
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <CommandGroup heading="Documents & evidence">
+                    {searchSources.map((evidence) => (
+                      <CommandItem
+                        key={evidence.id}
+                        value={'source:' + evidence.id}
+                        onSelect={() => openSource(evidence.id)}
+                      >
+                        <FileText />
+                        <span>
+                          {evidence.filename}
+                          <small className="block text-muted-foreground">
+                            {evidence.subject}
+                          </small>
+                        </span>
+                        <span className="command-meta">
+                          {familyNames.get(evidence.familyId)}
+                        </span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -705,11 +929,18 @@ export function AsterApp() {
                   onClick={() =>
                     downloadHoldings(
                       savedReport?.holdings ??
-                        data.holdings.filter(
-                          (h) =>
-                            route.family === 'all' ||
-                            h.familyId === route.family,
-                        ),
+                        currentReportHoldings(
+                          data.holdings.filter(
+                            (h) =>
+                              route.family === 'all' ||
+                              h.familyId === route.family,
+                          ),
+                          state.historyLifecycle,
+                          state.sampleData &&
+                            !data.evidence.some((e) => !e.synthetic)
+                            ? '2026-09-07'
+                            : new Date().toISOString().slice(0, 10),
+                        ).holdings,
                       savedReport?.family ?? route.family,
                     )
                   }
