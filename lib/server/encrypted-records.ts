@@ -9,6 +9,47 @@ type EncryptedTable = {
 };
 export const encryptedTables: EncryptedTable[] = [
   {
+    table: 'app_archive_destinations',
+    key: ['organization_id'],
+    tenant: true,
+    fields: [
+      {
+        name: 'config',
+        context: (r) =>
+          `archive-config:${String(r.organization_id)}:${String(r.organization_id)}`,
+      },
+    ],
+  },
+  {
+    table: 'app_archive_jobs',
+    key: ['id'],
+    tenant: true,
+    fields: [
+      {
+        name: 'metadata',
+        context: (r) =>
+          `archive-metadata:${String(r.organization_id)}:${String(r.id)}`,
+      },
+      {
+        name: 'receipt',
+        context: (r) =>
+          `archive-receipt:${String(r.organization_id)}:${String(r.id)}`,
+      },
+    ],
+  },
+  {
+    table: 'app_archive_commands',
+    key: ['organization_id', 'idempotency_key'],
+    tenant: true,
+    fields: [
+      {
+        name: 'result',
+        context: (r) =>
+          `archive-command:${String(r.organization_id)}:${String(r.idempotency_key)}`,
+      },
+    ],
+  },
+  {
     table: 'app_workspace',
     key: ['organization_id'],
     tenant: true,

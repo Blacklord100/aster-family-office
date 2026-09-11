@@ -36,7 +36,9 @@
     "keys:rotate": "node dist-ops/rotate-keys.js --apply",
     "monitor": "node dist-ops/monitor.js",
     "predev": "node scripts/prepare-pdf-worker.mjs",
-    "prebuild": "node scripts/prepare-pdf-worker.mjs"
+    "prebuild": "node scripts/prepare-pdf-worker.mjs",
+    "archive:worker": "node dist-archive-worker/index.js",
+    "archive:dev": "node --conditions=react-server --import tsx --env-file=.env.local scripts/archive-worker.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

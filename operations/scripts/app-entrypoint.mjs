@@ -102,15 +102,20 @@ try {
     process.env.BOOTSTRAP_DATABASE_URL = process.env.DATABASE_URL;
   }
   if (
-    !['mailbox', 'folder', 'delivery', 'report-obligations'].includes(
-      process.env.ASTER_SERVICE,
-    )
+    ![
+      'mailbox',
+      'folder',
+      'archive',
+      'delivery',
+      'report-obligations',
+    ].includes(process.env.ASTER_SERVICE)
   ) {
     const auth = secret('BETTER_AUTH_SECRET');
     if (auth.length < 32)
       throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');
     secret('PROCESSOR_TOKEN');
   }
+  if (process.env.ASTER_SERVICE === 'archive') secret('PROCESSOR_TOKEN');
   const encryption = secret('ENCRYPTION_KEY');
   if (Buffer.from(encryption, 'base64').length !== 32)
     throw new Error('ENCRYPTION_KEY must encode 32 bytes');

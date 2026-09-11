@@ -16,10 +16,10 @@ RUN npm run build
 RUN test -f .next/standalone/server.js && test -f dist-worker/index.js \
     && test -f dist-mailbox-worker/index.js && test -f dist-delivery-worker/index.js \
     && test -f dist-report-obligations-worker/index.js \
-    && test -f dist-folder-worker/index.js \
+    && test -f dist-folder-worker/index.js && test -f dist-archive-worker/index.js \
     && test -f dist-ops/migrate.js && test -f dist-ops/bootstrap.js
 RUN npm prune --omit=dev
-RUN mkdir -p /runtime-dirs/aster-health /runtime-dirs/aster-intake
+RUN mkdir -p /runtime-dirs/aster-health /runtime-dirs/aster-intake /runtime-dirs/aster-archive
 
 FROM ${NODE_RUNTIME_IMAGE} AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 PATH="/nodejs/bin:${PATH}"
@@ -32,6 +32,7 @@ COPY --from=builder --chown=1000:1000 /app/dist-mailbox-worker ./dist-mailbox-wo
 COPY --from=builder --chown=1000:1000 /app/dist-delivery-worker ./dist-delivery-worker
 COPY --from=builder --chown=1000:1000 /app/dist-report-obligations-worker ./dist-report-obligations-worker
 COPY --from=builder --chown=1000:1000 /app/dist-folder-worker ./dist-folder-worker
+COPY --from=builder --chown=1000:1000 /app/dist-archive-worker ./dist-archive-worker
 COPY --from=builder --chown=1000:1000 /app/dist-ops ./dist-ops
 COPY --from=builder --chown=1000:1000 /app/migrations ./migrations
 COPY --from=builder --chown=1000:1000 /app/node_modules ./node_modules
@@ -48,6 +49,7 @@ COPY operations/scripts/bootstrap-stdin.mjs /opt/aster/bootstrap-stdin.mjs
 COPY operations/scripts/worker-healthcheck.mjs /opt/aster/worker-healthcheck.mjs
 COPY --from=builder --chown=1000:1000 /runtime-dirs/aster-health /run/aster-health
 COPY --from=builder --chown=1000:1000 /runtime-dirs/aster-intake /run/aster-intake
+COPY --from=builder --chown=1000:1000 /runtime-dirs/aster-archive /run/aster-archive
 USER 1000:1000
 EXPOSE 3000
 ENTRYPOINT ["/nodejs/bin/node", "/opt/aster/app-entrypoint.mjs"]

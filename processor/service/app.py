@@ -15,7 +15,7 @@ from starlette.responses import JSONResponse
 from .config import Settings
 from .schema import Extraction, Mode
 from .engines import selection
-from .runtime_limits import DOCUMENT_TIMEOUT_SECONDS, ENGINE_TEST_TIMEOUT_SECONDS, ENGINE_INFO_TIMEOUT_SECONDS
+from .runtime_limits import DOCUMENT_TIMEOUT_SECONDS, ENGINE_TEST_TIMEOUT_SECONDS, ENGINE_INFO_TIMEOUT_SECONDS, EMAIL_SNAPSHOT_TIMEOUT_SECONDS
 
 
 def child_environment(tmpdir):
@@ -44,7 +44,9 @@ class BoundedAuthenticatedUpload:
             if message['type'] == 'http.disconnect':
                 return
             body.extend(message.get('body', b''))
-            if len(body) > (self.maximum if scope['path'] in ('/v1/extract', '/v1/knowledge/decode') else 65536):
+            maximum = (self.maximum if scope['path'] in ('/v1/extract', '/v1/knowledge/decode') else
+                       512 * 1024 if scope['path'] == '/v1/archive/email-snapshot' else 65536)
+            if len(body) > maximum:
                 return await JSONResponse({'detail': 'Request too large'}, status_code=413)(scope, receive, send)
             if not message.get('more_body', False):
                 break
@@ -85,20 +87,23 @@ def create_app(settings: Settings | None = None):
                     pass
         try:
             def run():
+                snapshot = payload.get('operation') == 'email_snapshot'
                 child_settings = asdict(settings)
                 child_settings['token'] = 'internal-worker-has-no-http-auth'
-                child_request = {**payload, 'settings': child_settings}
+                child_request = payload if snapshot else {**payload, 'settings': child_settings}
                 with tempfile.TemporaryDirectory(prefix='aster-request-') as request_tmp:
-                    child = subprocess.Popen([sys.executable, '-m', 'service.request_worker'], stdin=subprocess.PIPE,
+                    module = 'service.email_snapshot_worker' if snapshot else 'service.request_worker'
+                    child = subprocess.Popen([sys.executable, '-m', module], stdin=subprocess.PIPE,
                                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True,
                                              env=child_environment(request_tmp))
                     children.append(child)
                     if stopped.is_set():
                         stop_child()
                     try:
-                        deadline = (ENGINE_INFO_TIMEOUT_SECONDS if payload.get('operation') == 'engine_info' else
+                        deadline = (EMAIL_SNAPSHOT_TIMEOUT_SECONDS if snapshot else
+                                    ENGINE_INFO_TIMEOUT_SECONDS if payload.get('operation') == 'engine_info' else
                                     ENGINE_TEST_TIMEOUT_SECONDS if is_test else DOCUMENT_TIMEOUT_SECONDS)
-                        output, _ = child.communicate(json.dumps(child_request).encode(), timeout=deadline)
+                        output, _ = child.communicate(json.dumps(child_request, ensure_ascii=not snapshot).encode(), timeout=deadline)
                     except subprocess.TimeoutExpired as exc:
                         stop_child()
                         child.communicate()
@@ -106,9 +111,16 @@ def create_app(settings: Settings | None = None):
                 if child.returncode != 0:
                     raise HTTPException(422, 'Document processing failed within the local sandbox')
                 try:
+                    if snapshot:
+                        from .email_snapshot import MAX_RESPONSE_BYTES
+                        if len(output) > MAX_RESPONSE_BYTES:
+                            raise ValueError('Snapshot response limit exceeded')
                     parsed = json.loads(output)
                     if 'inputError' in parsed:
                         raise HTTPException(422, parsed['inputError'])
+                    if snapshot:
+                        from .email_snapshot import EmailSnapshotResult
+                        return EmailSnapshotResult.model_validate(parsed)
                     if payload.get('operation') == 'engine_info':
                         from .engine_info import EngineInfo
                         return EngineInfo.model_validate(parsed)
@@ -153,6 +165,15 @@ def create_app(settings: Settings | None = None):
         return await sandbox(request, {'data': base64.b64encode(data).decode('ascii'), 'filename': file.filename or '',
                            'mime': file.content_type or '', 'document_id': document_id, 'mode': mode,
                            'engine': selected.model_dump(exclude_none=True) if engine is not None else None})
+
+    @app.post('/v1/archive/email-snapshot')
+    async def email_snapshot(request: Request):
+        from .email_snapshot import EmailSnapshotRequest
+        try:
+            query = EmailSnapshotRequest.model_validate(await request.json())
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Invalid or oversized email snapshot input') from None
+        return await sandbox(request, {'operation': 'email_snapshot', 'query': query.model_dump(exclude_none=True)})
 
     @app.post('/v1/engine-test')
     async def engine_test(request: Request):

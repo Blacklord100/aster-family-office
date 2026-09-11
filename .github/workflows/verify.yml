@@ -60,6 +60,7 @@ jobs:
           ASTER_WORKER_SCOPE_INTEGRATION: '1'
           ASTER_MAILBOX_INTEGRATION: '1'
           ASTER_FOLDER_INTEGRATION: '1'
+          ASTER_ARCHIVE_INTEGRATION: '1'
           ASTER_DEMO_INTEGRATION: '1'
           ASTER_MCP_INTEGRATION: '1'
         run: >-
@@ -73,6 +74,7 @@ jobs:
           lib/server/worker-scope.test.ts
           lib/server/mailbox.integration.test.ts
           lib/server/folder.integration.test.ts lib/server/demo.integration.test.ts
+          lib/server/archive.integration.test.ts
           lib/server/mcp.integration.test.ts
       - name: Processor checks with offline model transports
         run: |

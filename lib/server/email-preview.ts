@@ -176,5 +176,24 @@ export async function parseEmailPreview(
         : []),
     ],
   };
-  return { response, attachments };
+  const archiveHeaders = [
+    { name: 'From', value: response.from },
+    { name: 'To', value: response.to.join(', ') },
+    {
+      name: 'Cc',
+      value: (email.cc ?? []).slice(0, 50).map(address).join(', '),
+    },
+    {
+      name: 'Bcc',
+      value: (email.bcc ?? []).slice(0, 50).map(address).join(', '),
+    },
+    {
+      name: 'Reply-To',
+      value: (email.replyTo ?? []).slice(0, 50).map(address).join(', '),
+    },
+    { name: 'Date', value: response.sentAt ?? '' },
+    { name: 'Subject', value: response.subject },
+    { name: 'Message-ID', value: text(email.messageId, 1000) },
+  ].filter((header) => header.value);
+  return { response, attachments, archiveHeaders };
 }

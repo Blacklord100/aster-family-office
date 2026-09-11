@@ -57,3 +57,6 @@ next-env.d.ts
 **/.runtime/
 /operations/secrets/
 /operations/backups/
+
+# Compiled local document archival worker
+/dist-archive-worker/

@@ -79,6 +79,8 @@ services:
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       EMAIL_DELIVERY_ENABLED: ${EMAIL_DELIVERY_ENABLED:-false}
       ASTER_INTAKE_ROOT: /run/aster-intake
+      ASTER_ARCHIVE_ROOT: /run/aster-archive
+      ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive
     secrets:
       - source: runtime_password
         target: db_password
@@ -92,6 +94,7 @@ services:
       - worker_health:/run/aster-health:ro
       - ./receipts:/run/aster-receipts:ro
       - intake_data:/run/aster-intake:ro
+      - archive_data:/run/aster-archive
     # Only loopback published. Use Caddy or your own TLS ingress for remote access.
     ports: ["127.0.0.1:${ASTER_LOCAL_PORT:-3000}:3000"]
     tmpfs:
@@ -201,6 +204,50 @@ services:
     networks: [database]
     depends_on:
       postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "/opt/aster/worker-healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 75s
+    mem_limit: 512m
+    pids_limit: 64
+  archive-worker:
+    <<: *hardening
+    image: ${ASTER_IMAGE:-aster-web:local}
+    user: "1000:1000"
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: archive
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      PROCESSOR_URL: http://processor:8000
+      ASTER_ARCHIVE_ROOT: /run/aster-archive
+      ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+      - processor_token
+    command: ["node", "dist-archive-worker/index.js"]
+    volumes:
+      - archive_data:/run/aster-archive
+      - worker_health:/run/aster-health
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000"]
+    # Original files never leave the database and deployment-local archive/renderer networks.
+    networks: [database, local-confidential]
+    depends_on:
+      postgres: {condition: service_healthy}
+      processor: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "node", "/opt/aster/worker-healthcheck.mjs"]
       interval: 30s
@@ -422,6 +469,7 @@ networks:
   database: {internal: true}
   local-confidential: {internal: true}
 volumes:
+  archive_data:
   intake_data: {}
   worker_health: {}
   postgres_data: {}

@@ -24,9 +24,10 @@ const sharp = nextRequire('sharp');
 assert.ok((await sharp({ create: { width: 1, height: 1, channels: 4, background: '#ffffff' } }).png().toBuffer()).length > 0);
 const pdfWorkerName = (await readdir('/app/.next/standalone/public/pdfjs')).find((name) => /^pdf\.worker-.*\.min\.mjs$/.test(name));
 assert.ok(pdfWorkerName);
-for (const service of ['worker', 'folder-worker', 'mailbox-worker', 'delivery-worker', 'report-obligations-worker'])
+for (const service of ['worker', 'folder-worker', 'archive-worker', 'mailbox-worker', 'delivery-worker', 'report-obligations-worker'])
   await access(`/app/dist-${service}/index.js`);
 await access('/app/migrations/014-demo-workspaces.sql');
+await access('/app/migrations/015-document-archive.sql');
 await access('/app/dist-ops/bootstrap.js');
 
 // Exercise the real password-file wrapper and compiled command, stopping at the

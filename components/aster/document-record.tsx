@@ -40,6 +40,7 @@ import {
   reportedAmountLabel,
 } from '@/lib/document-pipeline';
 import { ReviewWorkbench } from './review-workbench';
+import { DocumentArchiveStatus } from './archive-settings';
 import { Status } from './primitives';
 import styles from './document-pipeline.module.css';
 
@@ -143,6 +144,8 @@ export function DocumentRecord({
         ) : null}
         <span>Received {documentTimestamp(job.createdAt)}</span>
       </div>
+
+      <DocumentArchiveStatus documentId={job.documentId} />
 
       {active ? (
         <Alert aria-live="polite">

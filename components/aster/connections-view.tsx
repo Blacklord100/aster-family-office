@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
+  Archive,
   ArrowRight,
   CheckCheck,
   Cpu,
@@ -98,6 +99,10 @@ const stamp = (value: string | null) =>
 
 const EnginesView = dynamic(
   () => import('./engines-view').then((module) => module.EnginesView),
+  { loading: () => <Skeleton className="h-52 w-full" /> },
+);
+const ArchiveSettings = dynamic(
+  () => import('./archive-settings').then((module) => module.ArchiveSettings),
   { loading: () => <Skeleton className="h-52 w-full" /> },
 );
 
@@ -282,7 +287,7 @@ function ScopedConnectionsView({
     <>
       <PageHeading
         title="Connections"
-        subtitle="Connect your sources, choose your AI and manage app access."
+        subtitle="Connect your sources, retain originals and choose your AI."
       >
         {tab === 'mailboxes' || tab === 'folders' ? (
           <Button
@@ -316,6 +321,10 @@ function ScopedConnectionsView({
               <FolderOpen />
               Folders
             </TabsTrigger>
+            <TabsTrigger value="archive">
+              <Archive />
+              Archive
+            </TabsTrigger>
             <TabsTrigger value="engines">
               <Cpu />
               AI engines
@@ -328,6 +337,9 @@ function ScopedConnectionsView({
         </div>
         <TabsContent value="engines">
           {tab === 'engines' ? <EnginesView /> : null}
+        </TabsContent>
+        <TabsContent value="archive">
+          {tab === 'archive' ? <ArchiveSettings /> : null}
         </TabsContent>
         <TabsContent value="folders">
           <FolderConnections refresh={refresh} />

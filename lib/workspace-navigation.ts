@@ -1,6 +1,7 @@
 export const connectionTabs = [
   'mailboxes',
   'folders',
+  'archive',
   'engines',
   'tools',
 ] as const;

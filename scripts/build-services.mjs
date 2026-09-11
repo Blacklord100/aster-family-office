@@ -3,6 +3,7 @@ for (const name of [
   'worker',
   'mailbox-worker',
   'folder-worker',
+  'archive-worker',
   'delivery-worker',
   'report-obligations-worker',
 ])

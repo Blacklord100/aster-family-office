@@ -157,6 +157,7 @@ export async function requireWorkspace(
         '/api/reporting',
         '/api/report-obligations',
       ].includes(path) ||
+        /^\/api\/archive\/documents\/[a-f0-9-]{36}$/i.test(path) ||
         /^\/api\/documents\/[a-f0-9-]{36}(?:\/preview|\/email(?:\/attachments\/\d{1,2})?)?$/i.test(
           path,
         ));
