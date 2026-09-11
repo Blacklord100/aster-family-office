@@ -2677,6 +2677,12 @@ a:focus-visible {
   text-align: right;
   white-space: nowrap;
 }
+.print-report th.report-family-cell,
+.print-report td.report-family-cell {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .print-report .print-note {
   font-size: 10px;
   line-height: 1.8;
@@ -3394,6 +3400,16 @@ a:focus-visible {
   }
   .print-report .value-chart {
     height: 160px !important;
+  }
+  .print-report .recharts-wrapper {
+    /* Match the A4 report's 180mm content width. Recharts' intermediate
+       measurement element has zero width, so percentages collapse here. */
+    width: 180mm !important;
+    max-width: none !important;
+  }
+  .print-report .recharts-surface {
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .print-report * {
     -webkit-print-color-adjust: exact;

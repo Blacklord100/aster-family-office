@@ -458,6 +458,9 @@ export function PrintableReport({
         <thead>
           <tr>
             <th>Investment</th>
+            {scope === 'all' ? (
+              <th className="report-family-cell">Family</th>
+            ) : null}
             <th>Value</th>
             <th>Weight</th>
             <th>Valuation date</th>
@@ -467,6 +470,11 @@ export function PrintableReport({
           {hs.map((h) => (
             <tr key={h.id}>
               <td>{h.name}</td>
+              {scope === 'all' ? (
+                <td className="report-family-cell">
+                  {familyLabel(h.familyId, data.families)}
+                </td>
+              ) : null}
               <td>
                 {h.valuationStatus === 'unknown'
                   ? 'Not reported'

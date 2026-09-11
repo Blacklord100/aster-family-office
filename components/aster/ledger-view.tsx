@@ -1275,6 +1275,7 @@ export function LedgerView({
   const response =
     snapshot?.contextKey === contextKey ? snapshot.response : null;
   const [sourceId, setSourceId] = useState<string | null>(null);
+  const sourceHeading = useRef<HTMLHeadingElement>(null);
   const [tab, setTab] = useState(mode === 'setup' ? 'register' : 'obligations');
   const requests = useRef(0);
   const inFlight = useRef<AbortController | null>(null);
@@ -2622,9 +2623,14 @@ export function LedgerView({
                 if (!isOpen) setSourceId(null);
               }}
             >
-              <DialogContent className={styles.dialog}>
+              <DialogContent
+                className={styles.dialog}
+                initialFocus={sourceHeading}
+              >
                 <DialogHeader>
-                  <DialogTitle>Cash notice evidence</DialogTitle>
+                  <DialogTitle ref={sourceHeading} tabIndex={-1}>
+                    Cash notice evidence
+                  </DialogTitle>
                   <DialogDescription>
                     Original source and accepted fact provenance
                   </DialogDescription>

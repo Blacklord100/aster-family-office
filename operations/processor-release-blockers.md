@@ -1,8 +1,14 @@
 # Processor release blockers
 
-## Candidate `c9beb14` verified 10 September 2026
+## Candidate `edca127` verified 10 September 2026 UTC
 
-The latest completed [release run 34527904114](https://github.com/Blacklord100/aster-family-office/actions/runs/34527904114), commit `c9beb1454063ce5740ab3c2044f4c0770691ac01`, passed both image builds, nonroot/read-only probes, network-disabled app startup and authenticated processor OCR, **606 processor tests in the built runtime without network**, the web-image scan and repository secret scan. The processor image-security gate remains blocked.
+[Release run 34529320613](https://github.com/Blacklord100/aster-family-office/actions/runs/34529320613), commit `edca127bf7d44cdd17e0cd966e9ee3d69b7f248d`, passed the complete application job: 769 ordinary tests, all 74 database lifecycle/isolation assertions, 618 host Python tests including runtime checks, lint, typecheck, production build, migrations, zero npm audit vulnerabilities and SBOM generation. Both container builds, nonroot/read-only probes, network-disabled startup/authenticated OCR, 606 built-processor tests, web-image scan and repository secret scan passed.
+
+Its retained processor scan (`2026-09-10T21:04:49.568747112Z`, image `sha256:9a305e91bf2551583c7653724afeffcc922f7ccb8555ba29c6571f7f6bf97d7c`) still reports exactly the same three HIGH findings below, without a `FixedVersion`. Inventory coverage is complete: 27/27 retained native identities and 32/32 locked Linux Python packages. The processor gate remains blocked solely by those findings. This evidence qualifies that commit; subsequent UI refinements have their own build/browser checks and release runs.
+
+## Earlier candidate `c9beb14`
+
+The earlier [release run 34527904114](https://github.com/Blacklord100/aster-family-office/actions/runs/34527904114), commit `c9beb1454063ce5740ab3c2044f4c0770691ac01`, passed both image builds, nonroot/read-only probes, network-disabled app startup and authenticated processor OCR, **606 processor tests in the built runtime without network**, the web-image scan and repository secret scan. The processor image-security gate remained blocked.
 
 The retained scan was created at `2026-09-10T20:50:29.714103455Z` for image `sha256:43dbebebf79f8b6be3de7e2a950faa0d66d42b37d73601b66e33aa855fcca460` (`aster-processor:verify`, Debian 13.6). Independent replay of the package-coverage validator reports exactly the same **three HIGH findings** in the table below: two against `libtiff6 4.7.2-1+aster1`, one against `tesseract-ocr 5.5.3-1+aster1`, each without a `FixedVersion`. All 27 retained native package identities are covered within 34 scanned OS packages, and all 32 locked Linux Python packages are covered. No missing package identity caused the validator failure; its only error is the three outstanding HIGH findings.
 
