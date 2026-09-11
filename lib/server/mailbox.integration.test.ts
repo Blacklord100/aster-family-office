@@ -503,6 +503,14 @@ describe.skipIf(!enabled)(
           apiKey: 'synthetic-recovery-credential-never-real',
         }),
       );
+      // Compare the restored inventory with the migrated source schema so new
+      // application tables cannot leave this assertion stale. The drill also
+      // refuses any source table absent from its explicit restoration inventory.
+      const expectedTables = (
+        await admin.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM pg_tables WHERE schemaname='public'",
+        )
+      ).rows[0].count;
       const output = execFileSync(
         process.execPath,
         ['operations/scripts/native-recovery-drill.mjs'],
@@ -514,7 +522,7 @@ describe.skipIf(!enabled)(
       );
       const report = JSON.parse(output.trim());
       expect(report.result).toBe('passed');
-      expect(report.tables).toBe(34);
+      expect(report.tables).toBe(expectedTables);
       expect(report.decryptedRecords).toBeGreaterThanOrEqual(5);
       expect(
         report.decryptedFields['app_engine_revisions.payload'],
