@@ -3,4 +3,5 @@
 ARG OLLAMA_IMAGE
 FROM ${OLLAMA_IMAGE}
 RUN groupadd -g 10001 aster && useradd -u 10001 -g 10001 -m -d /home/aster aster
+ENV HOME=/home/aster
 USER aster

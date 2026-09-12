@@ -11,6 +11,25 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def run_security_regression(binary):
+    try:
+        run = subprocess.run([str(binary)], capture_output=True, text=True, timeout=30,
+                             env={**os.environ, 'OMP_NUM_THREADS': '1'})
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError('Native security regression exceeded its 30 second limit') from error
+    if run.returncode != 0:
+        # These streams contain only our synthetic fixtures. Preserve bounded
+        # diagnostics rather than hiding the failed assertion in CalledProcessError.
+        raise RuntimeError(f'Native security regression exited {run.returncode}\n'
+                           f'stdout (last 8192 characters):\n{run.stdout[-8192:]}\n'
+                           f'stderr (last 8192 characters):\n{run.stderr[-8192:]}')
+    checks = json.loads(run.stdout.strip().splitlines()[-1])
+    if checks != {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
+                  'tiffCodecCases': 3, 'passed': True}:
+        raise RuntimeError('Unexpected security regression coverage')
+    return checks
+
+
 def main():
     root = Path('/build')
     sources = json.loads((root / 'upstream-sources.json').read_text())
@@ -23,6 +42,10 @@ def main():
     # installed development package metadata as Tesseract's own build.
     lept_flags = shlex.split(subprocess.run(['pkg-config', '--cflags', 'lept'], check=True,
                                            capture_output=True, text=True, timeout=10).stdout)
+    # The development package owns the link name too (Debian ships
+    # libleptonica, while older installations used liblept).
+    lept_libraries = shlex.split(subprocess.run(['pkg-config', '--libs', 'lept'], check=True,
+                                               capture_output=True, text=True, timeout=10).stdout)
     # Match internal header ABI to Tesseract's generated build configuration,
     # including FAST_FLOAT (enabled by default), legacy engine and graphics flags.
     # Upstream selects C++20 when the Debian builder supports it; internal
@@ -30,14 +53,9 @@ def main():
     subprocess.run(['g++', '-std=c++20', '-O1', '-fstack-protector-strong', '-DHAVE_CONFIG_H',
                     *(f'-I{path}' for path in includes), *lept_flags, '-I/opt/libtiff/include',
                     str(root / 'security-regression.cc'), '-o', str(binary),
-                    '-L/opt/tesseract/lib', '-L/opt/libtiff/lib', '-ltesseract', '-ltiff', '-llept', '-pthread'],
+                    '-L/opt/tesseract/lib', '-L/opt/libtiff/lib', '-ltesseract', '-ltiff', *lept_libraries, '-pthread'],
                    check=True, timeout=120)
-    run = subprocess.run([str(binary)], capture_output=True, text=True, check=True, timeout=30,
-                         env={**os.environ, 'OMP_NUM_THREADS': '1'})
-    checks = json.loads(run.stdout.strip().splitlines()[-1])
-    if checks != {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
-                  'tiffCodecCases': 3, 'passed': True}:
-        raise RuntimeError('Unexpected security regression coverage')
+    checks = run_security_regression(binary)
     # Retain exact source identities for original release fixes as well as backports.
     relevant = {'tesseract': ['src/lstm/convolve.cpp', 'src/lstm/reconfig.cpp',
                               'src/classify/normmatch.cpp', 'src/lstm/fullyconnected.cpp',

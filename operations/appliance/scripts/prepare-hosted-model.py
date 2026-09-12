@@ -16,6 +16,20 @@ import subprocess
 UNUSED_SDKS = (Path('/usr/local/lib/android'), Path('/usr/share/dotnet'))
 
 
+def memory_budget(meminfo, model_bytes):
+    values = {line.split(':', 1)[0]: int(line.split()[1]) * 1024 for line in meminfo.splitlines()
+              if line.startswith(('MemTotal:', 'MemAvailable:'))}
+    total, available = values['MemTotal'], values['MemAvailable']
+    reserve = 2 * 1024**3
+    # Leave room above the complete weights/projector bytes for a bounded context,
+    # CPU runtime and vision preprocessing. A smaller host gets a clear refusal.
+    minimum = ((model_bytes + reserve + 1024**3 - 1) // 1024**3) * 1024**3
+    limit = min(12 * 1024**3, min(total, available) - reserve)
+    return {'totalBytes': total, 'availableBytes': available, 'hostReserveBytes': reserve,
+            'minimumModelMemoryBytes': minimum, 'modelMemoryBytes': max(0, limit),
+            'adequate': limit >= minimum}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path)
@@ -35,6 +49,10 @@ def main():
         lock = json.loads(args.model_lock.read_text())
         # Model download + retained10GiB reserve +4GiB temporary image/build room.
         model_bytes = sum(item['size'] for item in lock['files'])
+        receipt['memory'] = memory_budget(Path('/proc/meminfo').read_text(), model_bytes)
+        receipt['cpuCount'] = os.cpu_count()
+        if not receipt['memory']['adequate']:
+            raise ValueError('Insufficient available RAM for the bounded text+vision smoke plus the2GiB host reserve')
         receipt['requiredFreeBytes'] = model_bytes + receipt['reserveBytes'] + 4 * 1024**3
         receipt['freeBytesBefore'] = shutil.disk_usage(args.output.parent).free
         for sdk in UNUSED_SDKS:

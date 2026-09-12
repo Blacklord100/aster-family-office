@@ -75,27 +75,38 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/aster-model-smoke"
           python3 operations/appliance/scripts/fetch-model.py --output "$RUNNER_TEMP/aster-model-smoke/model"
+          python3 operations/appliance/scripts/prepare-bounded-cache.py --model "$RUNNER_TEMP/aster-model-smoke/model"
           aster_ollama_base=$(python3 -c 'import json;print(json.load(open("operations/appliance/image-lock.json"))["bases"]["ollama"])')
           docker build --platform linux/amd64 --build-arg "OLLAMA_IMAGE=$aster_ollama_base" -f operations/Dockerfile.ollama -t aster-ollama:bounded operations
       - name: Start a disposable internal model service with bounded memory/context
         run: |
+          aster_model_memory=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["memory"]["modelMemoryBytes"])' "$RUNNER_TEMP/aster-model-smoke/host-admission.json")
           docker network create --internal aster-bounded-model
           docker run -d --name aster-bounded-model --network aster-bounded-model --dns 127.0.0.1 \
             --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 \
-            --memory 6g --memory-swap 6g --pids-limit 256 \
+            --memory "$aster_model_memory" --memory-swap "$aster_model_memory" --pids-limit 256 \
             --tmpfs /tmp:rw,nosuid,size=128m,uid=10001,gid=10001 \
             --tmpfs /home/aster:rw,noexec,nosuid,size=8m,uid=10001,gid=10001 \
             --mount "type=bind,src=$RUNNER_TEMP/aster-model-smoke/model/ollama,dst=/models,readonly" \
-            -e OLLAMA_MODELS=/models -e OLLAMA_HOST=0.0.0.0:11434 -e OLLAMA_NO_CLOUD=1 \
+            -e HOME=/home/aster -e OLLAMA_MODELS=/models -e OLLAMA_HOST=0.0.0.0:11434 -e OLLAMA_NO_CLOUD=1 \
             -e OLLAMA_NUM_PARALLEL=1 -e OLLAMA_MAX_LOADED_MODELS=1 -e OLLAMA_CONTEXT_LENGTH=512 \
             -p 127.0.0.1:11439:11434 aster-ollama:bounded serve
+          aster_ready=0
           for attempt in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:11439/api/version && break
+            test "$(docker inspect --format '{{.State.Running}}' aster-bounded-model)" = true || { echo 'Bounded model exited before readiness; container diagnostics follow.' >&2; exit 1; }
+            if curl -fsS --max-time 2 http://127.0.0.1:11439/api/version > "$RUNNER_TEMP/aster-model-smoke/ollama-version.json"; then
+              aster_ready=1
+              break
+            fi
             sleep 2
           done
+          test "$aster_ready" = 1 || { echo 'Bounded model did not become ready within60seconds; container diagnostics follow.' >&2; exit 1; }
           python3 operations/appliance/scripts/model-smoke.py --output "$RUNNER_TEMP/aster-model-smoke/linux-smoke.json"
+      - name: Capture model state, limits and logs before cleanup on every outcome
+        if: ${{ always() }}
+        run: python3 operations/appliance/scripts/capture-bounded-model.py --output "$RUNNER_TEMP/aster-model-smoke/diagnostics"
       - name: Retain bounded proof; this does not qualify32GiB production workload
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: bounded-linux-model-evidence
@@ -103,6 +114,9 @@ jobs:
             ${{ runner.temp }}/aster-model-smoke/linux-smoke.json
             ${{ runner.temp }}/aster-model-smoke/model/inventory.json
             ${{ runner.temp }}/aster-model-smoke/host-admission.json
+            ${{ runner.temp }}/aster-model-smoke/cache-permissions.json
+            ${{ runner.temp }}/aster-model-smoke/ollama-version.json
+            ${{ runner.temp }}/aster-model-smoke/diagnostics
           if-no-files-found: error
           retention-days: 30
       - name: Stop only this job's disposable model

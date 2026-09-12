@@ -161,11 +161,16 @@ contracts. Process-observer tests really kill only their own synthetic child
 process, proving phase detection rather than appliance recovery. These are not
 network, inference, restore or hypervisor proof.
 
-The normal 7 GiB GitHub runner can run static/native/lifecycle tests and a bounded
-low-context model smoke test. Hosted smoke admission records disk capacity and may
+Hosted GitHub runners can run static, native and lifecycle tests. The bounded
+low-context model smoke measures actual total and available RAM before admission.
+Its memory cap is at most 12 GiB, with at least 2 GiB left available for the host;
+this model requires at least an 8 GiB bounded cap. Smaller or busy hosts are refused.
+Hosted smoke admission also records disk capacity and may
 remove only the unused preinstalled Android and .NET SDK directories. It keeps
 the 10 GiB reserve plus temporary image space; insufficient capacity produces a
-refusal receipt. Model request failures retain partial timings and errors. It cannot certify the 32 GiB full-workload profile.
+refusal receipt. Model request failures retain partial timings and errors, and
+container state, resource limits and logs are captured before cleanup. This does
+not certify the 32 GiB full-workload profile.
 The full dispatch requires a disposable Ubuntu 24.04 runner with labels
 `self-hosted,linux,x64,aster-qualification`, at least 32 GiB RAM and 250 GiB free disk.
 It must contain no customer services or data. If unavailable, qualification stays

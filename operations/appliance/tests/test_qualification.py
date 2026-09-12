@@ -24,6 +24,8 @@ def module(name):
 UPDATES = module('qualify-updates')
 CONTROLLER = module('collect-controller')
 SMOKE = module('model-smoke')
+CACHE = module('prepare-bounded-cache')
+ADMISSION = module('prepare-hosted-model')
 
 
 @unittest.skipUnless(os.name == 'posix', 'Own process-group signals require POSIX')
@@ -101,6 +103,41 @@ class ModelFailureEvidence(unittest.TestCase):
             with patch.object(SMOKE, 'request', side_effect=ConnectionError('SYNTHETIC unavailable')), contextlib.redirect_stdout(io.StringIO()), self.assertRaises(ConnectionError):
                 SMOKE.qualify('http://127.0.0.1:1', lock, output)
             self.assertEqual(json.loads(output.read_text())['checks'][0]['result'], 'failed')
+
+
+class BoundedRuntimeAdmission(unittest.TestCase):
+    def test_public_host_memory_is_bounded_and_preserves_host_reserve(self):
+        result = ADMISSION.memory_budget('MemTotal: 16777216 kB\nMemAvailable: 14680064 kB\n', 6146502701)
+        self.assertTrue(result['adequate'])
+        self.assertEqual(result['modelMemoryBytes'], 12 * 1024**3)
+        self.assertGreaterEqual(result['availableBytes'] - result['modelMemoryBytes'], 2 * 1024**3)
+
+    def test_small_or_busy_host_is_refused_before_predictable_model_oom(self):
+        for total, available in [(7, 6), (16, 7)]:
+            result = ADMISSION.memory_budget(f'MemTotal: {total * 1024**2} kB\nMemAvailable: {available * 1024**2} kB\n', 6146502701)
+            self.assertFalse(result['adequate'])
+            self.assertLessEqual(result['modelMemoryBytes'], (available - 2) * 1024**3)
+
+    def test_restrictive_fixture_directories_become_traversable_without_changing_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'cache'; root.mkdir(mode=0o700)
+            (root / 'blobs').mkdir(mode=0o700)
+            asset = root / 'blobs/SYNTHETIC'; asset.write_bytes(b'SYNTHETIC'); asset.chmod(0o600)
+            receipt = CACHE.prepare(root, {'files': [{'path': 'blobs/SYNTHETIC', 'size': 9}]})
+            self.assertEqual(receipt['files'], 1)
+            self.assertEqual(root.stat().st_mode & 0o777, 0o755)
+            self.assertEqual((root / 'blobs').stat().st_mode & 0o777, 0o755)
+            self.assertEqual(asset.stat().st_mode & 0o777, 0o444)
+            self.assertEqual(asset.read_bytes(), b'SYNTHETIC')
+
+    def test_symlinked_fixture_cannot_change_permissions_elsewhere(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'cache'; root.mkdir()
+            outside = Path(directory) / 'outside'; outside.write_bytes(b'SYNTHETIC'); outside.chmod(0o600)
+            (root / 'link').symlink_to(outside)
+            with self.assertRaisesRegex(ValueError, 'independent regular assets'):
+                CACHE.prepare(root, {'files': [{'path': 'link', 'size': 9}]})
+            self.assertEqual(outside.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == '__main__':
