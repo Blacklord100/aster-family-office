@@ -8,14 +8,21 @@ see the [release and qualification status](../README.md).
 
 ## Build and verify
 
-Use Go 1.27.1 and the committed module checksums:
+For a source build, use Go 1.27.1 and the committed module checksums. Run these
+commands from the repository root:
 
 ```sh
+cd operations/appliance/cli
 go test -race ./...
 go vet ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o asterctl .
 ```
+
+This produces a Linux amd64 executable. Run it on the target platform and install
+the authenticated executable at a stable, root-owned path on `PATH` before using
+the operator commands below. To generate recovery keys on another platform, use
+an independently authenticated controller built for that machine.
 
 The initial binary and publisher root fingerprint must come through an
 independently authenticated channel. A verifier found inside an untrusted bundle
@@ -56,8 +63,9 @@ controller requires at least 31 GiB visible memory and twice the release size pl
 performance sizing guarantee. Keep host storage encrypted through customer IT.
 
 Generate the recovery identity on an independently controlled machine. The command
-prints only the public recipient. Keep the private file offline and outside the
-appliance and backup destination:
+prints only the public recipient. Create its private parent directory first; the
+output file must not exist. Keep the private file offline and outside the appliance
+and backup destination:
 
 ```sh
 asterctl recovery-key --output /secure/offline/aster-recovery.txt
@@ -85,7 +93,7 @@ chain. For internal TLS, distribute only the public CA certificate at
 `data/caddy/data/caddy/pki/authorities/local/root.crt` through office IT. Never copy
 the CA private key to a browser or bypass certificate validation.
 
-Create the first owner with a strong password stored in a mode-0600 file. No
+Create the first owner with a strong 15–128-character password stored in a mode-0600 file. No
 password appears in command arguments or logs, and no default account exists:
 
 ```sh
@@ -122,7 +130,11 @@ drain/seal and generation barrier. A failed operation leaves an inspectable
 | Restore with an ambiguous database import | `stop --root /var/lib/aster-recovery`, retain that destination, and recover into a different new destination |
 
 Continuation preserves existing keys and database records. A partial PostgreSQL
-initialization is not automatically deleted or regenerated. If an update produced
+initialization is not automatically deleted or regenerated. If installation stopped
+before supplied TLS files were copied, repeat the original `--tls-mode supplied
+--tls-cert /secure/server.crt --tls-key /secure/server.key` options with
+`continue-install`; the journal preserves the hostname and other installation settings.
+If an update produced
 a backup but died before binding its checksum to the journal, continue with
 `--output /independent/backups/new-name.age` while still before migration; an
 unbound existing receipt is never adopted as proof of the recovery point.
@@ -135,6 +147,9 @@ finish and seals the same generation. A candidate that cannot read the migrated
 schema cannot be resumed as a rollback.
 
 ## Coordinated backup and recovery
+
+Prepare the independently managed backup directory first, outside the installation
+root. Each backup output filename must be new:
 
 ```sh
 sudo asterctl backup --root /var/lib/aster --timeout 2h \
@@ -165,13 +180,19 @@ sudo asterctl restore --root /var/lib/aster-recovery \
   --identity /secure/offline/aster-recovery.txt \
   --trust-root /media/trusted/initial-root.json \
   --trust-root-sha256 PUBLISHER_ROOT_SHA256 \
-  --source-fenced --max-restore-gib 256 --timeout 2h
+  --source-fenced --install-runtime --max-restore-gib 256 --timeout 2h
 ```
 
+`--install-runtime` is needed on a fresh server without the exact bundled runtime;
+omit it only when those versions are already installed. The original server must
+remain fenced even when recovery is performed on another host.
+
 The byte limit also reserves that much free capacity before extraction; choose it
-above the known restored size. Existing directories are refused. The complete
-encrypted stream, file inventory, original signed release and supplied independent
-trust are verified before database restore. Recovery validates the already
+above the known restored size. Existing directories are refused. The outer encrypted
+archive, file inventory, original signed release and supplied independent trust are
+verified before database restore. The inner database stream must also authenticate
+through its end before the journal records `database-restored` and recovery can
+proceed to application startup. Recovery validates the already
 installed release at its recorded original verification time, so expired update
 metadata does not strand a historical backup. This exception cannot be used to
 install or update to an expired release. Restored browser sessions and pending

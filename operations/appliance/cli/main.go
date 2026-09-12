@@ -174,7 +174,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		e = c.Install(ctx, InstallOptions{Bundle: *bundle, TrustRoot: *trustRoot, TrustSHA: *trustSHA, Hostname: *hostname, Profile: *profile, TLSMode: *tlsMode, Recipient: *recipient, CertFile: *cert, KeyFile: *key, InstallRuntime: *installRuntime, Continue: name == "continue-install"})
 		if e == nil {
-			fmt.Fprintf(out, "Installed at https://%s. Create the first owner with asterctl bootstrap; MFA enrollment is required. For internal TLS, distribute only the public CA certificate from data/caddy/data/caddy/pki/authorities/local/root.crt.\n", *hostname)
+			installed, err := c.load()
+			if err != nil {
+				return fmt.Errorf("installation completed but its saved configuration cannot be read: %w", err)
+			}
+			fmt.Fprintf(out, "Installed at https://%s. Create the first owner with asterctl bootstrap; MFA enrollment is required. For internal TLS, distribute only the public CA certificate from data/caddy/data/caddy/pki/authorities/local/root.crt.\n", installed.Hostname)
 		}
 		return e
 	case "bootstrap":

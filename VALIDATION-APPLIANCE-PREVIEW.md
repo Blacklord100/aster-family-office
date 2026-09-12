@@ -7,25 +7,28 @@ these checks. Existing native development services and their data were not repla
 
 ## Application and durable operations
 
-Candidate `921d4e0e46bb3ed3a73988e3e4a59e2348446be6` passed the functional
-application steps in [Linux run 34705492977](https://github.com/Blacklord100/aster-family-office/actions/runs/34705492977):
+Candidate `2e2264ca5e50599a44dd5629897619b4b1063eb3` passed the complete
+application job in [Linux run 34708383988](https://github.com/Blacklord100/aster-family-office/actions/runs/34708383988):
 
 - 815 ordinary application tests; 109 explicitly gated integration cases were
   deferred to their separate invocation.
 - All 111 database integration cases across 16 files, using a disposable CI
   PostgreSQL service rather than the development or customer database.
-- 655 host processor tests, lint, type checking, production build, migration,
+- 660 host processor tests, lint, type checking, production build, migration,
   dependency audit and SBOM generation.
 
-That application job **failed at artifact upload** because the account's GitHub
-Actions storage quota was reached. Passing functional steps do not make the
-overall job successful. No historic evidence was deleted to conceal or work
-around this failure.
+Its SBOM artifact upload also passed. The earlier candidate `921d4e0` passed
+functional steps but failed at artifact upload because the private account's
+Actions storage quota was reached. Source publication resolved that storage
+restriction for the later public run; no historic evidence was deleted.
 
-The [same candidate's appliance contracts](https://github.com/Blacklord100/aster-family-office/actions/runs/34705492999)
-passed real Docker Compose resolution, packaging contracts, controller race tests,
-static Linux cross-build and Go vulnerability checks. Later packaging refinements
-require their own validation; these receipts are bound to their recorded source.
+The [appliance contracts at `b214384`](https://github.com/Blacklord100/aster-family-office/actions/runs/34708057717)
+passed real Docker Compose resolution, 29 Python packaging tests, five profile
+tests, controller race tests, a static Linux build and Go vulnerability checks.
+The actual controller initialized test trust, signed a synthetic candidate,
+verified externally pinned TUF metadata, packed the media, unpacked it through
+the safe Go reader and verified all 79 payload files again. Synthetic packaging
+does not substitute for installing the complete appliance on a target server.
 
 ## Recovery and release checks
 
@@ -37,11 +40,13 @@ Forward restore continuation never repeats a database import. An ambiguous impor
 requires stopping that destination and recovering into a new one.
 
 The cross-built Linux controller with SHA256
-`18663c73e45f85a8bb6959467400c7c0dcc5d2966172a4a3c81f8c9f8c246295`
+`f58349d917852486f32b000013b699d0c43595061956a2a5b2810bd55eaefe73`
 passed exact-binary `govulncheck` 1.8.0 with zero reachable vulnerable symbols.
 Its SPDX/license inventory identified 14 embedded dependencies and retained their
 notices. This is evidence for those bytes; a later executable needs a new receipt.
-Raw scanner output and module-only findings remain part of the evidence.
+Raw scanner output and module-only findings remain part of the evidence. This
+17,350,519-byte executable was built on Linux from `b214384`; its evidence is
+retained in that run's `appliance-controller-evidence` artifact.
 
 The source-notice collectors passed 29 local regressions. The sharp native source
 policy includes the original build recipe, 29 native source archives and 350
@@ -57,10 +62,23 @@ stopped at its disk-capacity preflight before inference. It produced no Linux
 accuracy or latency measurement. The existing native macOS synthetic demonstration
 is separate evidence, documented in [live demo validation](VALIDATION-LIVE-DEMO.md).
 
-The native OCR libraries compiled in the second Linux candidate, but its regression
-harness used incompatible C++17/configuration settings. The corrected harness uses
-upstream C++20 and generated build configuration. A new compiled-image regression,
-offline OCR run, raw scan and exact-image assessment are still required; see
+The [bounded run at `b214384`](https://github.com/Blacklord100/aster-family-office/actions/runs/34708057717)
+downloaded the exact six-file Gemma pack and started Ollama 0.33.3 successfully
+as UID 10001 on a read-only filesystem. Its retained logs show one model, CPU
+execution and a 12 GiB memory limit, with no OOM. The test client could not reach
+the host-published port on the internal bridge, so it never performed inference.
+The revised client uses the inspected internal container IP directly, as supported
+on a Linux Docker host, with no published port, proxy or redirects. Its real
+text/vision result requires a later run; passing client tests is not model proof.
+
+At `2e2264c`, the built processor passed all 18 native security regression cases,
+625 tests in the network-disabled runtime and authenticated offline OCR. Its exact
+image is `sha256:b859cfffe788c5541c83784f1bd4cabab1d866c6ae62800f9a6d5548d0d2a57c`.
+The image-security job remains failed: the runtime verifier mishandled structured
+file inventory entries, and the raw scan now contains nine HIGH findings,
+including newly reported Tesseract CVE-2026-88051, 88052 and 88053. Those additional
+findings are not covered by the earlier six-finding policy. Retain them and require
+new source, native regression and exact-image assessment evidence; see
 [processor security evidence](operations/processor-release-blockers.md).
 
 The complete qualification runner is a disposable Ubuntu 24.04 amd64 host with
@@ -77,9 +95,12 @@ host-level egress isolation. The Packer VM recipe has syntax validation only.
 
 ## Source publication
 
-The repeatable full-history scan at `921d4e0` covered 36 reachable commits, with
+The repeatable full-history scan at `b214384` covered 38 reachable commits, with
 ten exact previously reviewed false positives and no unresolved credential finding.
 The initial data/asset review covered all 128 historical synthetic PDF fixtures and
 retained third-party asset notices. See [public source review](PUBLIC_RELEASE_REVIEW.md).
-Repeat the source and external GitHub-surface review at publication; a source
-release does not waive appliance qualification or binary-distribution obligations.
+The source was made public under Apache-2.0 at `80a24d6`. Private vulnerability
+reporting, Dependabot security updates, secret scanning, push protection and branch
+checks are enabled; the branch protection retains an administrator exemption.
+Repeat the source review for subsequent releases. Source publication does not
+waive appliance qualification or binary-distribution obligations.

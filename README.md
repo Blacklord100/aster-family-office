@@ -14,7 +14,7 @@ The seven-item expansion adds a sourced investment register and transaction ledg
 
 The [100-email mailroom demonstration](benchmark/mailroom-v1/README.md) supplies three fictional offices, nine inboxes, messy originals and a reproducible four-configuration local-model comparison. See [the collection harness](benchmark/mailroom-v1/HARNESS.md) for execution and preserved scoring.
 
-The [Linux appliance preview](operations/appliance/README.md) now includes a standalone offline installer, pinned Ollama/Gemma text and vision assets, signed release verification, coordinated encrypted backups, guarded updates and interrupted-operation recovery. The [operator guide](operations/appliance/cli/README.md) covers installation, trust, HTTPS, first-owner setup and recovery. The [appliance validation record](VALIDATION-APPLIANCE-PREVIEW.md) distinguishes completed checks from the outstanding full target-host drill and binary-distribution obligations. The appliance is not yet qualified for production. The [original packaging plan](operations/offline-lp-packaging.md) records its intended deployment model.
+The [Linux appliance preview](operations/appliance/README.md) source includes a standalone offline installer, pinned Ollama/Gemma text and vision assets, signed release verification, coordinated encrypted backups, guarded updates and interrupted-operation recovery. The [operator guide](operations/appliance/cli/README.md) covers installation, trust, HTTPS, first-owner setup and recovery. The [appliance validation record](VALIDATION-APPLIANCE-PREVIEW.md) distinguishes completed checks from the outstanding full target-host drill and binary-distribution obligations. No downloadable appliance release is published, and the appliance is not yet qualified for production. The [original packaging plan](operations/offline-lp-packaging.md) records its intended deployment model.
 
 Aster's source is licensed under [Apache-2.0](LICENSE). See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md) and [third-party notices](THIRD_PARTY_NOTICES.md). Binary bundles have additional artifact-specific license, source, security and qualification gates.
 
@@ -61,10 +61,15 @@ The development-only database helper creates an isolated PostgreSQL cluster on 1
 npm run db:migrate:dev
 npm run build:services
 npm run dev
+```
+
+Start the worker in a separate terminal from the same repository directory:
+
+```sh
 npm run worker:dev
 ```
 
-Run the web server and worker in separate terminals. Optional mailbox collection runs in another terminal with `npm run mailbox:dev` after provider configuration. The app uses http://localhost:3000. Production requires HTTPS and does not permit the development origin.
+Optional mailbox collection runs in another terminal with `npm run mailbox:dev` after provider configuration. The app uses http://localhost:3000. Production requires HTTPS and does not permit the development origin.
 
 Create the processor environment once:
 

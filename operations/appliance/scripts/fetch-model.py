@@ -55,6 +55,7 @@ def main():
     inventory = module.inspect_model(args.output / 'ollama', lock['name'])
     if inventory['digest'] != lock['digest'] or inventory['totalBytes'] != lock['totalBytes']:
         raise ValueError('Native model manifest differs from pinned identity')
+    inventory['source'] = 'Pinned Google upstream downloads and reviewed bundled metadata; all files hash verified'
     inventory['upstream'] = lock['upstream']
     (args.output / 'inventory.json').write_text(json.dumps(inventory, indent=2) + '\n')
     (args.output / 'Modelfile').write_text(f'# Native cache import; never ollama pull\nFROM {lock["name"]}\n')

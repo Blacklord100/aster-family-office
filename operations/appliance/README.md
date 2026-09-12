@@ -54,24 +54,31 @@ Build on a disposable Ubuntu 24.04 amd64 release machine. Never mount an office
 database, intake, archive, home directory or secrets into a builder. The image lock
 pins every base by digest; npm/Python source locks and processor upstream/security
 evidence remain in the source revision. Resolving new tags is an explicit review
-step using `scripts/resolve-image-lock.py`, never part of installation.
+step using `python3.12 operations/appliance/scripts/resolve-image-lock.py`, never
+part of installation. Run the commands below from the repository root, except for
+the Go build in step 1. The builder needs Python 3.12 available as both `python3.12`
+and `python3`, plus the pinned tools required by each collector.
 
 1. Build `asterctl` with Go 1.27.1 and `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
-   -trimpath -o <output>/asterctl .` from `cli/`. Run its tests first.
-2. Run `scripts/build-images.py --lock image-lock.json --output <new-images-dir>`.
+   -trimpath -o <absolute-output>/asterctl .` from `operations/appliance/cli/`.
+   Run its tests first, then return to the repository root.
+2. Run `python3.12 operations/appliance/scripts/build-images.py
+   --lock operations/appliance/image-lock.json --output <new-images-dir>`.
    It exports all 5 images and records exact image IDs and tar hashes.
-3. Run `scripts/collect-runtime.py --base <runtimeBase-from-image-lock>
+3. Run `python3.12 operations/appliance/scripts/collect-runtime.py --base <runtimeBase-from-image-lock>
    --output <new-runtime-dir>` on the connected builder. It uses Ubuntu's signed
    APT indexes and an empty package status to download the entire runtime dependency
    closure, including packages already installed in the builder. Preserve every
    `.deb` and the emitted versions/hashes as the immutable runtime lock.
-4. Run `scripts/fetch-model.py --output <new-model-dir>` to obtain the exact reviewed
-   Google artifacts, or `scripts/export-model.py --source <approved-cache>
+4. Run `python3.12 operations/appliance/scripts/fetch-model.py --output <new-model-dir>` to obtain the exact reviewed
+   Google artifacts, or `python3.12 operations/appliance/scripts/export-model.py --source <approved-cache>
    --output <new-model-dir>` for an existing approved cache. Both verify every
    manifest/config/weights/projector/license/parameter asset. No model is invoked.
-5. Run `scripts/collect-compliance.sh` to retain SBOMs, raw scans, the exact-image
+5. Run `sh operations/appliance/scripts/collect-compliance.sh <new-images-dir>
+   <new-compliance-dir>` to retain SBOMs, raw scans, the exact-image
    processor assessment, runtime notices and native source material in
-   `compliance/{licenses,sbom}`. The security gate
+   `<new-compliance-dir>/{licenses,sbom}`. This script requires the repository-root
+   working directory. The security gate
    must cover the exact 5 image IDs; missing license texts or unresolved findings
    block a distributable candidate. A receipt is evidence, not a vulnerability
    exception. Preserve original findings even where exact patched-artifact
@@ -79,12 +86,14 @@ step using `scripts/resolve-image-lock.py`, never part of installation.
    retains the original registry artifact, reviewed recipe, native source archives
    and transitive Cargo sources, then independently verifies them against the exact
    app image. This does not close other OS-package obligations or claim a reproducible rebuild.
-   Also run `scripts/collect-controller.py --binary <asterctl> --go <actual-go-binary>
-   --govulncheck <pinned-v1.8.0-binary> --output <compliance>/controller`.
+   Also run `python3.12 operations/appliance/scripts/collect-controller.py --binary <asterctl>
+   --go <actual-go-binary> --govulncheck <pinned-v1.8.0-binary>
+   --output <new-compliance-dir>/controller`.
    It retains the exact executable’s SPDX, notices and vulnerability results. A
    strict ordinary binary scan gates acceptance alongside the retained JSON scan;
    JSON mode’s exit status alone is insufficient.
-6. Run `scripts/stage-bundle.py --spec release-spec.json --images ... --runtime ...
+6. Run `python3.12 operations/appliance/scripts/stage-bundle.py
+   --spec operations/appliance/release-spec.json --images ... --runtime ...
    --model ... --compliance ... --asterctl ... --output <new-bundle-dir>`.
    Staging rejects missing/changed files, incomplete images/runtime/vision assets,
    symlinks, a wrong-platform controller and mismatched security evidence.
@@ -92,11 +101,14 @@ step using `scripts/resolve-image-lock.py`, never part of installation.
    publisher keys. Production signing keys never enter normal CI. CI uses an
    ephemeral **test trust root**; its artifacts are test candidates, not publisher
    releases. Verify with the independently held root/fingerprint.
-8. Run `scripts/pack-bundle.py --bundle ... --output <new-media-dir>`. It checks the
+8. Run `python3.12 operations/appliance/scripts/pack-bundle.py --bundle ...
+   --output <new-media-dir>`. It checks the
    payload again and emits deterministic compressed media split into parts smaller
-   than 2 GB, with a transport inventory. Reassemble in `parts.json` order, validate
-   every part and the full-stream hash, then perform TUF verification. Transport
-   hashes do not replace release authentication. Retain all parts together.
+   than 2 GB, with a transport inventory. Retain `parts.json` and every part together.
+   Use the independently authenticated controller's `asterctl unpack` command in
+   the [operator guide](cli/README.md) to check the transport hashes, extract safely
+   and verify TUF before publishing the output directory. Transport hashes do not
+   replace release authentication.
 
 The full offline media includes the runtime and model. A source archive, Compose
 file or list of remote image names is not that deliverable. App-only update packs
@@ -107,6 +119,8 @@ Each staged candidate includes `docs/distribution-status.json` with
 and runtime-service images, final license review and target qualification remain
 required before public binary distribution. Passing the sharp/libvips source gate
 and image scans does not waive those obligations.
+See [remaining distribution gates](DISTRIBUTION-GATES.md) for the exact missing
+source material, measured Ollama layers and required target-server evidence.
 
 ## Installation and network modes
 

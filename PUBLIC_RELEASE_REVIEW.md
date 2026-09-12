@@ -1,6 +1,13 @@
 # Public source review
 
-The initial history review was performed on 12 September 2026 against
+The source repository was made public on 12 September 2026 at
+[`80a24d6`](https://github.com/Blacklord100/aster-family-office/commit/80a24d6e469bbcc36f9f8eb2dfaf4fea113dc1a2).
+GitHub recognizes the project license as Apache-2.0. The final history check
+covered all 37 reachable commits: Gitleaks 8.30.1 reported ten exact reviewed
+false positives and zero unreviewed candidates. The redacted final audit receipt
+is retained privately.
+
+The initial history review was performed against
 `0e0bed07a2867118e75aa00bda110b9bc6a36bdd`. The repository was not shallow:
 34 reachable commits, 1,517 distinct blobs and 16,481,877 blob bytes were inventoried.
 No tracked history paths matching private environment files, private keys, backup
@@ -39,7 +46,14 @@ workflow and database setup establish their isolated CI scope. Current setup
 masks those values. Signed API download URLs and temporary audit tokens belong to
 the private review evidence and are never included in source or release media.
 
-Run the repeatable credential check against the final publication commit:
+At publication, GitHub private vulnerability reporting, Dependabot alerts and
+security updates, secret scanning, and secret push protection were verified enabled.
+The `feat/portable-production` branch requires pull requests, resolved review
+conversations, and the `application` and `containers` status checks with strict
+up-to-date checking. Required approving reviews are set to zero, and administrators
+are exempt from branch protection. These settings record the state at publication.
+
+For subsequent publication commits, rerun the repeatable credential check:
 
 ```sh
 python3 tools/release/audit-history.py --repo . \
@@ -58,9 +72,11 @@ retain their own terms; collect their exact release notices and corresponding so
 where required. See [third-party notices](THIRD_PARTY_NOTICES.md). A current-tree or
 history secret scan is distinct from the image vulnerability gate.
 
-Public source availability does not imply a production-qualified appliance. Retain
-the exact candidate's functional, recovery and security evidence, disclose remaining
-limitations, enable the private reporting route in [SECURITY.md](SECURITY.md), and
+This records source publication only. It does not record a downloadable binary
+release or a passing final appliance release gate. Public source availability does
+not imply a production-qualified appliance. Retain the exact candidate's functional,
+recovery and security evidence, disclose remaining
+limitations, use the enabled private reporting route in [SECURITY.md](SECURITY.md), and
 publish versioned source from a reviewed commit. Only release artifacts made from
 that reviewed source belong in the downloadable distribution; operator environments,
 private validation results, live volumes, archives and backups do not.
