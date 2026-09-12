@@ -1,0 +1,49 @@
+name: Qualify confined Unix ingress
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synthetic-unix-ingress-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  systemd-unix-ingress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12.13'
+      - name: Check synthetic trust, unit rendering and topology controls
+        run: python -m unittest discover -s operations/appliance/tests -p 'test_*ingress.py' -v
+      - name: Test and build the exact static Linux relay
+        working-directory: operations/appliance/cli
+        run: |
+          GOTOOLCHAIN=go1.27.1 go test -race ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.27.1 go build -trimpath -o "$RUNNER_TEMP/asterctl" .
+          file "$RUNNER_TEMP/asterctl"
+      - name: Exercise actual systemd sandbox, host sockets and internal Caddy
+        run: python operations/appliance/scripts/probe-unix-ingress.py --asterctl "$RUNNER_TEMP/asterctl" --output "$RUNNER_TEMP/unix-ingress-evidence"
+      - name: Retain bounded public synthetic evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synthetic-systemd-unix-ingress
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/unix-ingress-evidence/*.json
+            ${{ runner.temp }}/unix-ingress-evidence/*.log
+            ${{ runner.temp }}/unix-ingress-evidence/*.txt
+            ${{ runner.temp }}/unix-ingress-evidence/*.socket
+            ${{ runner.temp }}/unix-ingress-evidence/*.service
+            ${{ runner.temp }}/unix-ingress-evidence/Caddyfile.*
+            ${{ runner.temp }}/unix-ingress-evidence/headers.caddy
+            ${{ runner.temp }}/unix-ingress-evidence/root.crt

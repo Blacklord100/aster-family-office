@@ -205,7 +205,40 @@ func (c Controller) compose(ctx context.Context, s Installation, in io.Reader, o
 	for _, service := range s.OptionalServices {
 		base = append(base, "--profile", service)
 	}
-	return c.Commands.Run(ctx, in, out, "docker", append(base, args...)...)
+	start, stop := ingressComposeAction(args)
+	var ingress ingressManager
+	var binary string
+	if m.Ingress == unixIngress && (start || stop) {
+		ingress, e = c.ingressManager()
+		if e != nil {
+			return nil, e
+		}
+		binary = filepath.Join(c.release(s), "payload/bin/asterctl")
+		if start {
+			binary, e = c.verifiedIngressBinary(s, m)
+			if e != nil {
+				return nil, e
+			}
+			if e = ingress.prepare(); e != nil {
+				return nil, e
+			}
+		}
+		if stop {
+			if e = ingress.stop(ctx, binary); e != nil {
+				return nil, e
+			}
+		}
+	}
+	result, e := c.Commands.Run(ctx, in, out, "docker", append(base, args...)...)
+	if e != nil {
+		return result, e
+	}
+	if m.Ingress == unixIngress && start {
+		if e = ingress.start(ctx, binary); e != nil {
+			return result, e
+		}
+	}
+	return result, nil
 }
 func (c Controller) writeEnv(s Installation, m *Manifest) error {
 	if e := validateOptionalServices(s.Profile, s.OptionalServices); e != nil {
@@ -213,6 +246,9 @@ func (c Controller) writeEnv(s Installation, m *Manifest) error {
 	}
 	vars := map[string]string{"ASTER_PROJECT_NAME": s.Project, "ASTER_DATA_ROOT": filepath.Join(c.Root, "data"), "ASTER_RELEASE_ROOT": c.release(s), "ASTER_RELEASE_ID": s.ReleaseID, "ASTER_WRITER_GENERATION": strconv.Itoa(s.Generation), "ASTER_SCHEMA_MIN": strconv.Itoa(m.Schema.Min), "ASTER_SCHEMA_MAX": strconv.Itoa(m.Schema.Max), "ASTER_DOMAIN": s.Hostname, "BETTER_AUTH_URL": "https://" + s.Hostname, "ASTER_TLS_MODE": s.TLSMode, "OLLAMA_MODEL": m.Model.Name}
 	vars["EMAIL_DELIVERY_ENABLED"] = strconv.FormatBool(s.hasOptionalService("delivery"))
+	if m.Ingress == unixIngress {
+		vars["ASTER_INGRESS_ROOT"] = filepath.Join(c.Root, "run", "ingress-sockets")
+	}
 	vars["MAILBOX_OAUTH_TRANSPORT"] = "disabled"
 	if s.hasOptionalService("mailbox") {
 		vars["MAILBOX_OAUTH_TRANSPORT"] = "broker"

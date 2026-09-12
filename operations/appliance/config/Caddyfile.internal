@@ -5,8 +5,19 @@
 	# Never contact public certificate authorities or install trust on the host.
 	auto_https disable_redirects
 	skip_install_trust
+	servers {
+		protocols h1 h2
+		listener_wrappers {
+			proxy_protocol {
+				timeout 5s
+				fallback_policy reject
+			}
+			tls
+		}
+	}
 }
 https://{$ASTER_DOMAIN} {
+	bind unix//run/aster-ingress/https.sock|0200
 	tls internal
 	import /etc/aster/headers.caddy
 	reverse_proxy web:3000 {
@@ -15,5 +26,6 @@ https://{$ASTER_DOMAIN} {
 	}
 }
 http://{$ASTER_DOMAIN} {
+	bind unix//run/aster-ingress/http.sock|0200
 	redir {$ASTER_ORIGIN}{uri} permanent
 }

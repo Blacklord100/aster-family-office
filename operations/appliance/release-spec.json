@@ -4,6 +4,7 @@
   "productVersion": "0.4.0",
   "sequence": 1,
   "channel": "preview",
+  "ingress": "systemd-unix-v1",
   "platform": {
     "os": "linux",
     "arch": "amd64"

@@ -55,7 +55,7 @@ test('connected OAuth broker has one internal listener and a dedicated secret li
 });
 
 for (const mode of ['offline', 'connected']) {
-  test(`${mode}: immutable complete images, minimal privileges, only HTTPS ingress published`, () => {
+  test(`${mode}: immutable images, minimal privileges, protected Unix ingress and no published container ports`, () => {
     const config = load(mode);
     assert.equal(config.volumes, undefined);
     const required = ['postgres', 'web', 'worker', 'folder-worker', 'archive-worker', 'report-obligations-worker', 'migrate', 'processor', 'ollama', 'caddy'];
@@ -69,11 +69,14 @@ for (const mode of ['offline', 'connected']) {
       assert.deepEqual(s.cap_drop, ['ALL']);
       assert.ok(s.security_opt.includes('no-new-privileges:true'));
       assert.notEqual(s.user, 'root');
-      if (name !== 'caddy') assert.equal(s.ports, undefined);
+      assert.equal(s.ports, undefined);
+      assert.equal(s.network_mode, undefined);
       for (const v of s.volumes || []) {
         assert.equal(v.type, 'bind');
         assert.equal(v.bind.create_host_path, false);
-        assert.ok(v.source.startsWith('${ASTER_DATA_ROOT:') || v.source.startsWith('${ASTER_RELEASE_ROOT:'));
+        const ingress = name === 'caddy' && v.target === '/run/aster-ingress';
+        assert.ok(v.source.startsWith('${ASTER_DATA_ROOT:') || v.source.startsWith('${ASTER_RELEASE_ROOT:') ||
+          (ingress && v.source === '${ASTER_INGRESS_ROOT:?Set protected ingress socket directory}'));
         assert.ok(!v.target.includes('docker.sock'));
       }
       if (s.environment?.DB_USER === 'aster_runtime') {
@@ -81,7 +84,11 @@ for (const mode of ['offline', 'connected']) {
       }
     }
     assert.equal(config.services.caddy.profiles, undefined, 'TLS must start by default');
-    assert.equal(config.services.caddy.ports.length, 2);
+    assert.deepEqual(config.services.caddy.networks, ['edge']);
+    assert.equal(config.networks.edge.internal, true);
+    const sockets = config.services.caddy.volumes.filter(v => v.target === '/run/aster-ingress');
+    assert.equal(sockets.length, 1);
+    assert.equal(sockets[0].read_only, false, 'Caddy alone creates the protected sockets');
     assert.ok(config.services.caddy.volumes.some(v => v.target === '/etc/aster/headers.caddy' && v.read_only));
     assert.equal(config.services.ollama.volumes[0].target, '/models');
   });
@@ -98,5 +105,11 @@ test('both TLS modes work without ACME and preserve independent private CA state
     assert.doesNotMatch(content, /acme_ca|acme_email|issuer acme/i);
     assert.match(content, /header_up X-Real-IP \{remote_host\}/);
     assert.match(content, /redir \{\$ASTER_ORIGIN\}\{uri\}/);
+    assert.match(content, /bind unix\/\/run\/aster-ingress\/https\.sock\|0200/);
+    assert.match(content, /bind unix\/\/run\/aster-ingress\/http\.sock\|0200/);
+    assert.equal((content.match(/^\s*bind /gm) || []).length, 2);
+    assert.match(content, /protocols h1 h2\s/);
+    assert.doesNotMatch(content, /protocols[^\n]*\bh3\b/);
+    assert.match(content, /listener_wrappers\s*\{\s*proxy_protocol\s*\{[^}]*fallback_policy reject[^}]*\}\s*tls\s*\}/);
   }
 });

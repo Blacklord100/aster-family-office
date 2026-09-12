@@ -7,14 +7,15 @@ these checks. Existing native development services and their data were not repla
 
 ## Application and durable operations
 
-Candidate `931e88cccbfeb1e924c167e24041c10a91c78485` passed the complete
-application job in [Linux run 34709926916](https://github.com/Blacklord100/aster-family-office/actions/runs/34709926916):
+Candidate `a6b4a3f2a4f21a9ce66449c7e96901b02d39a808` passed both complete jobs
+in [Linux run 34712254758](https://github.com/Blacklord100/aster-family-office/actions/runs/34712254758).
+Its application job passed:
 
-- 815 ordinary application tests; 109 explicitly gated integration cases were
+- 844 ordinary application tests; 109 explicitly gated integration cases were
   deferred to their separate invocation.
 - All 111 database integration cases across 16 files, using a disposable CI
   PostgreSQL service rather than the development or customer database.
-- 673 host processor tests and 14 subtests, lint, type checking, production build,
+- 676 host processor tests and 16 subtests, lint, type checking, production build,
   migration, dependency audit and SBOM generation.
 
 Its SBOM artifact upload also passed. The earlier candidate `921d4e0` passed
@@ -22,13 +23,26 @@ functional steps but failed at artifact upload because the private account's
 Actions storage quota was reached. Source publication resolved that storage
 restriction for the later public run; no historic evidence was deleted.
 
-The [appliance contracts at `931e88c`](https://github.com/Blacklord100/aster-family-office/actions/runs/34709927001)
-passed real Docker Compose resolution, 42 Python packaging tests, five profile
+The [appliance contracts at `a6b4a3f`](https://github.com/Blacklord100/aster-family-office/actions/runs/34712254773)
+passed real Docker Compose resolution, 68 Python packaging/probe tests, six profile
 tests, controller race tests, a static Linux build and Go vulnerability checks.
 The actual controller initialized test trust, signed a synthetic candidate,
 verified externally pinned TUF metadata, packed the media, unpacked it through
 the safe Go reader and verified all 110 payload files again. Synthetic packaging
 does not substitute for installing the complete appliance on a target server.
+The bounded-model and full-assembly jobs were explicitly skipped in this contracts
+run; its successful result does not report either qualification as executed.
+
+The candidate includes persisted initial selection of connected mailbox/delivery
+services and an authenticated internal mailbox OAuth broker. Twenty-four broker
+and transport tests cover fixed provider destinations, origin/client-ID binding, token and
+body checks, scope restrictions, concurrency, lifecycle/shutdown/disconnect
+cancellation and fail-closed transport. Four store-admission tests prove disabled
+or invalid transport creates no OAuth state. All nine existing mailbox integration
+cases also passed against a newly created disposable PostgreSQL cluster with the
+final broker source. Web retains its session-bound one-use state and encrypted
+credential persistence; the broker has no separate replay cache. These tests do not
+establish customer-provider OAuth authorization or actual connected appliance routing.
 
 ## Recovery and release checks
 
@@ -40,19 +54,26 @@ Forward restore continuation never repeats a database import. An ambiguous impor
 requires stopping that destination and recovering into a new one.
 
 The cross-built Linux controller with SHA256
-`829ea07362f085ef9a5bbca6609d33bdbd81472eba427b590b10ceb8b8401509`
+`118de736a0d95c93de06052cf1dca53efec4d175bbb1a7972b6719fda2e5f145`
 passed exact-binary `govulncheck` 1.8.0 with zero reachable vulnerable symbols.
 Its SPDX/license inventory identified 14 embedded dependencies and retained their
 notices. This is evidence for those bytes; a later executable needs a new receipt.
 Raw scanner output and module-only findings remain part of the evidence. This
-17,354,559-byte executable was built on Linux from `931e88c`; its evidence is
+17,379,231-byte executable was built on Linux from `a6b4a3f`; its evidence is
 retained in that run's `appliance-controller-evidence` artifact.
+The downloaded 160,432-byte artifact matched GitHub's archive SHA256
+`6e4837a495a06ea7f946284aa8b9ff2ebbe4ea0907d25892c21618fb115fb9e9`.
+Independent local verification rehashed all 54 receipt-bound files and 47 retained
+license texts, checked the notice/SPDX receipt links and reparsed the raw binary
+scan with zero reachable findings. The artifact contains evidence, not the
+executable itself; the exact-binary binding comes from the recorded CI collection.
 
-Source-notice and tamper checks are included in the 42 packaging regressions.
+Source-notice and tamper checks are included in the packaging regressions.
 The sharp native source policy includes the original build recipe, 29 native
 source archives and 350
-checksum-pinned Cargo archives. Its large connected Linux collection has not yet
-been performed here. OS/runtime-service corresponding-source material and final
+checksum-pinned Cargo archives. The dedicated connected Linux collection has been
+attempted, but source/notice closure and its independent offline verification have
+not passed. OS/runtime-service corresponding-source material and final
 binary-distribution review remain separate obligations. Staged test candidates
 include an explicit `distributionReady: false` receipt.
 
@@ -89,11 +110,16 @@ the host-published port on the internal bridge, so it never performed inference.
 The successful later run uses the inspected internal container IP directly,
 as supported on a Linux Docker host, with no published port, proxy or redirects.
 
-The complete [Linux verification at `25118b8`](https://github.com/Blacklord100/aster-family-office/actions/runs/34710535770)
+The complete [Linux verification at `a6b4a3f`](https://github.com/Blacklord100/aster-family-office/actions/runs/34712254758)
 passed both application and container jobs. The processor passed all 33 native
 security cases, 625 tests inside the network-disabled image, authenticated offline
 OCR and PNG/JPEG/TIFF roundtrips. Its exact image was
-`sha256:768bb1f0c558c80b0155e909e4c59c6c8bebb042fc397c6b71021baecc0e2b55`.
+`sha256:ec4a22d21cb5981e36a284e13d72dc0333e6ed9ec10f406451f797bf59649cc7`.
+The app image
+`sha256:96426ac3dd6b92c59c8fb6a9b4d147ade30197b9d4fdbf45cf47d3184a91480f`
+passed runtime identity, filesystem, import/startup and fail-closed HTTP probes
+without an external network, database or model. Both image builds and the
+deployment composition checks passed.
 
 The raw image scan retains nine HIGH findings. The independent, exact-image
 assessment accounts for all nine through reviewed source fixes or the absence of
@@ -102,14 +128,27 @@ a zero-finding raw scan or a waiver for another image. Unknown findings, changed
 package identities and missing build/runtime proof still fail. The full evidence
 and historical failures are in [processor security evidence](operations/processor-release-blockers.md).
 
-That run also passed custom processor source export and attestation. Its downloaded
-artifact was independently reverified offline: 46 retained material files,
+That run also passed custom processor source export and attestation, retaining
+46 material files and 53,051,770 bytes tied to its exact image. The earlier
+[run at `25118b8`](https://github.com/Blacklord100/aster-family-office/actions/runs/34710535770)
+had its downloaded artifact independently reverified offline: 46 retained material files,
 53,051,770 bytes, three original archives, two build dependencies and seven reviewed
 backports, including the hidden Docker build configuration. The exact-image receipt
 covers 113 installed files (110 Pillow files and three native binaries/libraries).
 The retained runtime manifest and native hashes match the security artifact.
 This closes the executed source-export gate for these three custom builds only;
 OS packages, other wheels and service-image material remain separate gates.
+
+The corrected [Caddy probe at `0609b61`](https://github.com/Blacklord100/aster-family-office/actions/runs/34712792503)
+confirmed nonroot startup, TLS 1.3, the exact synthetic response and CA/hostname
+verification on the private bridge. Both loopback/random bindings and the actual
+`0.0.0.0:80/443` configuration lacked effective Docker publications. Wrong SNI was
+actively rejected during TLS, which the initial probe classified too narrowly;
+the untrusted-root negative control passed. These are genuine failed ingress
+results, not deployment qualification. The repair uses protected Caddy Unix
+listeners and a systemd socket-activated relay with its own private network and
+filesystem. Its hosted proof is separate and remains pending until executed.
+See [Caddy ingress qualification](operations/appliance/CADDY-INGRESS-QUALIFICATION.md).
 
 The complete qualification runner is a disposable Ubuntu 24.04 amd64 host with
 32 GiB RAM and 250 GiB free temporary space for media, retained releases and sealed

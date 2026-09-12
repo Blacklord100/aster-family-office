@@ -193,8 +193,19 @@ def check(receipt, name, action):
 def rejected_certificate(address, ca, hostname):
     try:
         https(address, 8443, ca, hostname)
-    except ssl.SSLCertVerificationError:
-        return {'certificateRejected': True}
+    except ssl.SSLCertVerificationError as error:
+        return {'certificateRejected': True, 'reason': error.reason, 'verifyCode': error.verify_code}
+    except ssl.SSLError as error:
+        # Caddy may refuse unknown SNI before offering a certificate. Accept
+        # only the observed/defined TLS alerts for that negative control, and
+        # immediately prove the same endpoint still serves the valid hostname.
+        # The untrusted-root control must remain an actual certificate failure.
+        if (hostname == HOSTNAME or ca is None or error.reason not in
+                {'TLSV1_ALERT_INTERNAL_ERROR', 'TLSV1_UNRECOGNIZED_NAME'}):
+            raise
+        control = https(address, 8443, ca, HOSTNAME)
+        return {'tlsHandshakeRejected': True, 'reason': error.reason,
+                'diagnostic': str(error)[:1024], 'validHostnameControl': control}
     raise ValueError('Invalid TLS trust or hostname was accepted')
 
 

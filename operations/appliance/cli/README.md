@@ -62,6 +62,14 @@ controller requires at least 31 GiB visible memory and twice the release size pl
 10 GiB free during staging. This is a minimum admission check, not a retention or
 performance sizing guarantee. Keep host storage encrypted through customer IT.
 
+Ports 80/443 must be available on this dedicated host. The current release uses
+systemd socket activation and a confined nonroot relay to Caddy's protected Unix
+sockets; Docker publishes no container ports. TLS keys remain inside Caddy's
+storage. Use a canonical installation path containing letters, numbers, slash,
+dot, dash and underscore, such as `/var/lib/aster`. The signed release includes
+the exact static relay executable. The controller manages four scoped systemd
+units and their byte receipts; it refuses unreviewed edits to existing units.
+
 Generate the recovery identity on an independently controlled machine. The command
 prints only the public recipient. Create its private parent directory first; the
 output file must not exist. Keep the private file offline and outside the appliance
@@ -155,6 +163,14 @@ sudo asterctl doctor --root /var/lib/aster
 `doctor` checks the payload, installed runtime versions, pinned model, application
 release/generation, and local HTTPS certificate/hostname. It does not replace an
 inference accuracy test, archive reconciliation, restore drill or load test.
+
+Use `asterctl stop --root /var/lib/aster` to stop both the fleet and its host
+listeners, and `asterctl resume --root /var/lib/aster` to start the database's
+active compatible release and its listeners. Direct `docker compose down` leaves
+systemd socket activation outside its scope. The runtime `run/` socket directory
+is not backup data; a restored installation creates fresh sockets and scoped
+units. Source fencing must include stopping the original controller-managed
+listeners before reusing its address or restoring on the same host.
 
 Every mutation is serialized by a host lock. PostgreSQL provides the durable
 drain/seal and generation barrier. A failed operation leaves an inspectable

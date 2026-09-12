@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+# Managed by Aster for @UNIT_BASE@; manual edits are never overwritten.
+[Unit]
+Description=Aster @PROTOCOL@ ingress socket
+After=docker.service
+Requires=docker.service
+
+[Socket]
+ListenStream=0.0.0.0:@PORT@
+Accept=no
+Service=@UNIT_BASE@-@PROTOCOL@.service
+Backlog=128
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target

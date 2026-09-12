@@ -250,6 +250,8 @@ def main():
     spec = json.loads(args.spec.read_text())
     if spec.get('schemaVersion') != 1 or spec.get('platform') != {'os': 'linux', 'arch': 'amd64'}:
         raise ValueError('Require schemaVersion1 and linux/amd64')
+    if spec.get('ingress') != 'systemd-unix-v1':
+        raise ValueError('Current appliance profiles require systemd-unix-v1 ingress')
     if not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,79}', spec.get('releaseId', '')):
         raise ValueError('Invalid release ID')
     if spec.get('channel') not in ('stable', 'preview') or not isinstance(spec.get('sequence'), int) or spec['sequence'] < 1:
@@ -359,6 +361,9 @@ def main():
             files.append({'path': item.relative_to(args.output).as_posix(), 'sha256': sha256(item),
                           'size': item.stat().st_size, 'mode': stat.S_IMODE(item.stat().st_mode)})
     manifest = {k: spec[k] for k in ('schemaVersion', 'releaseId', 'productVersion', 'sequence', 'channel', 'platform', 'schema')}
+    # The installed controller explicitly owns ingress for these Unix-listener
+    # profiles; older controllers reject this unknown signed field safely.
+    manifest['ingress'] = spec['ingress']
     manifest.update({'createdAt': spec.get('createdAt', datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')),
                      'files': files, 'images': images,
                      'model': {'name': model['name'], 'digest': model['digest'], 'files': model_files, 'modelfile': 'payload/models/Modelfile'},

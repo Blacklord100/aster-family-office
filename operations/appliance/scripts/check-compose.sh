@@ -4,12 +4,15 @@ set -eu
 aster_test=$(mktemp -d)
 trap 'rm -rf "$aster_test"' EXIT
 export ASTER_DATA_ROOT="$aster_test/data" ASTER_RELEASE_ROOT="$aster_test/release"
+export ASTER_INGRESS_ROOT="$aster_test/run/ingress-sockets"
 export ASTER_PROJECT_NAME=aster-synthetic-config ASTER_RELEASE_ID=synthetic-config
 export ASTER_WRITER_GENERATION=1 ASTER_SCHEMA_MIN=16 ASTER_SCHEMA_MAX=16
 export ASTER_DOMAIN=aster.synthetic.invalid BETTER_AUTH_URL=https://aster.synthetic.invalid ASTER_TLS_MODE=internal
 export ASTER_IMAGE=aster-app:synthetic PROCESSOR_IMAGE=aster-processor:synthetic POSTGRES_IMAGE=aster-postgres:synthetic
 export OLLAMA_IMAGE=aster-ollama:synthetic CADDY_IMAGE=aster-caddy:synthetic OLLAMA_MODEL=synthetic:not-pulled
 mkdir -p "$ASTER_DATA_ROOT/secrets"
+mkdir -p "$ASTER_INGRESS_ROOT"
+chmod 0700 "$ASTER_INGRESS_ROOT"
 for name in postgres_password migration_password runtime_password better_auth_secret encryption_key encryption_keyring processor_token mailbox_providers mailbox_broker_token smtp_settings; do
   printf 'SYNTHETIC-NOT-USED\n' > "$ASTER_DATA_ROOT/secrets/$name"
 done

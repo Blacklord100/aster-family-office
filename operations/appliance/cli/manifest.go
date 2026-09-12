@@ -46,6 +46,7 @@ type Manifest struct {
 	ProductVersion string `json:"productVersion"`
 	Sequence       int64  `json:"sequence"`
 	Channel        string `json:"channel"`
+	Ingress        string `json:"ingress,omitempty"`
 	CreatedAt      string `json:"createdAt,omitempty"`
 	Platform       struct {
 		OS   string `json:"os"`
@@ -159,6 +160,9 @@ func (m *Manifest) Validate() error {
 	if m.Platform.OS != "linux" || m.Platform.Arch != "amd64" {
 		return fmt.Errorf("unsupported release platform")
 	}
+	if m.Ingress != "" && m.Ingress != "systemd-unix-v1" {
+		return fmt.Errorf("unsupported ingress mechanism")
+	}
 	if m.Schema.Min < 1 || m.Schema.Max < m.Schema.Min || m.Schema.Target < m.Schema.Min || m.Schema.Target > m.Schema.Max {
 		return fmt.Errorf("invalid schema compatibility range")
 	}
@@ -185,6 +189,11 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("referenced file is not inventoried: %s", p)
 		}
 		return nil
+	}
+	if m.Ingress == "systemd-unix-v1" {
+		if entry, ok := inventory["payload/bin/asterctl"]; !ok || entry.Mode != 0755 || entry.Size < 64 {
+			return fmt.Errorf("Unix ingress requires the inventoried executable controller")
+		}
 	}
 	for _, p := range []string{m.Compose.Offline, m.Compose.Connected, m.Model.Modelfile} {
 		if err := require(p); err != nil {

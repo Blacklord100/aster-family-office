@@ -241,11 +241,11 @@ class Packaging(unittest.TestCase):
         gate = {'result': 'passed', 'releaseId': release_id, 'imageIds': {i['service']: i['imageId'] for i in images}}
         synthetic_image_scans(self.root / 'compliance/sbom', images, gate, processor_fixture)
         put(self.root / 'compliance', 'sbom/security-gate.json', json.dumps(gate).encode())
-        spec = {'schemaVersion': 1, 'releaseId': release_id, 'productVersion': '0.0.0-test',
+        spec = {'schemaVersion': 1, 'releaseId': release_id, 'productVersion': '0.0.0-test', 'ingress': 'systemd-unix-v1',
                 'channel': 'preview', 'sequence': 1, 'platform': {'os': 'linux', 'arch': 'amd64'},
                 'schema': {'min': 16, 'max': 16, 'target': 16}, 'createdAt': '2026-09-12T00:00:00Z'}
         put(self.root, 'spec.json', json.dumps(spec).encode())
-        put(self.root, 'asterctl', b'\x7fELF\x02\x01' + b'\0' * 12 + b'\x3e\x00SYNTHETIC-NEVER-EXECUTED')
+        put(self.root, 'asterctl', b'\x7fELF\x02\x01' + b'\0' * 12 + b'\x3e\x00SYNTHETIC-NEVER-EXECUTED' + b'\0' * 64)
         synthetic_compliance(self.root / 'compliance', self.root / 'asterctl', images[0]['imageId'], self.root / 'synthetic-source')
         return [sys.executable, str(ROOT / 'scripts/stage-bundle.py'), '--spec', str(self.root / 'spec.json'),
                 '--images', str(self.root / 'images'), '--runtime', str(self.root / 'runtime'),

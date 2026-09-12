@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# Managed by Aster for @UNIT_BASE@; manual edits are never overwritten.
+[Unit]
+Description=Aster confined @PROTOCOL@ ingress relay
+Requires=@UNIT_BASE@-@PROTOCOL@.socket
+After=@UNIT_BASE@-@PROTOCOL@.socket docker.service
+
+[Service]
+Type=simple
+User=10001
+Group=10001
+RootDirectory=@JAIL@
+BindReadOnlyPaths=@BINARY@:/asterctl @SOCKETS@:/sockets
+ExecStart=/asterctl ingress --socket /sockets/@PROTOCOL@.sock
+StandardInput=null
+StandardOutput=null
+StandardError=journal
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=15s
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+PrivateNetwork=true
+RestrictAddressFamilies=AF_UNIX
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+MemoryMax=128M
+TasksMax=64
+LimitNOFILE=1024

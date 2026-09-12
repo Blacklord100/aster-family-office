@@ -24,24 +24,18 @@ aster_trust="$aster_base/test-signing-keys/root.json"
 aster_trust_sha=$(cat "$aster_base/test-signing-keys/root.sha256")
 mkdir "$aster_base/private" "$aster_base/proof"
 
-aster_compose() {
-  aster_target=$1
-  shift
-  aster_project=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["project"])' "$aster_target/installation.json")
-  aster_release=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["releaseId"])' "$aster_target/installation.json")
-  docker compose --project-name "$aster_project" --env-file "$aster_target/config/$aster_release.env" \
-    --file "$aster_target/releases/$aster_release/payload/config/compose.offline.yaml" "$@"
-}
 aster_cleanup() {
+  aster_cleanup_result=0
   for aster_target in "$aster_base/installed" "$aster_base/restored"; do
-    if test -f "$aster_target/installation.json"; then
-      aster_compose "$aster_target" down --remove-orphans >/dev/null 2>&1 || true
+    if test -f "$aster_target/installation.json" || test -f "$aster_target/journal.json"; then
+      "$aster_cli" stop --root "$aster_target" >/dev/null 2>&1 || aster_cleanup_result=1
     fi
   done
   # Credentials never enter artifacts; retain only the metadata-only proof.
   rm -rf "$aster_base/private"
+  return "$aster_cleanup_result"
 }
-trap aster_cleanup EXIT
+trap 'aster_result=$?; aster_cleanup || aster_result=1; exit "$aster_result"' EXIT
 "$aster_cli" recovery-key --output "$aster_base/private/recovery.agekey"
 aster_recipient=$(sed -n 's/^# public recipient: //p' "$aster_base/private/recovery.agekey")
 python3 - "$aster_base/private" <<'PY'
@@ -62,8 +56,8 @@ PY
 "$aster_cli" doctor --root "$aster_base/installed" > "$aster_base/proof/doctor-initial.txt"
 
 # Cold container restart from retained data/model/TLS; no builds or pulls.
-aster_compose "$aster_base/installed" down
-aster_compose "$aster_base/installed" up -d --wait --wait-timeout 300 --pull never --no-build
+"$aster_cli" stop --root "$aster_base/installed"
+"$aster_cli" resume --root "$aster_base/installed"
 "$aster_cli" doctor --root "$aster_base/installed" > "$aster_base/proof/doctor-restart.txt"
 "$aster_node" operations/appliance/scripts/qualify-api.mjs restart "$aster_base/installed" \
   "$aster_base/private/api-state.json" "$aster_base/proof/restart-api.json"
@@ -73,7 +67,7 @@ aster_compose "$aster_base/installed" up -d --wait --wait-timeout 300 --pull nev
 "$aster_cli" backup --root "$aster_base/installed" --output "$aster_base/recovery.age" --timeout 60m
 aster_backup_sha=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["sha256"])' "$aster_base/recovery.age.receipt.json")
 # Actual original writer fleet is stopped before explicit fencing acknowledgement.
-aster_compose "$aster_base/installed" down
+"$aster_cli" stop --root "$aster_base/installed"
 "$aster_cli" restore --root "$aster_base/restored" --input "$aster_base/recovery.age" \
   --identity "$aster_base/private/recovery.agekey" --backup-sha256 "$aster_backup_sha" \
   --trust-root "$aster_trust" --trust-root-sha256 "$aster_trust_sha" --source-fenced \

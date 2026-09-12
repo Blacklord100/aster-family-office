@@ -35,6 +35,21 @@ def fixture(name='aster-synthetic-ingress-test', published=True, publication='lo
 
 
 class Topology(unittest.TestCase):
+    def test_unknown_sni_alert_needs_immediate_valid_hostname_control(self):
+        alert = ssl.SSLError(1, 'SYNTHETIC unknown-SNI TLS alert')
+        alert.reason = 'TLSV1_ALERT_INTERNAL_ERROR'
+        with patch.object(INGRESS, 'https', side_effect=[alert, {'status': 200}]) as request:
+            result = INGRESS.rejected_certificate('172.20.0.2', Path('/SYNTHETIC/root.crt'), 'wrong.synthetic.test')
+        self.assertTrue(result['tlsHandshakeRejected'])
+        self.assertEqual(result['reason'], alert.reason)
+        self.assertEqual(request.call_args.args, ('172.20.0.2', 8443, Path('/SYNTHETIC/root.crt'), INGRESS.HOSTNAME))
+        for replies in [[alert, ConnectionRefusedError('SYNTHETIC down')],
+                        [ConnectionRefusedError('SYNTHETIC down')]]:
+            with patch.object(INGRESS, 'https', side_effect=replies), self.assertRaises(OSError):
+                INGRESS.rejected_certificate('172.20.0.2', Path('/SYNTHETIC/root.crt'), 'wrong.synthetic.test')
+        with patch.object(INGRESS, 'https', side_effect=alert), self.assertRaises(ssl.SSLError):
+            INGRESS.rejected_certificate('172.20.0.2', None, INGRESS.HOSTNAME)
+
     def test_appliance_publication_requires_actual_all_interface_80_and_443(self):
         container, network = fixture()
         for port, host_port in [('8080/tcp', '80'), ('8443/tcp', '443')]:

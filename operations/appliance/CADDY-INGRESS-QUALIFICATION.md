@@ -1,8 +1,11 @@
 # Synthetic Caddy ingress qualification
 
-The appliance profiles currently attach Caddy only to an `internal: true` bridge,
-while requesting published HTTP/HTTPS ports. This manual check tests that routing
-assumption on a disposable Ubuntu 24.04 GitHub runner. It does not change either
+The earlier appliance profiles attached Caddy only to an `internal: true` bridge,
+while requesting published HTTP/HTTPS ports. This retained manual check tests that
+original routing assumption on a disposable Ubuntu24.04 GitHub runner. The failure
+below led to protected Unix listeners and a confined host relay; see
+[the separate Unix-ingress qualification](UNIX-INGRESS-QUALIFICATION.md). This
+historical probe does not exercise the new relay. It does not change either
 profile or prove a complete installation, reverse proxy, external LAN route,
 firewall policy, or supplied-certificate deployment.
 
@@ -60,7 +63,7 @@ capabilities.
 The appliance Caddy recipe now removes this unused file capability and asserts
 the result is empty. It uses the base image's existing `setcap`/`getcap` tools;
 no package is added. The probe independently reads the running executable's
-capabilities. Internal listeners remain 8080/8443 and all runtime restrictions
+capabilities. This historical probe's internal listeners remain8080/8443 and all runtime restrictions
 are retained. A new hosted run must confirm startup before published ingress
 can be assessed; the first run proves neither working nor broken publication.
 
@@ -76,3 +79,34 @@ as required for [Docker cp's documented tmpfs limitation](https://docs.docker.co
 The following run must exercise both binding profiles and TLS before drawing
 a publication conclusion; host-local checks still do not establish an external
 LAN route.
+
+## Publication failure reproduced for both binding profiles
+
+[Run 34712792503](https://github.com/Blacklord100/aster-family-office/actions/runs/34712792503),
+commit `0609b617a586e2a3f05fd9a9c87de6140537892b`, completed both profiles on
+Docker28.0.4. Caddy started with empty file capabilities. Direct internal-bridge
+HTTPS returned the exact synthetic body with TLS1.3 and verified hostname/CA in
+both jobs; both rejected the untrusted root. Docker retained the requested
+loopback/random and all-interface80/443 port configuration, but
+`NetworkSettings.Ports` was empty and neither profile had an effective published
+HTTP or HTTPS port. This reproduces the missing ingress under the appliance's
+actual default binding semantics, not just the loopback test configuration.
+
+| Profile | Exact Caddy image | Retained artifact ZIP SHA256 |
+| --- | --- | --- |
+| Loopback/random | `sha256:b30347c2916ba1b3f52b86e059b7b6ceb178ba789f5d572a5ed21cb38e2f5573` | `138a12e342599515d678e64708af054ed1b224396c69b1d131a82583d5055bde` |
+| All-interface80/443 | `sha256:541ac47d00eff10d3552a73dba46e597002855c9b83fe0732b5769adeb741a53` | `b0a777803f95d6eb17bdfac2c619080834e727344d4f1c72c01f43e7b35807f9` |
+
+Both artifact ZIPs were independently checked against GitHub's published
+digests. The raw receipts also mark the wrong-hostname control as failed because
+Caddy actively refused the unknown SNI with `TLSV1_ALERT_INTERNAL_ERROR`, rather
+than returning a mismatched certificate. The probe now distinguishes that
+specific rejection: it requires an immediate successful valid-hostname TLS
+control before accepting the alert. Generic socket failures are not accepted,
+and the untrusted-root control still requires a certificate verification error.
+The publication failures remain failures regardless of that corrected
+classification. No Caddy/web egress, host firewall or network policy was relaxed.
+
+Appliance ingress remains blocked pending a separately qualified path from the
+host's listening sockets into restricted Caddy. These results do not qualify a
+Unix-socket relay or a full appliance installation.

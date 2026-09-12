@@ -702,10 +702,13 @@ services:
     environment:
       ASTER_DOMAIN: ${ASTER_DOMAIN:?Set appliance DNS hostname}
       ASTER_ORIGIN: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin}
-    ports:
-      - ${ASTER_BIND_ADDRESS:-0.0.0.0}:${ASTER_HTTP_PORT:-80}:8080
-      - ${ASTER_BIND_ADDRESS:-0.0.0.0}:${ASTER_HTTPS_PORT:-443}:8443
     volumes:
+      - type: bind
+        source: ${ASTER_INGRESS_ROOT:?Set protected ingress socket directory}
+        target: /run/aster-ingress
+        read_only: false
+        bind:
+          create_host_path: false
       - type: bind
         source: >-
           ${ASTER_RELEASE_ROOT:?Set the verified release

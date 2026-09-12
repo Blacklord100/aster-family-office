@@ -4,8 +4,19 @@
 	admin 127.0.0.1:2019
 	auto_https off
 	skip_install_trust
+	servers {
+		protocols h1 h2
+		listener_wrappers {
+			proxy_protocol {
+				timeout 5s
+				fallback_policy reject
+			}
+			tls
+		}
+	}
 }
 https://{$ASTER_DOMAIN} {
+	bind unix//run/aster-ingress/https.sock|0200
 	# Client PKI: complete leaf+intermediate PEM chain and matching private key.
 	tls /etc/aster/tls/server.crt /etc/aster/tls/server.key
 	import /etc/aster/headers.caddy
@@ -15,5 +26,6 @@ https://{$ASTER_DOMAIN} {
 	}
 }
 http://{$ASTER_DOMAIN} {
+	bind unix//run/aster-ingress/http.sock|0200
 	redir {$ASTER_ORIGIN}{uri} permanent
 }

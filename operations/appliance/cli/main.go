@@ -61,6 +61,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return nil
 	}
 	name := args[0]
+	// Socket-activated ingress is a long-lived confined process. It must not
+	// inherit the administrative command flags, root path or operation timeout.
+	if name == "ingress" {
+		return runIngress(ctx, args[1:], out)
+	}
 	f := flag.NewFlagSet(name, flag.ContinueOnError)
 	f.SetOutput(out)
 	root := f.String("root", "/var/lib/aster", "private appliance installation root")
