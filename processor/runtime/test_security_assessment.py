@@ -19,7 +19,7 @@ class ExactImageAssessmentTests(unittest.TestCase):
         source = json.loads(source_bytes)
         policy = json.loads((ROOT / 'security-policy.json').read_text())
         files = {name: 'a' * 64 for name in ['/opt/tesseract/bin/tesseract',
-                 '/opt/tesseract/lib/libtesseract.so.5', '/opt/libtiff/lib/libtiff.so.6']}
+                 '/opt/tesseract/lib/libtesseract.so.5.5', '/opt/libtiff/lib/libtiff.so.6']}
         build = {'sourceConfigurationSha256': assessment.digest(source_bytes),
                  'harnessSha256': assessment.digest(harness), 'sourceFiles': policy['sourceFiles'],
                  'nativeFiles': files, 'checks': {'schemaVersion': 1, 'networkCases': 12,
@@ -122,6 +122,14 @@ class ExactImageAssessmentTests(unittest.TestCase):
     def test_different_runtime_library_bytes_are_rejected(self):
         data = self.fixture()
         data[2]['nativeFiles'] = {**data[2]['nativeFiles'], '/opt/libtiff/lib/libtiff.so.6': 'd' * 64}
+        with self.assertRaisesRegex(ValueError, 'native payload'):
+            self.check(data)
+
+    def test_different_library_soname_cannot_self_authorize_its_receipt(self):
+        data = self.fixture()
+        files = data[0]['securityBuild']['nativeFiles']
+        files['/opt/tesseract/lib/libtesseract.so.5'] = files.pop('/opt/tesseract/lib/libtesseract.so.5.5')
+        self.rebind(data)
         with self.assertRaisesRegex(ValueError, 'native payload'):
             self.check(data)
 

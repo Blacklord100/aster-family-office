@@ -9,7 +9,7 @@ def main():
     evidence = manifest['securityBuild']
     actual = {}
     for name, expected in evidence['nativeFiles'].items():
-        if name not in {'/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5',
+        if name not in {'/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5.5',
                         '/opt/libtiff/lib/libtiff.so.6'}:
             raise ValueError('Unexpected native attestation path')
         actual[name] = hashlib.sha256(Path(name).read_bytes()).hexdigest()

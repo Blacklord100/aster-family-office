@@ -33,7 +33,7 @@ def assess(manifest, scan, runtime, image_id, policy, source_bytes, harness_byte
     if build.get('checks') != {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
                                'tiffCodecCases': 3, 'passed': True}:
         raise ValueError('Native security regressions did not pass with full coverage')
-    expected_paths = {'/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5',
+    expected_paths = {'/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5.5',
                       '/opt/libtiff/lib/libtiff.so.6'}
     files = build.get('nativeFiles', {})
     if (set(files) != expected_paths or any(not re.fullmatch(r'[0-9a-f]{64}', value) for value in files.values()) or

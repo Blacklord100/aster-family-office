@@ -56,6 +56,7 @@ def main():
                     '-L/opt/tesseract/lib', '-L/opt/libtiff/lib', '-ltesseract', '-ltiff', *lept_libraries, '-pthread'],
                    check=True, timeout=120)
     checks = run_security_regression(binary)
+    print(json.dumps({'nativeSecurityRegression': checks}), flush=True)
     # Retain exact source identities for original release fixes as well as backports.
     relevant = {'tesseract': ['src/lstm/convolve.cpp', 'src/lstm/reconfig.cpp',
                               'src/classify/normmatch.cpp', 'src/lstm/fullyconnected.cpp',
@@ -63,7 +64,9 @@ def main():
                 'libtiff': ['libtiff/tif_read.c', 'libtiff/tif_compress.c', 'tools/tiffcrop.c']}
     source_files = {name: {path: sha(root / 'sources' / sources[name]['directory'] / path)
                            for path in paths} for name, paths in relevant.items()}
-    native_files = ['/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5',
+    # The authenticated 5.5.3 CMake build uses SOVERSION 5.5, as recorded in its
+    # installation inventory; retain that real SONAME rather than invent an alias.
+    native_files = ['/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5.5',
                     '/opt/libtiff/lib/libtiff.so.6']
     receipt = {'schemaVersion': 1, 'checks': checks, 'sourceFiles': source_files,
                'nativeFiles': {path: sha(Path(path)) for path in native_files},
@@ -71,7 +74,6 @@ def main():
                'sourceConfigurationSha256': sha(root / 'upstream-sources.json'),
                'backports': json.loads((root / 'security-backports.json').read_text())}
     (root / 'security-build.json').write_text(json.dumps(receipt, indent=2) + '\n')
-    print(json.dumps({'nativeSecurityRegression': checks}))
 
 
 if __name__ == '__main__':
