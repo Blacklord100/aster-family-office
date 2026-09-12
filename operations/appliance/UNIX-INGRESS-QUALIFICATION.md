@@ -100,6 +100,31 @@ a new actual run. The [systemd v255 execution documentation](https://raw.githubu
 requires the configured user/group to exist in the static user database when
 `DynamicUser` is not used; accepting a numeric `User` value does not create it.
 
+## Account postflight correction
+
+[Run34715022878](https://github.com/Blacklord100/aster-family-office/actions/runs/34715022878)
+at commit `13ddfb16231688165194fde1f51a1f2fd334ca7d` passed its Linux tests/build,
+then stopped during the production account helper's post-creation validation.
+The selected account/group names and numeric IDs were all absent beforehand.
+No Caddy container, host unit or ingress check started. Because no verified
+creation receipt was returned, cleanup preserved the unproven partial identities
+on that disposable runner and removed only its synthetic root. Retained artifact
+ZIP SHA256 is
+`aeb3983775898bcbb27af85f81ec80451ab15cecde0ff3efeeffb6339d145c58`,
+independently checked against GitHub's digest.
+
+Source review found that [glibc2.39's `getent initgroups` implementation](https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nss/getent.c)
+uses a sentinel instead of the primary group and omits that sentinel from output.
+A user with no supplementary memberships therefore produces only its username.
+The helper incorrectly required a following GID, rejecting the intended account
+with zero additional groups. The correction accepts that exact username-only
+result; the primary GID remains independently checked in the passwd record, and
+any foreign supplementary GID still fails. Safe validation error categories are
+now retained. The probe also records the controller/template hashes before
+provisioning and captures only bounded selected public account fields plus the
+systemd version on failure; it never retains password or shadow records. A new
+actual hosted run is required to confirm this correction and the ingress path.
+
 The upstream interfaces are documented by [Caddy's Unix bind directive](https://caddyserver.com/docs/caddyfile/directives/bind)
 and [its PROXY listener wrapper](https://caddyserver.com/docs/caddyfile/options#listener-wrappers).
 The wrapper precedes TLS, trusts Unix peers, and HTTP/3 is disabled for these Unix

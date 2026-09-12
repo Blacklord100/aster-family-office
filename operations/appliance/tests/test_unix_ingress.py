@@ -38,6 +38,27 @@ def topology():
 
 
 class Controls(unittest.TestCase):
+    def test_failed_provisioning_retains_original_error_and_only_selected_public_fields(self):
+        user = SimpleNamespace(pw_name='aster-ingress', pw_uid=10001, pw_gid=10001,
+                               pw_gecos='Aster ingress relay', pw_dir='/nonexistent', pw_shell='/usr/sbin/nologin',
+                               pw_passwd='SYNTHETIC_CREDENTIAL_MUST_NOT_APPEAR')
+        group = SimpleNamespace(gr_name='aster-ingress', gr_gid=10001, gr_mem=[], gr_passwd='SYNTHETIC_GROUP_SECRET')
+        receipt = {'controllerSha256': 'a' * 64, 'templateSha256': {'service': 'b' * 64}}
+        with patch.object(PROBE, 'prepare_account', side_effect=ValueError('SYNTHETIC safe postflight reason')), \
+                patch.object(PROBE.pwd, 'getpwnam', return_value=user), patch.object(PROBE.pwd, 'getpwuid', return_value=user), \
+                patch.object(PROBE.grp, 'getgrnam', return_value=group), patch.object(PROBE.grp, 'getgrgid', return_value=group), \
+                patch.object(PROBE.pwd, 'getpwall') as all_users, patch.object(PROBE.grp, 'getgrall') as all_groups, \
+                patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, 'systemd255 (SYNTHETIC)\nfeature-list', '')) as command, \
+                self.assertRaisesRegex(ValueError, 'safe postflight reason'):
+            PROBE.provision_with_diagnostics(Path('/SYNTHETIC/asterctl'), receipt)
+        diagnostic = receipt['accountFailureDiagnostics']
+        self.assertEqual(diagnostic['selectedPublicRecords']['userName']['uid'], 10001)
+        self.assertEqual(diagnostic['systemdVersion'], 'systemd255 (SYNTHETIC)')
+        self.assertNotIn('CREDENTIAL', json.dumps(receipt)); self.assertNotIn('GROUP_SECRET', json.dumps(receipt))
+        self.assertEqual(receipt['controllerSha256'], 'a' * 64)
+        all_users.assert_not_called(); all_groups.assert_not_called()
+        self.assertEqual(command.call_args.args[0], ['/usr/bin/systemctl', '--version'])
+
     def test_only_exact_public_account_receipt_is_accepted(self):
         good = {'name': 'aster-ingress', 'uid': 10001, 'gid': 10001, 'createdUser': True, 'createdGroup': True}
         with patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, json.dumps(good), '')) as run:

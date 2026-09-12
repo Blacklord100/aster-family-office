@@ -57,7 +57,7 @@ func (f *ingressAccountFixture) lookup(ctx context.Context, local bool, database
 	case "gshadow":
 		return f.gshadow, f.gshadow != "", nil
 	case "initgroups":
-		return ingressAccountName + " 10001 10001", true, nil
+		return fmt.Sprintf("%-21s", ingressAccountName), true, nil
 	}
 	rows := f.users
 	if database == "group" {
@@ -337,5 +337,33 @@ func TestIngressAccountCancellationRefusesMutation(t *testing.T) {
 	f := newIngressAccountFixture(false, false)
 	if _, err := ensureIngressAccountWithLookup(ctx, f, f.lookup); err == nil || f.mutations != 0 {
 		t.Fatal("cancelled account creation proceeded")
+	}
+}
+
+func TestIngressAccountInitgroupsMayOmitPrimaryGID(t *testing.T) {
+	for _, entry := range []struct {
+		name, output string
+		valid        bool
+	}{
+		{"glibc-no-supplementary-groups", "aster-ingress        \n", true},
+		{"provider-repeats-primary-group", "aster-ingress 10001 10001\n", true},
+		{"empty-output", "\n", false},
+		{"wrong-identity", "foreign\n", false},
+		{"foreign-group", "aster-ingress 999\n", false},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			f := newIngressAccountFixture(true, true)
+			command := &accountLookupCommand{data: []byte(entry.output)}
+			lookup := func(ctx context.Context, local bool, database, key string) (string, bool, error) {
+				if database == "initgroups" {
+					return ingressGetentLookup(command)(ctx, local, database, key)
+				}
+				return f.lookup(ctx, local, database, key)
+			}
+			_, err := ensureIngressAccountWithLookup(context.Background(), f, lookup)
+			if (err == nil) != entry.valid || f.mutations != 0 {
+				t.Fatalf("unexpected membership validation: valid=%t error=%v mutations=%d", entry.valid, err, f.mutations)
+			}
+		})
 	}
 }

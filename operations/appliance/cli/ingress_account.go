@@ -99,7 +99,12 @@ func ensureIngressAccountWithLookup(ctx context.Context, commands Commander, loo
 		return ingressAccountReceipt{}, fmt.Errorf("ingress account creation did not complete; rerun only after reviewing the local account state")
 	}
 	after, err := inspectIngressAccount(ctx, lookup)
-	if err != nil || !after.user || !after.group {
+	if err != nil {
+		// Inspection errors contain fixed reason categories only, never NSS
+		// records. Preserve that safe reason to diagnose a real host refusal.
+		return ingressAccountReceipt{}, fmt.Errorf("ingress account creation failed independent identity validation; no service may start: %w", err)
+	}
+	if !after.user || !after.group {
 		return ingressAccountReceipt{}, fmt.Errorf("ingress account creation failed independent identity validation; no service may start")
 	}
 	return ingressAccountReceipt{Name: ingressAccountName, UID: 10001, GID: 10001,
@@ -197,7 +202,12 @@ func inspectIngressAccount(ctx context.Context, lookup ingressAccountLookup) (in
 	if state.user {
 		value, found, err := lookup(ctx, false, "initgroups", ingressAccountName)
 		parts := strings.Fields(value)
-		if err != nil || !found || len(parts) < 2 || parts[0] != ingressAccountName {
+		// glibc getent initgroups passes -1 as the primary-group sentinel
+		// and omits it from output. No supplementary memberships therefore
+		// produces only the username. The actual primary GID was checked
+		// independently in both keyed and enumerated passwd records above.
+		// https://github.com/bminor/glibc/blob/glibc-2.39/nss/getent.c
+		if err != nil || !found || len(parts) < 1 || parts[0] != ingressAccountName {
 			return state, fmt.Errorf("ingress supplementary group inspection failed")
 		}
 		for _, group := range parts[1:] {

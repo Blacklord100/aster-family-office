@@ -103,6 +103,41 @@ def prepare_account(binary):
     return value
 
 
+def account_failure_diagnostics():
+    """Only selected public NSS fields; never shadow, passwords or full lists."""
+    result = {'presence': account_presence(), 'selectedPublicRecords': {}}
+    queries = [('userName', pwd.getpwnam, ACCOUNT), ('userId', pwd.getpwuid, 10001),
+               ('groupName', grp.getgrnam, ACCOUNT), ('groupId', grp.getgrgid, 10001)]
+    for key, lookup, identifier in queries:
+        try:
+            entry = lookup(identifier)
+            if key.startswith('user'):
+                value = {'name': entry.pw_name[:80], 'uid': entry.pw_uid, 'gid': entry.pw_gid,
+                         'description': entry.pw_gecos[:256], 'home': entry.pw_dir[:4096], 'shell': entry.pw_shell[:4096]}
+            else:
+                value = {'name': entry.gr_name[:80], 'gid': entry.gr_gid,
+                         'members': [member[:80] for member in entry.gr_mem[:16]], 'memberCount': len(entry.gr_mem)}
+            result['selectedPublicRecords'][key] = value
+        except KeyError:
+            result['selectedPublicRecords'][key] = None
+        except OSError:
+            result['selectedPublicRecords'][key] = {'lookupFailed': True}
+    version = cleanup_command(privileged, ['/usr/bin/systemctl', '--version'], check=False)
+    result['systemdVersion'] = version.stdout.splitlines()[0][:2048] if version.returncode == 0 and version.stdout else 'unavailable'
+    return result
+
+
+def provision_with_diagnostics(binary, receipt):
+    try:
+        return prepare_account(binary)
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        try:
+            receipt['accountFailureDiagnostics'] = account_failure_diagnostics()
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+            receipt['accountFailureDiagnostics'] = {'diagnosticsUnavailable': True}
+        raise
+
+
 def cleanup_account(before, prepared, binary):
     if before is None or any(before.values()):
         return {'result': 'passed', 'action': 'preexisting identities preserved; no provisioning attempted'}
@@ -349,22 +384,24 @@ def qualify(output, source_binary):
         binary = root / 'releases/synthetic/payload/bin/asterctl'
         binary.parent.mkdir(parents=True)
         shutil.copyfile(source_binary, binary); binary.chmod(0o755)
+        units, template_hashes = render_units(root, binary)
+        receipt.update({'controllerSha256': common.digest(binary), 'templateSha256': template_hashes,
+                        'unitSha256': {key: hashlib.sha256(value.encode()).hexdigest() for key, value in units.items()}})
+        if receipt['controllerSha256'] != common.digest(source_binary):
+            raise ValueError('Controller changed while copying to its private synthetic release')
+        for key, value in units.items():
+            (output / key).write_text(value)
         (root / 'run').mkdir(mode=0o700)
         (root / 'run/ingress-jail').mkdir(mode=0o755)
         sockets = root / 'run/ingress-sockets'; sockets.mkdir(mode=0o700)
         caddy_data = root / 'synthetic-caddy-data'; caddy_data.mkdir(mode=0o700)
         privileged(['/usr/bin/chown', '-R', '0:0', str(root)])
-        prepared_account = prepare_account(binary)
+        prepared_account = provision_with_diagnostics(binary, receipt)
         receipt['accountProvisioning'] = prepared_account
         if not prepared_account['createdUser'] or not prepared_account['createdGroup']:
             raise ValueError('Fresh probe identities were not both created by this exact controller')
         privileged(['/usr/bin/chown', '10001:10001', str(sockets)])
         privileged(['/usr/bin/chown', '10001:10001', str(caddy_data)])
-        units, template_hashes = render_units(root, binary)
-        receipt.update({'controllerSha256': common.digest(source_binary), 'templateSha256': template_hashes,
-                        'unitSha256': {key: hashlib.sha256(value.encode()).hexdigest() for key, value in units.items()}})
-        for key, value in units.items():
-            (output / key).write_text(value)
         lock_path = ROOT / 'operations/appliance/image-lock.json'
         lock = json.loads(lock_path.read_text()); base = lock['bases']['caddy']
         if lock.get('platform') != 'linux/amd64' or not re.fullmatch(r'caddy:[^\s@]+@sha256:[a-f0-9]{64}', base):

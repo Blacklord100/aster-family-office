@@ -51,6 +51,19 @@ These links identify maintainers' repositories; the collector must resolve and
 retain the exact revision that corresponds to each pinned artifact. A link to a
 repository's current branch is not the release's source lock.
 
+The four remaining Cargo notice gaps belong to an Apple dependency chain.
+Inspection of all 350 registry manifests and 12 librsvg workspace manifests found
+seven edges in that chain; its only external entrances are
+`locale_config` 0.3.0 dependencies guarded by `cfg(target_os = "macos")`.
+This supports testing a smaller Linux source set, but no exclusion has been
+applied. The retained recipe uses an unpinned nightly/cargo-c toolchain and runs
+`cargo update --workspace`; the publisher's resulting lockfile and compiler/link
+records are unavailable. A checksum-bound, network-disabled Cargo metadata/tree
+probe can reconstruct the expected Linux dependency graph. It cannot alone prove
+which modules went into the shipped prebuilt library. Obtain the publisher's
+exact build evidence or qualify a pinned rebuild before claiming that narrower
+binary scope; preserve the current failing gate meanwhile.
+
 The processor's already reviewed archive URLs include the
 [Tesseract 5.5.3 archive](https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.3.tar.gz),
 [libtiff 4.7.2 archive](https://download.osgeo.org/libtiff/tiff-4.7.2.tar.xz)
