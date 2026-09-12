@@ -15,7 +15,7 @@ import threading
 import unittest
 from types import SimpleNamespace
 from contextlib import nullcontext
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 spec = importlib.util.spec_from_file_location('unix_ingress', Path(__file__).parents[1] / 'scripts/probe-unix-ingress.py')
 PROBE = importlib.util.module_from_spec(spec)
@@ -38,6 +38,25 @@ def topology():
 
 
 class Controls(unittest.TestCase):
+    def test_caddy_permanent_redirect_requires301_and_exact_origin(self):
+        origin = 'https://' + PROBE.HOSTNAME + '/qualification'
+        cases = [(301, origin, b'', True), (308, origin, b'', False),
+                 (302, origin, b'', False), (301, 'https://other.invalid/qualification', b'', False),
+                 (301, origin, b'x' * 4097, False)]
+        for status, location, body, allowed in cases:
+            connection = MagicMock()
+            response = connection.getresponse.return_value
+            response.status = status; response.getheader.return_value = location; response.read.return_value = body
+            with patch.object(PROBE.http.client, 'HTTPConnection', return_value=connection), self.subTest(status=status, location=location):
+                if allowed:
+                    self.assertEqual(PROBE.host_redirect(), {'status': 301, 'location': origin})
+                else:
+                    with self.assertRaisesRegex(ValueError, '"status": ' + str(status)):
+                        PROBE.host_redirect()
+            connection.close.assert_called_once()
+            connection.request.assert_called_once_with('GET', '/qualification', headers={'Host': PROBE.HOSTNAME})
+            response.read.assert_called_once_with(4097)
+
     def test_failed_provisioning_retains_original_error_and_only_selected_public_fields(self):
         user = SimpleNamespace(pw_name='aster-ingress', pw_uid=10001, pw_gid=10001,
                                pw_gecos='Aster ingress relay', pw_dir='/nonexistent', pw_shell='/usr/sbin/nologin',

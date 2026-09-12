@@ -170,8 +170,9 @@ def http_redirect(address, port):
     try:
         client.request('GET', '/qualification', headers={'Host': HOSTNAME})
         response = client.getresponse()
-        if response.status != 308 or response.getheader('Location') != f'https://{HOSTNAME}/qualification':
-            raise ValueError('HTTP ingress did not produce the configured HTTPS redirect')
+        if response.status != 301 or response.getheader('Location') != f'https://{HOSTNAME}/qualification':
+            raise ValueError('HTTP ingress did not produce the configured HTTPS301 redirect: '
+                             + str(response.status) + ' ' + (response.getheader('Location') or '')[:4096])
         response.read(4097)
         return {'status': response.status, 'location': response.getheader('Location')}
     finally:

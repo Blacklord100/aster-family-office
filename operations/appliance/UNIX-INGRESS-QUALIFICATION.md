@@ -69,9 +69,10 @@ Synthetic private CA keys exist only in the new private synthetic root, are
 removed by its exact cleanup, and are never uploaded. No real emails, office
 data, model or database is used.
 
-**Qualification status:** local tests verify rendering, strict trust/identity
-checks, topology rejection and failure handling. A passing actual hosted receipt
-is still required before claiming the new ingress works. This bounded probe does
+**Qualification status:** the latest actual run passed15 of17 checks, including
+host HTTPS, both relay sandboxes, restart recovery and all cleanup. Its HTTP
+status expectation was incorrect and is corrected below. A completely passing
+hosted receipt is still required to clear this bounded gate. This probe does
 not establish a complete appliance install/update/restore, external-LAN reachability,
 supplied-certificate deployment, or customer firewall policy.
 
@@ -124,6 +125,38 @@ now retained. The probe also records the controller/template hashes before
 provisioning and captures only bounded selected public account fields plus the
 systemd version on failure; it never retains password or shadow records. A new
 actual hosted run is required to confirm this correction and the ingress path.
+
+## Actual HTTPS success and HTTP assertion correction
+
+[Run34715358876](https://github.com/Blacklord100/aster-family-office/actions/runs/34715358876)
+at commit `924d573803c86a5f21aebac3a06111541d9bee87` passed15 of17 checks and all12
+cleanup checks. It proved actual static account creation and safe removal,
+socket activation, TLS1.3 HTTPS200 on host443 with the correct CA/SNI,
+kernel-derived client127.0.0.2 despite spoofed forwarding headers, strict negative
+TLS controls, and both real UID10001 relay processes in separate loopback-only
+network namespaces with no capabilities and read-only executable/socket binds.
+Both graceful and crash restarts recovered HTTPS with the same CA and protected
+socket permissions. These are observed bounded results, not full appliance or
+external-LAN qualification.
+
+| Evidence | Exact identity |
+| --- | --- |
+| Caddy image | `sha256:e4e49078c40947d540867142be86cf451a17ae32644410308707469f4dada0d2` |
+| Executed controller SHA256 | `db618a154afedbc17f42c5614bfc3b496e37288d5c767ca0d1d84a8c8e96ec5f` |
+| Persistent public CA SHA256 | `e34f5e8e217506500390d3728913eb48b6e1803948c1b729f05789a9981e4d9b` |
+| Retained artifact ZIP SHA256 | `2df594cb8e6a877a930fc40bf1ce3c6a7723cdf74ca7718ae65c786e8fa422cf` |
+
+The artifact digest was independently matched to GitHub; retained configuration,
+unit and CA bytes match the receipt hashes, and both executed process identities
+match the controller hash. The two failed checks were the HTTP redirect and the
+ordinary HTTP control following the forged-PROXY rejection. The probe expected308,
+but the unchanged production configuration uses `redir ... permanent`, which
+[Caddy documents as301](https://caddyserver.com/docs/caddyfile/directives/redir).
+The correction requires301 and the exact HTTPS destination, rejects other codes
+or origins, and retains actual response status/location on mismatch. The forged
+PROXY request had reached its required400 check before the subsequent ordinary
+HTTP assertion failed. This raw failed receipt remains retained; a fresh actual
+run must verify the corrected complete control set.
 
 The upstream interfaces are documented by [Caddy's Unix bind directive](https://caddyserver.com/docs/caddyfile/directives/bind)
 and [its PROXY listener wrapper](https://caddyserver.com/docs/caddyfile/options#listener-wrappers).

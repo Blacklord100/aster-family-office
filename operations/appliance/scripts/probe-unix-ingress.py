@@ -207,10 +207,14 @@ def host_redirect():
     try:
         connection.request('GET', '/qualification', headers={'Host': HOSTNAME})
         response = connection.getresponse()
-        if response.status != 308 or response.getheader('Location') != 'https://' + HOSTNAME + '/qualification':
-            raise ValueError('Actual host HTTP socket did not redirect to the expected HTTPS origin')
-        response.read(4097)
-        return {'status': response.status, 'location': response.getheader('Location')}
+        location = response.getheader('Location')
+        body = response.read(4097)
+        # Caddy's explicit `permanent` keyword is301, not308. Keep both
+        # the status and exact destination strict and retain observed values.
+        if response.status != 301 or location != 'https://' + HOSTNAME + '/qualification' or len(body) > 4096:
+            raise ValueError('Actual host HTTP redirect differs: ' + json.dumps(
+                {'status': response.status, 'location': (location or '')[:4096], 'bodyBytes': len(body)}))
+        return {'status': response.status, 'location': location}
     finally:
         connection.close()
 
