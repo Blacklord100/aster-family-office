@@ -1,0 +1,42 @@
+name: Qualify synthetic Caddy ingress
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synthetic-caddy-ingress-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  internal-ingress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12.13'
+      - name: Test topology, actual synthetic TLS and failed-receipt controls without Docker
+        run: python -m unittest discover -s operations/appliance/tests -p 'test_caddy_ingress.py' -v
+      - name: Exercise exact Caddy image on an internal bridge with published ingress
+        run: python operations/appliance/scripts/probe-caddy-ingress.py --output "$RUNNER_TEMP/caddy-ingress-evidence"
+      - name: Retain success or failure evidence; no deployment or trust installation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synthetic-caddy-ingress
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/caddy-ingress-evidence/receipt.json
+            ${{ runner.temp }}/caddy-ingress-evidence/Caddyfile.synthetic
+            ${{ runner.temp }}/caddy-ingress-evidence/root.crt
+            ${{ runner.temp }}/caddy-ingress-evidence/docker-version.json
+            ${{ runner.temp }}/caddy-ingress-evidence/build.log
+            ${{ runner.temp }}/caddy-ingress-evidence/caddy.log
+            ${{ runner.temp }}/caddy-ingress-evidence/container.json

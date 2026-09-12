@@ -1,0 +1,75 @@
+name: Qualify app native source materials
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-source-materials-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - name: Validate bounded collector controls without downloads
+        run: |
+          /usr/bin/python3 -m unittest discover -s tools/release -p 'test_collect_native_sources.py' -v
+          /usr/bin/python3 -m unittest discover -s operations/appliance/tests -p 'test_native_source_qualification.py' -v
+          /usr/bin/python3 tools/release/collect-native-sources.py policy
+          /usr/bin/python3 operations/appliance/scripts/qualify-native-sources.py preflight \
+            --output "$RUNNER_TEMP/native-source-qualification"
+          test -x /usr/bin/readelf
+          test -x /usr/bin/unshare
+          test -x /usr/bin/setpriv
+      - name: Build current Linux app without application secrets
+        id: app
+        timeout-minutes: 20
+        run: |
+          /usr/bin/docker --host unix:///var/run/docker.sock build --platform linux/amd64 \
+            -f operations/Dockerfile.app -t aster-native-source:qualify .
+          image_id="$(/usr/bin/docker --host unix:///var/run/docker.sock image inspect --format '{{.Id}}' aster-native-source:qualify)"
+          printf 'image_id=%s\n' "$image_id" >> "$GITHUB_OUTPUT"
+      - name: Export inert exact-image public runtime package
+        run: |
+          /usr/bin/python3 operations/appliance/scripts/qualify-native-sources.py prepare \
+            --image-id '${{ steps.app.outputs.image_id }}' --output "$RUNNER_TEMP/native-source-qualification"
+      - name: Resolve complete reviewed native and Cargo source closure
+        timeout-minutes: 65
+        run: |
+          set -o pipefail
+          /usr/bin/timeout --signal=TERM --kill-after=30s 62m \
+            /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 \
+            /usr/bin/python3 operations/appliance/scripts/qualify-native-sources.py resolve \
+            --output "$RUNNER_TEMP/native-source-qualification" \
+            2>&1 | tee "$RUNNER_TEMP/native-source-resolve.log"
+      - name: Verify original materials with kernel networking disabled
+        timeout-minutes: 12
+        run: |
+          set -o pipefail
+          host_network="$(readlink /proc/self/ns/net)"
+          host_mount="$(readlink /proc/self/ns/mnt)"
+          sudo /usr/bin/timeout --signal=TERM --kill-after=10s 10m \
+            /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 \
+            /usr/bin/unshare --net --mount --propagation private \
+            /usr/bin/python3 "$GITHUB_WORKSPACE/operations/appliance/scripts/qualify-native-sources.py" enter-offline \
+            --output "$RUNNER_TEMP/native-source-qualification" \
+            --host-network "$host_network" --host-mount "$host_mount" --uid "$(id -u)" --gid "$(id -g)" \
+            2>&1 | tee "$RUNNER_TEMP/native-source-offline.log"
+      - name: Retain public originals and exact-image offline qualification
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: app-native-source-materials
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/native-source-qualification
+            ${{ runner.temp }}/native-source-resolve.log
+            ${{ runner.temp }}/native-source-offline.log
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
