@@ -10,7 +10,7 @@ export ASTER_DOMAIN=aster.synthetic.invalid BETTER_AUTH_URL=https://aster.synthe
 export ASTER_IMAGE=aster-app:synthetic PROCESSOR_IMAGE=aster-processor:synthetic POSTGRES_IMAGE=aster-postgres:synthetic
 export OLLAMA_IMAGE=aster-ollama:synthetic CADDY_IMAGE=aster-caddy:synthetic OLLAMA_MODEL=synthetic:not-pulled
 mkdir -p "$ASTER_DATA_ROOT/secrets"
-for name in postgres_password migration_password runtime_password better_auth_secret encryption_key encryption_keyring processor_token mailbox_providers smtp_settings; do
+for name in postgres_password migration_password runtime_password better_auth_secret encryption_key encryption_keyring processor_token mailbox_providers mailbox_broker_token smtp_settings; do
   printf 'SYNTHETIC-NOT-USED\n' > "$ASTER_DATA_ROOT/secrets/$name"
 done
 for mode in offline connected; do

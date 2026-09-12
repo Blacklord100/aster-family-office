@@ -216,6 +216,20 @@ class NativeSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'version inventory differs'):
                 native.runtime_inventory(root, lock, 'sha256:' + 'a' * 64, policy)
 
+    def test_reviewed_glibc_resolver_is_system_scope_but_other_new_libraries_fail(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            policy, lock, _ = self.runtime_fixture(root)
+            expected = ['libc.so.6', 'libresolv.so.2']
+            metadata = '\n'.join(' (NEEDED) Shared library: [' + name + ']' for name in expected)
+            with patch.object(native.subprocess, 'run', return_value=SimpleNamespace(stdout=metadata)):
+                inventory = native.runtime_inventory(root, lock, 'sha256:' + 'a' * 64, policy)
+            self.assertEqual(inventory['nativeFiles'][0]['neededSystemLibraries'], expected)
+            self.assertNotIn('glibc', {source['name'] for source in policy['sources']})
+            with patch.object(native.subprocess, 'run', return_value=SimpleNamespace(stdout=metadata + '\n (NEEDED) Shared library: [new-unreviewed.so]')):
+                with self.assertRaisesRegex(ValueError, 'unreviewed shared dependency: new-unreviewed.so'):
+                    native.runtime_inventory(root, lock, 'sha256:' + 'a' * 64, policy)
+
 
 if __name__ == '__main__':
     unittest.main()

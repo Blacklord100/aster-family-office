@@ -27,6 +27,9 @@ func protocolReviewFixture(t *testing.T, body string) (Controller, Installation,
 	t.Helper()
 	source, m := fixture(t)
 	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(root, "releases"), 0700); err != nil {
 		t.Fatal(err)
 	}

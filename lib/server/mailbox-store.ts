@@ -13,13 +13,12 @@ import {
   type MailboxResponse,
   type MailboxInfo,
 } from '../mailbox-contract';
+import { oauthSettings, MailboxError } from './mailbox-provider';
 import {
-  exchangeTokens,
-  oauthSettings,
-  providerConfiguration,
-  providerIdentity,
-  MailboxError,
-} from './mailbox-provider';
+  completeMailboxAuthorization,
+  mailboxConnectionConfiguration,
+  mailboxOAuthTransport,
+} from './mailbox-broker';
 
 export async function listMailboxes(
   context: WorkspaceContext,
@@ -31,8 +30,8 @@ export async function listMailboxes(
     );
     return {
       providers: [
-        providerConfiguration('gmail'),
-        providerConfiguration('microsoft'),
+        mailboxConnectionConfiguration('gmail'),
+        mailboxConnectionConfiguration('microsoft'),
       ],
       mailboxes: result.rows.map((row) => ({
         ...row,
@@ -49,6 +48,7 @@ export async function startMailboxAuthorization(
   context: WorkspaceContext,
   input: z.infer<typeof MailboxConnectSchema>,
 ) {
+  mailboxOAuthTransport();
   const settings = oauthSettings(input.provider),
     state =
       context.organizationId + '.' + randomBytes(32).toString('base64url'),
@@ -147,20 +147,14 @@ export async function finishMailboxAuthorization(
     authEnvironment().origin + '/api/mailboxes/callback/' + provider;
   if (payload.clientId !== settings.clientId || payload.callback !== callback)
     throw new MailboxError('INVALID_OAUTH_STATE');
-  const credentials = await exchangeTokens(
-    provider,
+  const { credentials, identity } = await completeMailboxAuthorization(
     {
-      grant_type: 'authorization_code',
+      provider,
       code,
-      redirect_uri: callback,
-      code_verifier: payload.verifier,
+      callback,
+      verifier: payload.verifier,
+      expectedClientId: settings.clientId,
     },
-    undefined,
-    fetcher,
-  );
-  const identity = await providerIdentity(
-    provider,
-    credentials.accessToken,
     fetcher,
   );
   return withTenant(context.organizationId, async (client) => {

@@ -59,3 +59,13 @@ names are recorded separately; Debian/Ubuntu/runtime-service sources and other
 image packages still require their own distribution material. A passing source
 receipt is an engineering inventory, not a legal approval or a claim that all
 other binary-distribution obligations have been satisfied.
+
+The actual Linux app qualification found a dynamic dependency on
+`libresolv.so.2`. Debian lists this resolver library in its
+[libc6 package files](https://packages.debian.org/trixie/amd64/libc6/filelist),
+whose [source package is glibc](https://packages.debian.org/trixie/libc6).
+It is therefore an explicitly reviewed system dependency alongside `libc.so.6`.
+This policy addition does not include glibc's corresponding source in the
+sharp source bundle. The qualification retains the exact image's available
+package metadata and resolver bytes separately for review; unknown ELF
+dependencies continue to fail.

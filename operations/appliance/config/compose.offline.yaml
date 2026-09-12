@@ -99,6 +99,7 @@ services:
       BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       EMAIL_DELIVERY_ENABLED: 'false'
+      MAILBOX_OAUTH_TRANSPORT: disabled
       ASTER_INTAKE_ROOT: /run/aster-intake
       ASTER_ARCHIVE_ROOT: /run/aster-archive
       ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive

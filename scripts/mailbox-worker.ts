@@ -2,6 +2,7 @@ import { runWorkerOperation } from '../lib/server/lifecycle';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { pool, assertDatabaseRole } from '../lib/server/db';
+import { startMailboxBroker } from '../lib/server/mailbox-broker';
 import {
   claimMailbox,
   syncMailboxPage,
@@ -11,10 +12,20 @@ import {
 const workerId = randomUUID();
 let stopping = false,
   active: AbortController | undefined;
+let broker: Awaited<ReturnType<typeof startMailboxBroker>>;
+let closingBroker: Promise<void> | undefined;
+function closeBroker() {
+  closingBroker ??= broker?.close();
+  // Signal handlers start cleanup before the polling loop exits. The final
+  // await below reports cleanup errors without an interim unhandled rejection.
+  void closingBroker?.catch(() => undefined);
+  return closingBroker;
+}
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.on(signal, () => {
     stopping = true;
     active?.abort();
+    void closeBroker();
   });
 async function heartbeat() {
   if (process.env.MAILBOX_HEARTBEAT_FILE)
@@ -24,6 +35,10 @@ async function heartbeat() {
 }
 async function main() {
   await assertDatabaseRole();
+  broker = await startMailboxBroker((run) =>
+    runWorkerOperation('mailbox', run),
+  );
+  if (stopping) void closeBroker();
   while (!stopping) {
     const allowed = await runWorkerOperation('mailbox', iteration);
     if (!allowed) {
@@ -85,10 +100,16 @@ async function main() {
   }
 }
 main()
+  .finally(async () => {
+    try {
+      await closeBroker();
+    } finally {
+      await pool.end();
+    }
+  })
   .catch(() => {
     console.error(
       'Mailbox worker stopped. Check database and provider configuration.',
     );
     process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+  });

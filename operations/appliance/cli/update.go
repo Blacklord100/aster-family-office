@@ -158,6 +158,9 @@ func (c Controller) updateOperation(ctx context.Context, bundle, backup string, 
 	if e = c.checkDatabaseCompatibility(ctx, oldManifest, m); e != nil {
 		return e
 	}
+	if e = c.ensureMailboxBrokerSecret(next); e != nil {
+		return e
+	}
 	postgresState := old
 	if continuing {
 		if _, err := os.Stat(filepath.Join(c.Root, "config", next.ReleaseID+".env")); err == nil {

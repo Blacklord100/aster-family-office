@@ -59,6 +59,13 @@ def one_json(result):
     return value[0]
 
 
+def executable_capabilities(cid, work):
+    capabilities = docker(['exec', cid, 'getcap', '/usr/bin/caddy'], work).stdout.strip()
+    if capabilities:
+        raise ValueError('Caddy executable still carries file capabilities: ' + capabilities[:1024])
+    return {'path': '/usr/bin/caddy', 'capabilities': []}
+
+
 def topology(container, network, name, image_id):
     cid, nid = container.get('Id', ''), network.get('Id', '')
     if not OBJECT_ID.fullmatch(cid) or not OBJECT_ID.fullmatch(nid):
@@ -221,6 +228,7 @@ def qualify(output):
             network = one_json(docker(['network', 'inspect', nid], work))
             return topology(container, network, name, image_id)
         endpoint = inspect(); receipt['topology'] = endpoint
+        receipt['executableCapabilities'] = executable_capabilities(cid, work)
         ca = output / 'root.crt'
         deadline = time.monotonic() + 60
         last = 'Caddy has not created its synthetic public root certificate'

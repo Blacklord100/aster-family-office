@@ -115,11 +115,16 @@ maintenance window, update those private files, then use
 This restarts all services; it does not change the recorded optional-service choice.
 Do not put credentials in command arguments, public configuration or this repository.
 
-Fresh Gmail/Microsoft authorization is currently blocked in the appliance profile:
-its callback performs the token exchange in `web`, which deliberately has no
-external network or DNS route. The optional-service selection fixes worker
-lifecycle persistence; it does not yet qualify that OAuth connection flow. Keep
-web egress closed until a reviewed internal exchange path is implemented and tested.
+Fresh Gmail/Microsoft authorization uses the mailbox worker's authenticated
+internal broker. The web callback consumes its session-bound, one-use OAuth state;
+the broker checks the configured origin and client ID, then exchanges the code and
+retrieves the identity from fixed provider endpoints. The controller provisions a
+dedicated internal token without replacing existing provider or encryption keys.
+Only an explicitly selected mailbox service enables this path; disabled or
+unavailable brokers fail closed. Keep web egress closed. Synthetic HTTP and
+disposable database tests cover the application contract; actual connected
+appliance routing and customer OAuth authorization still require target-server
+qualification. The broker does not maintain a separate replay cache.
 
 For customer PKI use `--tls-mode supplied --tls-cert /secure/server.crt
 --tls-key /secure/server.key`. Supply a matching, current leaf certificate and its

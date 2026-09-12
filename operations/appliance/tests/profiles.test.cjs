@@ -19,6 +19,8 @@ test('offline profile contains only internal networks and no collectors or cloud
   for (const name of ['web', 'worker', 'processor']) assert.equal(config.services[name].environment.ALLOW_CLOUD_ENGINES, 'false');
   assert.equal(config.services.ollama.environment.OLLAMA_NO_CLOUD, '1');
   assert.equal(config.services.web.environment.EMAIL_DELIVERY_ENABLED, 'false');
+  assert.equal(config.services.web.environment.MAILBOX_OAUTH_TRANSPORT, 'disabled');
+  assert.equal(config.secrets.mailbox_broker_token, undefined);
 });
 
 test('connected collectors are explicit and cannot reach private inference', () => {
@@ -30,6 +32,26 @@ test('connected collectors are explicit and cannot reach private inference', () 
   for (const name of ['web', 'worker', 'processor', 'ollama']) {
     assert.ok(config.services[name].networks.every(n => config.networks[n].internal));
   }
+});
+
+test('connected OAuth broker has one internal listener and a dedicated secret limited to web/mailbox', () => {
+  const config = load('connected');
+  const web = config.services.web, mailbox = config.services['mailbox-worker'];
+  assert.equal(web.environment.MAILBOX_OAUTH_TRANSPORT, '${MAILBOX_OAUTH_TRANSPORT:-disabled}');
+  assert.equal(web.environment.MAILBOX_BROKER_URL, 'http://mailbox-worker:8010');
+  assert.equal(mailbox.environment.MAILBOX_BROKER_LISTEN_PORT, '8010');
+  assert.equal(mailbox.environment.MAILBOX_BROKER_ORIGIN, web.environment.BETTER_AUTH_URL);
+  assert.equal(mailbox.ports, undefined);
+  for (const [name, service] of Object.entries(config.services)) {
+    const secrets = (service.secrets || []).map(secret => typeof secret === 'string' ? secret : secret.source);
+    assert.equal(secrets.includes('mailbox_broker_token'), ['web', 'mailbox-worker'].includes(name));
+    if (name === 'mailbox-worker') {
+      assert.ok(!secrets.includes('processor_token'));
+      assert.ok(!secrets.includes('better_auth_secret'));
+      assert.ok(!service.networks.includes('local-confidential'));
+    }
+  }
+  assert.deepEqual(web.dns, ['127.0.0.1']);
 });
 
 for (const mode of ['offline', 'connected']) {

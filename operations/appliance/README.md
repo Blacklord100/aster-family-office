@@ -168,12 +168,17 @@ edit generated environment files or use ambient `COMPOSE_PROFILES` as a workarou
 The collector has database access needed to retain mail but no route to private
 inference. Its authorized provider access is a confidentiality boundary; this
 mode is not an end-to-end air gap. Cloud inference is not enabled by this profile.
-**Connected OAuth remains unqualified:** the current authorization callback
-exchanges provider tokens in `web`, whose appliance networks and DNS remain
-internal. Selecting the mailbox worker does not enable a fresh Gmail/Microsoft
-connection through that callback. A reviewed internal exchange path and its
-qualification are still required; do not attach `web` to an egress network to
-work around this limitation.
+Fresh mailbox authorization uses an authenticated internal exchange in the
+mailbox worker. The web app validates and consumes the session-bound OAuth state,
+then the worker exchanges the code and retrieves the identity using the fixed
+Gmail or Microsoft endpoints. Web network access remains internal. The controller
+provisions a dedicated broker token, shared only by these two services, and enables
+this path only when `mailbox` was explicitly selected. Disabled or unavailable
+brokers fail closed; there is no external-provider fallback from the appliance
+web app. Shutdown and maintenance cancel admitted exchanges. Synthetic HTTP tests
+cover this contract; a real customer OAuth connection and complete appliance
+deployment still require target-server qualification. Do not attach `web` to an
+egress network as a workaround.
 
 TLS: `internal` creates a fresh local CA in protected persistent Caddy storage.
 Distribute only its public root certificate to customer browsers through office

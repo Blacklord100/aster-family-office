@@ -99,6 +99,9 @@ services:
       BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       EMAIL_DELIVERY_ENABLED: ${EMAIL_DELIVERY_ENABLED:-false}
+      MAILBOX_OAUTH_TRANSPORT: ${MAILBOX_OAUTH_TRANSPORT:-disabled}
+      MAILBOX_BROKER_URL: http://mailbox-worker:8010
+      MAILBOX_BROKER_TOKEN_FILE: /run/secrets/mailbox_broker_token
       ASTER_INTAKE_ROOT: /run/aster-intake
       ASTER_ARCHIVE_ROOT: /run/aster-archive
       ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive
@@ -115,6 +118,7 @@ services:
       - encryption_keyring
       - processor_token
       - mailbox_providers
+      - mailbox_broker_token
     command:
       - node
       - .next/standalone/server.js
@@ -513,6 +517,9 @@ services:
       ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
       MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
       MAILBOX_HEARTBEAT_FILE: /tmp/aster-mailbox-heartbeat
+      MAILBOX_BROKER_ORIGIN: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
+      MAILBOX_BROKER_LISTEN_PORT: '8010'
+      MAILBOX_BROKER_TOKEN_FILE: /run/secrets/mailbox_broker_token
       ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
       ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
       ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
@@ -523,6 +530,7 @@ services:
       - encryption_key
       - encryption_keyring
       - mailbox_providers
+      - mailbox_broker_token
     command:
       - node
       - dist-mailbox-worker/index.js
@@ -923,6 +931,8 @@ secrets:
     file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/processor_token
   mailbox_providers:
     file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/mailbox_providers
+  mailbox_broker_token:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/mailbox_broker_token
   encryption_keyring:
     file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/encryption_keyring
   smtp_settings:

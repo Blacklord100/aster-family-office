@@ -34,6 +34,15 @@ def fixture(name='aster-synthetic-ingress-test', published=True):
 
 
 class Topology(unittest.TestCase):
+    def test_actual_executable_capability_output_must_be_empty(self):
+        for value in ['', '/usr/bin/caddy cap_net_bind_service=ep\n']:
+            with self.subTest(value=value), patch.object(INGRESS, 'docker', return_value=subprocess.CompletedProcess([], 0, value, '')):
+                if value:
+                    with self.assertRaisesRegex(ValueError, 'still carries file capabilities'):
+                        INGRESS.executable_capabilities(CID, Path('/SYNTHETIC'))
+                else:
+                    self.assertEqual(INGRESS.executable_capabilities(CID, Path('/SYNTHETIC'))['capabilities'], [])
+
     def test_missing_effective_publication_is_preserved_for_direct_ip_diagnosis(self):
         endpoint = INGRESS.topology(*fixture(published=False), 'aster-synthetic-ingress-test', IMAGE)
         self.assertEqual(endpoint['containerIPv4'], '172.20.0.2')

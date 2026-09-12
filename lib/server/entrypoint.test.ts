@@ -40,6 +40,26 @@ function run(override: Record<string, string>) {
 }
 
 describe('production secret adapter database identity', () => {
+  it('requires a dedicated token for explicit broker mode and refuses weak tokens without printing them', () => {
+    const missing = run({ MAILBOX_OAUTH_TRANSPORT: 'broker' });
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain(
+      'Missing required secret: MAILBOX_BROKER_TOKEN',
+    );
+    const weak = run({
+      MAILBOX_BROKER_LISTEN_PORT: '8010',
+      MAILBOX_BROKER_TOKEN: 'another-secret',
+    });
+    expect(weak.status).toBe(1);
+    expect(weak.stderr).toContain('32 to 256 token characters');
+    expect(run({ MAILBOX_OAUTH_TRANSPORT: 'disabled' }).status).toBe(0);
+    expect(
+      run({
+        MAILBOX_OAUTH_TRANSPORT: 'broker',
+        MAILBOX_BROKER_TOKEN: 'synthetic_token_123456789012345678901234567890',
+      }).status,
+    ).toBe(0);
+  });
   it('refuses a direct database URL combined with a password-file configuration', () => {
     const result = run({
       DATABASE_URL: 'postgresql://wrong:another-secret@other.invalid/wrong',

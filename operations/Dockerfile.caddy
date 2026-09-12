@@ -1,6 +1,13 @@
 # syntax=docker/dockerfile:1
 ARG CADDY_IMAGE=caddy:2-alpine
 FROM ${CADDY_IMAGE}
-RUN addgroup -g 10001 asterproxy && adduser -D -H -u 10001 -G asterproxy asterproxy \
+# The upstream executable requests CAP_NET_BIND_SERVICE. With cap_drop=ALL,
+# Linux can refuse that file's exec even though our listeners use 8080/8443.
+# Remove the unused file capability; keep the runtime capability set empty.
+RUN getcap /usr/bin/caddy \
+    && setcap -r /usr/bin/caddy \
+    && remaining_capabilities="$(getcap /usr/bin/caddy)" \
+    && test -z "$remaining_capabilities" \
+    && addgroup -g 10001 asterproxy && adduser -D -H -u 10001 -G asterproxy asterproxy \
     && chown -R 10001:10001 /data /config
 USER 10001:10001

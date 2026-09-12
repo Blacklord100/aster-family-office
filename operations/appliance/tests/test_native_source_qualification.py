@@ -50,6 +50,8 @@ class NativeSourceQualificationTests(unittest.TestCase):
                 calls.append(args)
                 if args[0] == '/usr/bin/git':
                     return 'c' * 40
+                if args[0] == '/usr/bin/readelf':
+                    return ' (NEEDED) Shared library: [libc.so.6]'
                 if args[3:5] == ['image', 'inspect']:
                     return json.dumps([{'Id': IMAGE, 'Os': 'linux', 'Architecture': 'amd64'}])
                 if args[3] == 'create':
@@ -58,6 +60,13 @@ class NativeSourceQualificationTests(unittest.TestCase):
                     return json.dumps([{'Id': CONTAINER, 'Image': IMAGE,
                         'State': {'Status': 'created', 'Running': False}, 'HostConfig': {'NetworkMode': 'none'}}])
                 if args[3] == 'cp':
+                    if '-L' in args:
+                        if args[-2].endswith('status.d'):
+                            target = Path(args[-1]); target.mkdir()
+                            (target / 'libc6').write_text('Package: libc6\nSource: glibc\nVersion: synthetic\n')
+                        else:
+                            Path(args[-1]).write_bytes(b'synthetic resolver')
+                        return ''
                     shutil.copytree(original / 'node_modules', args[-1])
                     return ''
                 if args[3] == 'rm':
@@ -72,15 +81,46 @@ class NativeSourceQualificationTests(unittest.TestCase):
                 output = root / 'evidence'
                 QUALIFY.prepare(IMAGE, output)
                 QUALIFY.bound_export(output)
+                self.assertEqual(json.loads((output / 'export-diagnostics.json').read_text())['status'], 'unverified-export-only')
                 self.assertFalse((output / 'runtime-export/node_modules/unrelated.txt').exists())
                 self.assertEqual((output / 'runtime-export' / package_path / policy['package']['library']).read_bytes(), bytes(header))
-                self.assertEqual(len([x for x in calls if len(x) > 3 and x[3] == 'inspect']), 2)
+                self.assertEqual(len([x for x in calls if len(x) > 3 and x[3] == 'inspect']), 3)
                 self.assertTrue(any(x[3:] == ['rm', CONTAINER] for x in calls if len(x) > 3))
                 self.assertFalse(any(x[3] in ('run', 'start') for x in calls if len(x) > 3))
                 with (output / 'runtime-export' / package_path / policy['package']['library']).open('ab') as stream:
                     stream.write(b'changed')
                 with self.assertRaisesRegex(ValueError, 'differ from the exact-image export'):
                     QUALIFY.bound_export(output)
+
+    def test_missing_distro_observation_is_explicit_and_never_claims_source_coverage(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(QUALIFY, 'command', side_effect=ValueError('Synthetic metadata unavailable')):
+            output = Path(temporary)
+            value = QUALIFY.retain_system_diagnostics(CONTAINER, output)
+            self.assertTrue(all(x['result'] == 'unavailable' for x in value['copies']))
+            self.assertFalse(value['correspondingSourceCollected'])
+            self.assertEqual(value['libc6Metadata'], [])
+            self.assertFalse((output / 'qualification.json').exists())
+
+    def test_unapproved_elf_diagnostics_remain_reviewable_without_passing_receipt(self):
+        native = QUALIFY.collector()
+        policy, _, _ = native.load_policy()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            trusted, exported, output = root / 'checkout', root / 'export', root / 'evidence'
+            trusted.mkdir(); output.mkdir()
+            name = 'node_modules/' + policy['package']['name']
+            package = exported / name
+            package.mkdir(parents=True)
+            (trusted / 'package-lock.json').write_text(json.dumps({'packages': {name: {}}}))
+            (package / 'package.json').write_text('{}')
+            (package / 'unknown.so').write_bytes(b'\x7fELF' + b'synthetic-unapproved-native')
+            with patch.object(QUALIFY, 'ROOT', trusted), patch.object(QUALIFY, 'command', return_value=' (NEEDED) Shared library: [unknown.so]'):
+                diagnosis = QUALIFY.retain_unverified_package(native, policy, exported, output)
+            self.assertEqual(diagnosis['status'], 'unverified-export-only')
+            self.assertIn('unknown.so', diagnosis['elf'][0]['dynamicMetadata'])
+            self.assertEqual((output / 'runtime-export' / name / 'unknown.so').read_bytes(), (package / 'unknown.so').read_bytes())
+            self.assertFalse((output / 'image-export.json').exists())
+            self.assertFalse((output / 'qualification.json').exists())
 
     def test_remote_docker_and_proxy_environment_are_not_inherited(self):
         with patch.dict(QUALIFY.os.environ, {'DOCKER_HOST': 'tcp://remote.invalid:2376',

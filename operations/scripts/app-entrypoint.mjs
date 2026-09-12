@@ -13,6 +13,18 @@ function secret(name) {
   return value;
 }
 try {
+  if (
+    process.env.MAILBOX_BROKER_TOKEN_FILE ||
+    process.env.MAILBOX_BROKER_TOKEN ||
+    process.env.MAILBOX_OAUTH_TRANSPORT === 'broker' ||
+    process.env.MAILBOX_BROKER_LISTEN_PORT
+  ) {
+    const token = secret('MAILBOX_BROKER_TOKEN');
+    if (!/^[A-Za-z0-9_+/=-]{32,256}$/.test(token))
+      throw new Error(
+        'MAILBOX_BROKER_TOKEN must contain 32 to 256 token characters',
+      );
+  }
   if (process.env.SMTP_SETTINGS_FILE) {
     const raw = readFileSync(process.env.SMTP_SETTINGS_FILE, 'utf8');
     if (raw.length > 65536) throw new Error('SMTP configuration is too large');

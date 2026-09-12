@@ -98,6 +98,75 @@ def inspect_container(identifier, image_id):
     return {'containerId': identifier, 'imageId': image_id, 'state': 'created', 'network': 'none'}
 
 
+def retain_unverified_package(native, policy, exported, output):
+    """Keep bounded diagnostic bytes even when the independent ELF gate rejects.
+
+    This is deliberately not runtime approval. Only runtime_inventory, the npm
+    integrity check, and subsequent offline verification can qualify the bytes.
+    """
+    lock = native.bounded_json(ROOT / 'package-lock.json')
+    candidates = [name for name in lock['packages']
+                  if name.rsplit('node_modules/', 1)[-1] == policy['package']['name']
+                  and (exported / name).exists()]
+    if len(candidates) != 1:
+        raise ValueError('Expected one exported native package for bounded diagnostics')
+    name = candidates[0]
+    package = native.checked_file(exported, name + '/package.json').parent
+    inventory, byte_count = files_inventory(package, policy['limits']['perSourceBytes'])
+    retained = output / 'runtime-export'
+    target = retained / name
+    target.parent.mkdir(parents=True)
+    shutil.copytree(package, target)
+    if files_inventory(target, policy['limits']['perSourceBytes'])[0] != inventory:
+        raise ValueError('Exported native diagnostic bytes changed during copy')
+    shutil.copyfile(ROOT / 'package-lock.json', output / 'package-lock.json')
+    elf = []
+    for item in inventory:
+        path = package / item['path']
+        with path.open('rb') as stream:
+            header = stream.read(4)
+        if header == b'\x7fELF':
+            if len(elf) >= 4:
+                raise ValueError('Unexpected additional ELF diagnostics')
+            elf.append({'path': item['path'], 'sha256': item['sha256'],
+                        'dynamicMetadata': command(['/usr/bin/readelf', '-d', str(path)], timeout=15)})
+    return {'status': 'unverified-export-only', 'packagePath': name, 'packageFiles': inventory,
+            'packageBytes': byte_count, 'elf': elf, 'nodeLockSha256': digest(output / 'package-lock.json')}
+
+
+def retain_system_diagnostics(container, output):
+    """Observe the separate distro dependency without claiming its source closure."""
+    directory = output / 'system-dependencies'
+    directory.mkdir()
+    results = []
+    for source, name in (('/var/lib/dpkg/status.d', 'dpkg-status.d'),
+                         ('/usr/lib/x86_64-linux-gnu/libresolv.so.2', 'libresolv.so.2')):
+        try:
+            command(DOCKER + ['cp', '-L', container + ':' + source, str(directory / name)])
+            results.append({'imagePath': source, 'retainedPath': name, 'result': 'retained'})
+        except ValueError as error:
+            # Distroless metadata layouts may change. A missing observation is
+            # explicit and cannot be represented as verified OS source material.
+            results.append({'imagePath': source, 'result': 'unavailable', 'error': str(error)[-2048:]})
+    inventory, total = files_inventory(directory, 16 * 1024**2)
+    packages = []
+    status = directory / 'dpkg-status.d'
+    if status.is_dir():
+        for path in sorted(status.iterdir()):
+            if path.is_file() and path.stat().st_size <= 128 * 1024:
+                value = path.read_text(errors='replace')
+                if re.search(r'^Package: libc6$', value, re.M):
+                    packages.append({'path': path.relative_to(directory).as_posix(), 'sha256': digest(path),
+                                     'version': (re.search(r'^Version: (.+)$', value, re.M).group(1)
+                                                 if re.search(r'^Version: (.+)$', value, re.M) else None),
+                                     'source': (re.search(r'^Source: (.+)$', value, re.M).group(1)
+                                                if re.search(r'^Source: (.+)$', value, re.M) else None)})
+    value = {'result': 'separate-system-observation', 'copies': results, 'libc6Metadata': packages,
+             'files': inventory, 'bytes': total, 'correspondingSourceCollected': False}
+    write_json(directory / 'observation.json', value)
+    return value
+
+
 def prepare(image_id, output):
     if sys.platform != 'linux' or not IMAGE.fullmatch(image_id):
         raise ValueError('Linux and an immutable app image ID are required')
@@ -122,14 +191,15 @@ def prepare(image_id, output):
             command(DOCKER + ['cp', container + ':/app/node_modules', str(exported / 'node_modules')], timeout=180)
             after = inspect_container(container, image_id)
             _, exported_bytes = files_inventory(exported, MAX_EXPORT, allow_links=True)
+            diagnostic = retain_unverified_package(native, policy, exported, output)
+            write_json(output / 'export-diagnostics.json', {
+                'imageId': image_id, 'containerBefore': before, 'containerAfter': after, **diagnostic})
+            retain_system_diagnostics(container, output)
+            inspect_container(container, image_id)
             runtime = native.runtime_inventory(exported, ROOT / 'package-lock.json', image_id, policy)
             # Keep only the package whose complete bytes were checked against the
             # immutable export. Other application dependencies are outside this gate.
             retained = output / 'runtime-export'
-            target = retained / runtime['packagePath']
-            target.parent.mkdir(parents=True)
-            shutil.copytree(exported / runtime['packagePath'], target)
-            shutil.copyfile(ROOT / 'package-lock.json', output / 'package-lock.json')
             if native.runtime_inventory(retained, output / 'package-lock.json', image_id, policy) != runtime:
                 raise ValueError('Copied native package differs from the exact image export')
             write_json(output / 'image-export.json', {
@@ -190,7 +260,7 @@ def network_proof(host_network, host_mount):
 
 
 def readonly_paths(output):
-    return [ROOT, output / 'runtime-export', output / 'package-lock.json', output / 'image-export.json'] + [
+    return [ROOT, output / 'runtime-export', output / 'system-dependencies', output / 'package-lock.json', output / 'image-export.json'] + [
         output / 'native-sources' / name for name in (
             'source-lock.json', 'reviewed-recipe', 'original-sources', 'cargo-sources', 'registry-provenance')]
 

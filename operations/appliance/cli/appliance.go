@@ -213,6 +213,10 @@ func (c Controller) writeEnv(s Installation, m *Manifest) error {
 	}
 	vars := map[string]string{"ASTER_PROJECT_NAME": s.Project, "ASTER_DATA_ROOT": filepath.Join(c.Root, "data"), "ASTER_RELEASE_ROOT": c.release(s), "ASTER_RELEASE_ID": s.ReleaseID, "ASTER_WRITER_GENERATION": strconv.Itoa(s.Generation), "ASTER_SCHEMA_MIN": strconv.Itoa(m.Schema.Min), "ASTER_SCHEMA_MAX": strconv.Itoa(m.Schema.Max), "ASTER_DOMAIN": s.Hostname, "BETTER_AUTH_URL": "https://" + s.Hostname, "ASTER_TLS_MODE": s.TLSMode, "OLLAMA_MODEL": m.Model.Name}
 	vars["EMAIL_DELIVERY_ENABLED"] = strconv.FormatBool(s.hasOptionalService("delivery"))
+	vars["MAILBOX_OAUTH_TRANSPORT"] = "disabled"
+	if s.hasOptionalService("mailbox") {
+		vars["MAILBOX_OAUTH_TRANSPORT"] = "broker"
+	}
 	names := map[string]string{"app": "ASTER_IMAGE", "processor": "PROCESSOR_IMAGE", "postgres": "POSTGRES_IMAGE", "ollama": "OLLAMA_IMAGE", "caddy": "CADDY_IMAGE"}
 	for _, im := range m.Images {
 		vars[names[im.Service]] = im.Reference
@@ -229,6 +233,9 @@ func (c Controller) writeEnv(s Installation, m *Manifest) error {
 			return fmt.Errorf("invalid environment value: %s", key)
 		}
 		fmt.Fprintf(&b, "%s='%s'\n", key, v)
+	}
+	if e := c.ensureMailboxBrokerSecret(s); e != nil {
+		return e
 	}
 	return atomicWrite(filepath.Join(c.Root, "config", s.ReleaseID+".env"), []byte(b.String()), 0600)
 }
@@ -700,6 +707,9 @@ func (c Controller) Install(ctx context.Context, opt InstallOptions) error {
 	}
 	j.Candidate = &s
 	if e = c.runtime(ctx, m, c.release(s), opt.InstallRuntime); e != nil {
+		return e
+	}
+	if e = c.ensureMailboxBrokerSecret(s); e != nil {
 		return e
 	}
 	if opt.Continue && (j.Phase == "candidate-starting" || j.Phase == "resume-intent") {
