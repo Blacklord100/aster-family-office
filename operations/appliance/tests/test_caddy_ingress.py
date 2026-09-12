@@ -19,13 +19,14 @@ IMAGE = 'sha256:' + 'c' * 64
 CID, NID = 'a' * 64, 'b' * 64
 
 
-def fixture(name='aster-synthetic-ingress-test', published=True):
+def fixture(name='aster-synthetic-ingress-test', published=True, publication='loopback'):
+    profile = INGRESS.PUBLICATIONS[publication]
     container = {'Id': CID, 'Name': '/' + name, 'Image': IMAGE, 'Config': {'User': '10001:10001'},
                  'State': {'Running': True}, 'HostConfig': {'ReadonlyRootfs': True, 'Privileged': False,
                  'CapDrop': ['ALL'], 'CapAdd': None, 'SecurityOpt': ['no-new-privileges:true'], 'Dns': ['127.0.0.1'],
-                 'PortBindings': {port: [{'HostIp': '127.0.0.1', 'HostPort': ''}] for port in ['8080/tcp', '8443/tcp']}},
+                 'PortBindings': {port: [{'HostIp': profile['bind'], 'HostPort': value}] for port, value in profile['ports'].items()}},
                  'NetworkSettings': {'Networks': {name: {'NetworkID': NID, 'IPAddress': '172.20.0.2'}},
-                 'Ports': {port: [{'HostIp': '127.0.0.1', 'HostPort': str(40000 + index)}] if published else None
+                 'Ports': {port: [{'HostIp': profile['bind'], 'HostPort': profile['ports'][port] or str(40000 + index)}] if published else None
                            for index, port in enumerate(['8080/tcp', '8443/tcp'])}}}
     network = {'Id': NID, 'Name': name, 'Internal': True, 'Driver': 'bridge', 'Scope': 'local',
                'IPAM': {'Config': [{'Subnet': '172.20.0.0/16'}]},
@@ -34,6 +35,35 @@ def fixture(name='aster-synthetic-ingress-test', published=True):
 
 
 class Topology(unittest.TestCase):
+    def test_appliance_publication_requires_actual_all_interface_80_and_443(self):
+        container, network = fixture()
+        for port, host_port in [('8080/tcp', '80'), ('8443/tcp', '443')]:
+            binding = {'HostIp': '0.0.0.0', 'HostPort': host_port}
+            container['HostConfig']['PortBindings'][port] = [binding.copy()]
+            container['NetworkSettings']['Ports'][port] = [binding.copy()]
+        endpoint = INGRESS.topology(container, network, 'aster-synthetic-ingress-test', IMAGE, 'appliance')
+        self.assertEqual(endpoint['effectivePublications'], {'8080/tcp': 80, '8443/tcp': 443})
+        self.assertEqual(endpoint['hostBind'], '0.0.0.0')
+        with self.assertRaises(ValueError):
+            INGRESS.topology(container, network, 'aster-synthetic-ingress-test', IMAGE, 'loopback')
+        container['NetworkSettings']['Ports']['8443/tcp'][0]['HostPort'] = '40000'
+        with self.assertRaisesRegex(ValueError, 'requested appliance port'):
+            INGRESS.topology(container, network, 'aster-synthetic-ingress-test', IMAGE, 'appliance')
+
+    def test_public_root_is_read_through_exec_with_a_fixed_byte_bound(self):
+        public = '-----BEGIN CERTIFICATE-----\nSYNTHETIC PUBLIC ROOT\n-----END CERTIFICATE-----\n'
+        with tempfile.TemporaryDirectory() as directory, patch.object(INGRESS, 'docker',
+                return_value=subprocess.CompletedProcess([], 0, public, '')) as run:
+            path = Path(directory) / 'root.crt'
+            INGRESS.read_public_root(CID, Path(directory), path)
+            self.assertEqual(path.read_text(), public)
+            self.assertEqual(run.call_args.args[0], ['exec', CID, 'head', '-c', '16385', '/data/caddy/pki/authorities/local/root.crt'])
+        for value in ['', '-----BEGIN PRIVATE KEY-----\nSYNTHETIC', public + 'X' * 16384]:
+            with self.subTest(value=value[:30]), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(INGRESS, 'docker', return_value=subprocess.CompletedProcess([], 0, value, '')), \
+                    self.assertRaises(ValueError):
+                INGRESS.read_public_root(CID, Path(directory), Path(directory) / 'root.crt')
+
     def test_actual_executable_capability_output_must_be_empty(self):
         for value in ['', '/usr/bin/caddy cap_net_bind_service=ep\n']:
             with self.subTest(value=value), patch.object(INGRESS, 'docker', return_value=subprocess.CompletedProcess([], 0, value, '')):
@@ -126,7 +156,7 @@ class RealTLS(unittest.TestCase):
 
 
 class Receipts(unittest.TestCase):
-    def fake_docker(self, published):
+    def fake_docker(self, published, publication='loopback'):
         calls = []
         name = None
         def run(args, work, **kwargs):
@@ -137,9 +167,9 @@ class Receipts(unittest.TestCase):
             if args[:2] == ['image', 'inspect']: value = IMAGE
             if args[:2] == ['network', 'create']: value = NID
             if args[0] == 'create': name = args[args.index('--name') + 1]; value = CID
-            if args[0] == 'cp': Path(args[-1]).write_text('SYNTHETIC PUBLIC CERTIFICATE')
-            if args[0] == 'inspect': value = json.dumps([fixture(name, published)[0]])
-            if args[:2] == ['network', 'inspect']: value = json.dumps([fixture(name, published)[1]])
+            if args[:3] == ['exec', CID, 'head']: value = '-----BEGIN CERTIFICATE-----\nSYNTHETIC PUBLIC CERTIFICATE\n-----END CERTIFICATE-----\n'
+            if args[0] == 'inspect': value = json.dumps([fixture(name, published, publication)[0]])
+            if args[:2] == ['network', 'inspect']: value = json.dumps([fixture(name, published, publication)[1]])
             return subprocess.CompletedProcess(args, 0, value, '')
         return run, calls
 
@@ -178,6 +208,21 @@ class Receipts(unittest.TestCase):
             created = next(args for args in calls if args[0] == 'create')
             self.assertIn('--init', created)
             self.assertEqual(created[created.index('--memory') + 1], '256m')
+
+    def test_appliance_case_requests_only_fixed_80_443_and_records_its_distinct_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'evidence'
+            run, calls = self.fake_docker(True, 'appliance')
+            with patch.object(INGRESS.sys, 'platform', 'linux'), patch.object(INGRESS, 'docker', side_effect=run), \
+                    patch.object(INGRESS, 'https', return_value={'status': 200}), \
+                    patch.object(INGRESS, 'http_redirect', return_value={'status': 308}), \
+                    patch.object(INGRESS, 'rejected_certificate', return_value={'certificateRejected': True}):
+                receipt = INGRESS.qualify(output, 'appliance')
+            created = next(args for args in calls if args[0] == 'create')
+            self.assertEqual([created[index + 1] for index, value in enumerate(created) if value == '--publish'],
+                             ['0.0.0.0:80:8080', '0.0.0.0:443:8443'])
+            self.assertEqual(receipt['publicationProfile'], 'appliance')
+            self.assertEqual(receipt['topology']['effectivePublications'], {'8080/tcp': 80, '8443/tcp': 443})
 
     def test_successful_routes_do_not_waive_failed_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:

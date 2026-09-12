@@ -11,9 +11,11 @@ builds the existing `operations/Dockerfile.caddy` using the digest-pinned Caddy
 base from `image-lock.json`. The resulting immutable image runs as UID/GID10001
 with a read-only root, no capabilities, no new privileges, 256MiB memory, one CPU,
 64 process slots and three bounded temporary filesystems. Its only network is
-an internal bridge. Only randomly assigned loopback HTTP/HTTPS ports are
-requested; no office, model, database, secret, real certificate or existing
-container is used.
+an internal bridge. Two separate jobs request either random loopback ports or
+the appliance's actual `0.0.0.0:80:8080` and `0.0.0.0:443:8443` bindings. Each job
+has its own receipt and cleanup. Only the fixed `/qualification` synthetic
+response/redirect is served; other paths return a synthetic404. No office, model,
+database, secret, real certificate or existing container is used.
 
 The synthetic Caddyfile preserves the appliance's internal HTTPS/HTTP listeners,
 internal CA and disabled host trust installation. A fixed known-answer response
@@ -32,7 +34,8 @@ container/network IDs and unique image tag; it never prunes other resources.
 Private certificate keys remain in the disposable container's temporary memory
 filesystems and are not uploaded.
 
-The workflow's retained `synthetic-caddy-ingress` artifact is the evidence. Until
+The workflow's retained `synthetic-caddy-ingress-loopback` and
+`synthetic-caddy-ingress-appliance` artifacts are the evidence. Until
 an actual hosted run is inspected, unit tests establish only the probe's local
 controls. An internal bridge's direct-IP success must not be described as working
 published ingress. Docker documents that internal networks restrict other-network
@@ -42,12 +45,12 @@ and [Caddy local HTTPS](https://caddyserver.com/docs/automatic-https#local-https
 
 ## First hosted result and startup correction
 
-[Run34711707877](https://github.com/Blacklord100/aster-family-office/actions/runs/34711707877)
+[Run 34711707877](https://github.com/Blacklord100/aster-family-office/actions/runs/34711707877)
 at commit `6630e51a0cf3d2238895ae80e908c5c02674cb42` built image
 `sha256:b55c37781319d1e6e56da160be456ad93722bbd9484247dcb8ffabafe018453e`,
 but Caddy exited before TLS or routing could be checked: `tini` reported
 `exec caddy failed: Operation not permitted`. The retained artifact confirms
-UID/GID10001, all capabilities dropped, and no new privileges. The upstream
+UID/GID 10001, all capabilities dropped, and no new privileges. The upstream
 [Caddy Dockerfile](https://github.com/caddyserver/caddy-docker/blob/master/2.11/alpine/Dockerfile)
 sets `cap_net_bind_service=ep` on the executable. The [Linux capabilities
 documentation](https://man7.org/linux/man-pages/man7/capabilities.7.html)
@@ -57,6 +60,19 @@ capabilities.
 The appliance Caddy recipe now removes this unused file capability and asserts
 the result is empty. It uses the base image's existing `setcap`/`getcap` tools;
 no package is added. The probe independently reads the running executable's
-capabilities. Internal listeners remain8080/8443 and all runtime restrictions
+capabilities. Internal listeners remain 8080/8443 and all runtime restrictions
 are retained. A new hosted run must confirm startup before published ingress
 can be assessed; the first run proves neither working nor broken publication.
+
+[Run 34712294750](https://github.com/Blacklord100/aster-family-office/actions/runs/34712294750)
+at commit `a6b4a3f2a4f21a9ce66449c7e96901b02d39a808` confirmed that correction:
+image `sha256:648e8add635b11c2f8751ddacf24680556dd47fe75a0a8e932004b8b38913e3c`
+was running with empty executable capabilities and had issued its internal
+certificate. Docker28.0.4 recorded requested loopback ports but no effective
+published bindings. The probe stopped before TLS checks because `docker cp`
+cannot read the certificate from its temporary filesystem. The probe now uses
+a bounded, fixed-path `docker exec head` read of only the public certificate,
+as required for [Docker cp's documented tmpfs limitation](https://docs.docker.com/reference/cli/docker/container/cp/#corner-cases).
+The following run must exercise both binding profiles and TLS before drawing
+a publication conclusion; host-local checks still do not establish an external
+LAN route.

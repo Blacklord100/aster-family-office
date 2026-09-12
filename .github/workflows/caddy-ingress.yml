@@ -14,6 +14,10 @@ jobs:
   internal-ingress:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        publication: [loopback, appliance]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -24,12 +28,12 @@ jobs:
       - name: Test topology, actual synthetic TLS and failed-receipt controls without Docker
         run: python -m unittest discover -s operations/appliance/tests -p 'test_caddy_ingress.py' -v
       - name: Exercise exact Caddy image on an internal bridge with published ingress
-        run: python operations/appliance/scripts/probe-caddy-ingress.py --output "$RUNNER_TEMP/caddy-ingress-evidence"
+        run: python operations/appliance/scripts/probe-caddy-ingress.py --publication '${{ matrix.publication }}' --output "$RUNNER_TEMP/caddy-ingress-evidence"
       - name: Retain success or failure evidence; no deployment or trust installation
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: synthetic-caddy-ingress
+          name: synthetic-caddy-ingress-${{ matrix.publication }}
           if-no-files-found: error
           retention-days: 14
           path: |

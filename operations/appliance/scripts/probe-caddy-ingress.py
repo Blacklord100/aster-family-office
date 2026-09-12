@@ -25,15 +25,21 @@ CONFIG = '''{
 }
 https://aster-ingress.synthetic.test {
     tls internal
-    respond "SYNTHETIC CADDY INGRESS" 200
+    respond /qualification "SYNTHETIC CADDY INGRESS" 200
+    respond "SYNTHETIC NOT FOUND" 404
 }
 http://aster-ingress.synthetic.test {
-    redir https://aster-ingress.synthetic.test{uri} permanent
+    redir /qualification https://aster-ingress.synthetic.test/qualification permanent
+    respond "SYNTHETIC NOT FOUND" 404
 }
 '''
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE_ID = re.compile(r'sha256:[a-f0-9]{64}')
 OBJECT_ID = re.compile(r'[a-f0-9]{64}')
+PUBLICATIONS = {
+    'loopback': {'bind': '127.0.0.1', 'ports': {'8080/tcp': '', '8443/tcp': ''}},
+    'appliance': {'bind': '0.0.0.0', 'ports': {'8080/tcp': '80', '8443/tcp': '443'}},
+}
 
 
 def digest(path):
@@ -66,7 +72,22 @@ def executable_capabilities(cid, work):
     return {'path': '/usr/bin/caddy', 'capabilities': []}
 
 
-def topology(container, network, name, image_id):
+def read_public_root(cid, work, ca):
+    # Docker cp does not read tmpfs mounts. Read only this public certificate,
+    # with a byte cap, from the actual running container; never copy its keys.
+    result = docker(['exec', cid, 'head', '-c', '16385',
+                     '/data/caddy/pki/authorities/local/root.crt'], work, check=False)
+    if result.returncode:
+        raise ValueError('Synthetic public root is not ready: ' + result.stderr[-2048:])
+    encoded = result.stdout.encode('utf-8')
+    if (not 1 <= len(encoded) <= 16384 or not encoded.startswith(b'-----BEGIN CERTIFICATE-----\n') or
+            not encoded.rstrip().endswith(b'-----END CERTIFICATE-----') or encoded.count(b'-----BEGIN ') != 1):
+        raise ValueError('Unexpected synthetic public root certificate size or format')
+    ca.write_bytes(encoded)
+
+
+def topology(container, network, name, image_id, publication='loopback'):
+    specification = PUBLICATIONS[publication]
     cid, nid = container.get('Id', ''), network.get('Id', '')
     if not OBJECT_ID.fullmatch(cid) or not OBJECT_ID.fullmatch(nid):
         raise ValueError('Invalid inspected object identity')
@@ -98,9 +119,10 @@ def topology(container, network, name, image_id):
     requested = host.get('PortBindings') or {}
     if set(requested) != {'8080/tcp', '8443/tcp'}:
         raise ValueError('Expected exactly the two requested ingress publications')
-    for entries in requested.values():
-        if len(entries) != 1 or entries[0].get('HostIp') != '127.0.0.1':
-            raise ValueError('Requested publication must be loopback-only')
+    for port, entries in requested.items():
+        if (len(entries) != 1 or entries[0].get('HostIp') != specification['bind'] or
+                entries[0].get('HostPort') != specification['ports'][port]):
+            raise ValueError('Requested publication differs from the selected synthetic profile')
     actual = container.get('NetworkSettings', {}).get('Ports') or {}
     if any(entries for key, entries in actual.items() if key not in requested):
         raise ValueError('Unexpected effective published port')
@@ -111,13 +133,16 @@ def topology(container, network, name, image_id):
         # result so the direct-IP control still executes before failure.
         published[port] = None
         if entries:
-            if len(entries) != 1 or entries[0].get('HostIp') != '127.0.0.1':
-                raise ValueError('Effective publication is not loopback-only')
+            if len(entries) != 1 or entries[0].get('HostIp') != specification['bind']:
+                raise ValueError('Effective publication differs from the selected synthetic profile')
             value = entries[0].get('HostPort', '')
             if not value.isdecimal() or not 1 <= int(value) <= 65535:
                 raise ValueError('Invalid effective published port')
+            if specification['ports'][port] and value != specification['ports'][port]:
+                raise ValueError('Effective publication differs from the requested appliance port')
             published[port] = int(value)
     return {'containerId': cid, 'imageId': image_id, 'networkId': nid, 'internal': True,
+            'publicationProfile': publication, 'hostBind': specification['bind'],
             'containerIPv4': str(address), 'requestedPublications': requested,
             'effectivePublications': published}
 
@@ -173,13 +198,17 @@ def rejected_certificate(address, ca, hostname):
     raise ValueError('Invalid TLS trust or hostname was accepted')
 
 
-def qualify(output):
+def qualify(output, publication='loopback'):
     if sys.platform != 'linux':
         raise ValueError('This probe requires a disposable Linux Docker host; no local macOS Docker run')
+    if publication not in PUBLICATIONS:
+        raise ValueError('Unknown synthetic publication profile')
+    specification = PUBLICATIONS[publication]
     output.mkdir(mode=0o700, parents=False, exist_ok=False)
     work = output / 'work'; work.mkdir(mode=0o700)
     name = 'aster-synthetic-ingress-' + secrets.token_hex(8)
     receipt = {'schemaVersion': 1, 'type': 'aster-synthetic-caddy-ingress-v1', 'result': 'failed',
+               'publicationProfile': publication,
                'scope': 'One internal-bridge Caddy ingress; not full appliance or external-LAN qualification',
                'checks': [], 'cleanup': []}
     cid = nid = None
@@ -214,7 +243,8 @@ def qualify(output):
                       '--platform', 'linux/amd64', '--init', '--user', '10001:10001', '--read-only', '--cap-drop', 'ALL',
                       '--security-opt', 'no-new-privileges:true', '--memory', '256m', '--pids-limit', '64',
                       '--cpus', '1', '--network', name, '--dns', '127.0.0.1',
-                      '--publish', '127.0.0.1::8080', '--publish', '127.0.0.1::8443',
+                      '--publish', specification['bind'] + ':' + specification['ports']['8080/tcp'] + ':8080',
+                      '--publish', specification['bind'] + ':' + specification['ports']['8443/tcp'] + ':8443',
                       '--tmpfs', '/data:rw,nosuid,noexec,size=32m,uid=10001,gid=10001',
                       '--tmpfs', '/config:rw,nosuid,noexec,size=32m,uid=10001,gid=10001',
                       '--tmpfs', '/tmp:rw,nosuid,noexec,size=32m,uid=10001,gid=10001',
@@ -226,7 +256,7 @@ def qualify(output):
         def inspect():
             container = one_json(docker(['inspect', cid], work))
             network = one_json(docker(['network', 'inspect', nid], work))
-            return topology(container, network, name, image_id)
+            return topology(container, network, name, image_id, publication)
         endpoint = inspect(); receipt['topology'] = endpoint
         receipt['executableCapabilities'] = executable_capabilities(cid, work)
         ca = output / 'root.crt'
@@ -234,20 +264,15 @@ def qualify(output):
         last = 'Caddy has not created its synthetic public root certificate'
         while time.monotonic() < deadline:
             inspect()
-            copied = docker(['cp', cid + ':/data/caddy/pki/authorities/local/root.crt', str(ca)], work, check=False)
-            if copied.returncode == 0:
-                try:
-                    if not 1 <= ca.stat().st_size <= 16384:
-                        raise ValueError('Unexpected synthetic CA size')
-                    https(endpoint['containerIPv4'], 8443, ca)
-                    break
-                except (OSError, ValueError, http.client.HTTPException) as error:
-                    last = str(error)[-2048:]
-            else:
-                last = copied.stderr[-2048:]
+            try:
+                read_public_root(cid, work, ca)
+                https(endpoint['containerIPv4'], 8443, ca)
+                break
+            except (OSError, ValueError, http.client.HTTPException) as error:
+                last = str(error)[-2048:]
             time.sleep(1)
         else:
-            raise RuntimeError('Caddy direct-IP TLS readiness timed out: ' + last)
+            raise RuntimeError('Caddy public-root retrieval or direct-IP TLS readiness timed out: ' + last)
         receipt['publicRootSha256'] = digest(ca)
         direct = endpoint['containerIPv4']
         check(receipt, 'direct-internal-bridge-https', lambda: https(direct, 8443, ca))
@@ -256,7 +281,7 @@ def qualify(output):
         def published(port, action):
             actual = endpoint['effectivePublications'][port]
             if actual is None:
-                raise ValueError('Docker did not expose an effective loopback host port for ' + port)
+                raise ValueError('Docker did not expose an effective ' + publication + ' host port for ' + port)
             return action(actual)
         check(receipt, 'host-published-https', lambda: published('8443/tcp', lambda port: https('127.0.0.1', port, ca)))
         check(receipt, 'host-published-http-redirect', lambda: published('8080/tcp', lambda port: http_redirect('127.0.0.1', port)))
@@ -297,9 +322,11 @@ def qualify(output):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path, help='New private evidence directory')
+    parser.add_argument('--publication', choices=sorted(PUBLICATIONS), default='loopback',
+                        help='Loopback/random ports or the appliance all-IPv4-interface 80/443 bindings')
     args = parser.parse_args()
     try:
-        result = qualify(args.output)
+        result = qualify(args.output, args.publication)
         print(json.dumps({'result': result['result'], 'imageId': result['imageId'], 'checks': len(result['checks'])}))
     except (OSError, ValueError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
