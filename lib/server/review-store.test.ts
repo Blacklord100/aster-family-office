@@ -411,3 +411,9 @@ describe('persisted document review transitions', () => {
     expect((await response.json()).error).toBe('REVIEW_SOURCE_CHANGED');
   });
 });
+
+// These tests isolate route behavior; the real admission barrier is exercised
+// against disposable PostgreSQL in lifecycle.integration.test.ts.
+vi.mock('./lifecycle', () => ({
+  lifecycleRoute: (handler: (...args: unknown[]) => unknown) => handler,
+}));

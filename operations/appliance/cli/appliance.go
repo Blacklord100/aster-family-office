@@ -46,15 +46,17 @@ type Installation struct {
 	VerifiedAt        string `json:"verifiedAt"`
 }
 type Journal struct {
-	Operation  string        `json:"operation"`
-	ID         string        `json:"id"`
-	Phase      string        `json:"phase"`
-	Previous   *Installation `json:"previous,omitempty"`
-	Candidate  *Installation `json:"candidate,omitempty"`
-	Backup     string        `json:"backup,omitempty"`
-	BackupSHA  string        `json:"backupSha256,omitempty"`
-	BackupSize int64         `json:"backupSize,omitempty"`
-	UpdatedAt  string        `json:"updatedAt"`
+	Operation            string        `json:"operation"`
+	ID                   string        `json:"id"`
+	Phase                string        `json:"phase"`
+	Previous             *Installation `json:"previous,omitempty"`
+	Candidate            *Installation `json:"candidate,omitempty"`
+	Backup               string        `json:"backup,omitempty"`
+	BackupSHA            string        `json:"backupSha256,omitempty"`
+	BackupSize           int64         `json:"backupSize,omitempty"`
+	ActivationID         string        `json:"activationId,omitempty"`
+	ActivationGeneration int           `json:"activationGeneration,omitempty"`
+	UpdatedAt            string        `json:"updatedAt"`
 }
 type Lifecycle struct {
 	OK               bool   `json:"ok"`
@@ -389,6 +391,37 @@ func (c Controller) stage(bundle, rootPath, rootSHA string) (*Manifest, error) {
 	if e != nil {
 		return nil, e
 	}
+	rootCopy := filepath.Join(temp, "initial-root.json")
+	if e = atomicWrite(rootCopy, m.trustedRoot, 0600); e != nil {
+		return nil, e
+	}
+	dest := filepath.Join(c.Root, "releases", m.ReleaseID)
+	if st, err := os.Lstat(dest); err == nil {
+		if !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("existing release path is not a private directory")
+		}
+		r, err := os.OpenRoot(dest)
+		if err != nil {
+			return nil, err
+		}
+		stored, err := boundedRead(r, "release.json", 8<<20)
+		r.Close()
+		if err != nil {
+			return nil, err
+		}
+		if fingerprint(stored) != fingerprint(m.raw) {
+			return nil, fmt.Errorf("immutable release ID already contains a different manifest")
+		}
+		if _, err = verifyBundle(dest, rootCopy, rootSHA, filepath.Join(temp, "metadata")); err != nil {
+			return nil, fmt.Errorf("existing release cannot be safely reused: %w", err)
+		}
+		if err = cloneCache(filepath.Join(temp, "metadata"), filepath.Join(c.Root, "trust", "metadata")); err != nil {
+			return nil, err
+		}
+		return m, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
 	var needed uint64 = 10 << 30
 	for _, f := range m.Files {
 		needed += uint64(f.Size) * 2
@@ -396,14 +429,11 @@ func (c Controller) stage(bundle, rootPath, rootSHA string) (*Manifest, error) {
 	if e = freeSpace(c.Root, needed); e != nil {
 		return nil, e
 	}
-	dest := filepath.Join(c.Root, "releases", m.ReleaseID)
 	if e = os.MkdirAll(filepath.Dir(dest), 0700); e != nil {
 		return nil, e
 	}
-	if _, e = os.Stat(dest); e == nil {
-		return nil, fmt.Errorf("release directory already exists; do not overwrite an immutable release")
-	}
 	stage := filepath.Join(c.Root, "releases", ".stage-"+id())
+	defer os.RemoveAll(stage)
 	if e = copyVerified(bundle, stage, m); e != nil {
 		return nil, e
 	}
@@ -412,10 +442,6 @@ func (c Controller) stage(bundle, rootPath, rootSHA string) (*Manifest, error) {
 		return nil, e
 	}
 	if e = cloneCache(filepath.Join(bundle, "metadata"), filepath.Join(stage, "metadata")); e != nil {
-		return nil, e
-	}
-	rootCopy := filepath.Join(temp, "initial-root.json")
-	if e = atomicWrite(rootCopy, m.trustedRoot, 0600); e != nil {
 		return nil, e
 	}
 	recheck := filepath.Join(temp, "recheck-metadata")
@@ -571,6 +597,17 @@ func (c Controller) checkTLS(ctx context.Context, s Installation) error {
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		return fmt.Errorf("HTTPS health returned %d", response.StatusCode)
+	}
+	var health struct {
+		Release    string    `json:"release"`
+		Generation int       `json:"writerGeneration"`
+		Lifecycle  Lifecycle `json:"lifecycle"`
+	}
+	if e = json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&health); e != nil {
+		return fmt.Errorf("invalid HTTPS health response")
+	}
+	if health.Release != s.ReleaseID || health.Generation != s.Generation || health.Lifecycle.ActiveRelease != s.ReleaseID || health.Lifecycle.Generation != s.Generation {
+		return fmt.Errorf("HTTPS serves an unexpected application release or writer generation")
 	}
 	return nil
 }

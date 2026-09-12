@@ -553,7 +553,11 @@ func (c Controller) Restore(ctx context.Context, input, identity, backupSHA, tru
 	if e = c.writeEnv(s, m); e != nil {
 		return e
 	}
-	j := Journal{Operation: "restore", ID: id(), Candidate: &s, Backup: input}
+	backupInfo, e := os.Stat(input)
+	if e != nil {
+		return e
+	}
+	j := Journal{Operation: "restore", ID: id(), Candidate: &s, Backup: input, BackupSHA: backupSHA, BackupSize: backupInfo.Size()}
 	if e = c.journal(&j, "restore-database"); e != nil {
 		return e
 	}
@@ -573,51 +577,12 @@ func (c Controller) Restore(ctx context.Context, input, identity, backupSHA, tru
 	if e != nil {
 		return e
 	}
-	_, e = c.compose(ctx, s, plain, nil, "exec", "-T", "--user", "postgres", "postgres", "pg_restore", "--exit-on-error", "--single-transaction", "--no-owner", "--no-acl", "--role=aster_migrator", "--username=postgres", "--dbname=aster")
-	if e != nil {
+	if e = c.restoreDatabase(ctx, s, &j, plain); e != nil {
 		return e
 	}
-	if _, e = io.Copy(io.Discard, plain); e != nil {
-		return e
-	}
-	if _, e = c.compose(ctx, s, nil, nil, "run", "--rm", "--no-deps", "-T", "migrate"); e != nil {
-		return e
-	}
-	state, e := c.lifecycle(ctx, s, "status")
-	if e != nil {
-		return e
-	}
-	if state.Mode != "maintenance" {
-		return fmt.Errorf("restored database was not sealed")
-	}
-	if _, e = c.compose(ctx, s, nil, nil, "run", "--rm", "--no-deps", "-T", "migrate", "node", "dist-ops/recovery-sessions.js", "--request-id", j.ID); e != nil {
-		return e
-	}
-	state, e = c.lifecycle(ctx, s, "activate", "--release", s.ReleaseID, "--expected-generation", strconv.Itoa(state.Generation))
-	if e != nil {
-		return e
-	}
-	s.Generation = state.Generation
-	if e = c.writeEnv(s, m); e != nil {
-		return e
-	}
-	if e = writeJSON(c.statePath(), s); e != nil {
-		return e
-	}
-	if _, e = c.compose(ctx, s, nil, nil, "up", "-d", "--wait", "--wait-timeout", "300"); e != nil {
-		return e
-	}
-	if e = c.qualify(ctx, s, m); e != nil {
-		return e
-	}
-	if e = c.journal(&j, "resume-intent"); e != nil {
-		return e
-	}
-	if _, e = c.lifecycle(ctx, s, "resume", "--release", s.ReleaseID, "--expected-generation", strconv.Itoa(s.Generation)); e != nil {
-		return e
-	}
-	return c.journal(&j, "complete")
+	return c.finishRestore(ctx, &j, m)
 }
+
 func (c Controller) restorePermissions(inv *BackupInventory) error {
 	for _, entry := range inv.Entries {
 		p := filepath.Join(c.Root, entry.Path)
@@ -678,7 +643,7 @@ func (c Controller) requireFinished() error {
 		return e
 	}
 	if j.Phase != "complete" {
-		return fmt.Errorf("unfinished %s operation at %s; inspect status and use resume or continue-update", j.Operation, j.Phase)
+		return fmt.Errorf("unfinished %s operation at %s; inspect status and use the matching continue-install, continue-update, or continue-restore command", j.Operation, j.Phase)
 	}
 	return nil
 }

@@ -28,6 +28,7 @@ const usage = `asterctl — local Aster appliance operations
   doctor           Check payload integrity, runtime, model identity, and app health
   backup           Drain writes and create a coordinated encrypted recovery artifact
   restore          Verify recovery into a NEW destination; requires source fencing
+  continue-restore Continue a verified restore after its database import committed
   update           Verify, back up, migrate, qualify, and resume a newer release
   continue-update  Continue a journaled update after interruption
   resume           Resume the database's active compatible release; never restore data
@@ -178,7 +179,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			if err = decodeJSON(b, &pending); err != nil {
 				return err
 			}
-			return json.NewEncoder(out).Encode(map[string]any{"installed": false, "operation": pending, "next": "continue-install or inspect the failing local service; do not delete data"})
+			next := "inspect the operation journal and failing local service; do not delete data"
+			switch pending.Operation {
+			case "install":
+				next = "continue-install; retain existing data and secrets"
+			case "update":
+				next = "continue-update; retain the journaled backup"
+			case "restore":
+				next = "continue-restore with independently trusted backup digest and publisher root; an ambiguous database import requires stop and recovery into a different destination"
+			}
+			return json.NewEncoder(out).Encode(map[string]any{"installed": false, "operation": pending, "next": next})
 		}
 		j := json.RawMessage("null")
 		if b, err := os.ReadFile(filepath.Join(c.Root, "journal.json")); err == nil {
@@ -217,6 +227,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			return fmt.Errorf("max-restore-gib must be between 1 and 16384")
 		}
 		return c.Restore(ctx, *input, *identity, *backupSHA, *trustRoot, *trustSHA, *limit<<30, *fenced, *installRuntime)
+	case "continue-restore":
+		return c.ContinueRestore(ctx, *input, *backupSHA, *trustRoot, *trustSHA)
 	case "update":
 		return c.Update(ctx, *bundle, *output, false)
 	case "continue-update":

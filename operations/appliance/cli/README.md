@@ -104,13 +104,16 @@ drain/seal and generation barrier. A failed operation leaves an inspectable
 | Initial installation | `continue-install --root /var/lib/aster` (add `--install-runtime` if the runtime step remains incomplete) |
 | Update before completion | `continue-update --root /var/lib/aster` |
 | Return to the DB's active, compatible release | `resume --root /var/lib/aster` |
-| Incomplete disaster restore | Inspect and retain that isolated destination; restart recovery into a different new destination |
+| Restore after its authenticated database import committed | `continue-restore` with the original independently trusted backup digest and publisher root (see below) |
+| Restore with an ambiguous database import | `stop --root /var/lib/aster-recovery`, retain that destination, and recover into a different new destination |
 
 Continuation preserves existing keys and database records. A partial PostgreSQL
 initialization is not automatically deleted or regenerated. If an update produced
 a backup but died before binding its checksum to the journal, continue with
 `--output /independent/backups/new-name.age` while still before migration; an
 unbound existing receipt is never adopted as proof of the recovery point.
+An already staged release is reused only after its signed manifest and every
+payload file pass verification again. Changed or incomplete staging is refused.
 
 After writes resume, they may contain new accepted financial data. No error path
 automatically restores an older database. Resuming a drain first waits for work to
@@ -160,6 +163,23 @@ metadata does not strand a historical backup. This exception cannot be used to
 install or update to an expired release. Restored browser sessions and pending
 OAuth states are revoked before the new writer generation starts.
 
+If recovery stops after the journal records `database-restored`, it can continue
+forward without importing the database again or needing the private recovery key:
+
+```sh
+sudo asterctl continue-restore --root /var/lib/aster-recovery \
+  --input /independent/backups/aster-20260912.age \
+  --backup-sha256 TRUSTED_BACKUP_SHA256 \
+  --trust-root /media/trusted/initial-root.json \
+  --trust-root-sha256 PUBLISHER_ROOT_SHA256 --timeout 2h
+```
+
+The original host must remain fenced throughout. The journal's `restore-database`
+phase is deliberately refused: after a crash, transaction completion cannot be
+proved there. Stop only that destination's fleet with `asterctl stop --root ...`,
+retain its files, and restore into a new root. Continuation after a recorded resume
+preserves all subsequent writes and sessions.
+
 Keep the old host fenced, verify records and archive hashes, validate access from a
 trusted client, and record actual RPO/RTO. The supplied profile is operated recovery;
 it does not implement automatic multi-host failover or point-in-time WAL recovery.
@@ -188,6 +208,9 @@ old fleet, migrates, reserves the new generation, starts and checks the candidat
 then explicitly resumes. The journal binds the backup's real bytes before any
 migration. Model changes arrive only in an explicitly approved signed inventory.
 Existing accepted facts are not automatically re-extracted or overwritten.
+Updates refuse a PostgreSQL major-version change; it needs a separately qualified
+database upgrade procedure. The controller starts the scoped database before
+reading lifecycle state when recovering from a stopped fleet or host restart.
 
 Publisher setup uses `init-trust --keys /offline/new-keys`. The two root keys must
 move into independent offline custody; generating them in one directory is not

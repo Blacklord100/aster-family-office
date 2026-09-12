@@ -224,6 +224,9 @@ func (c Controller) Update(ctx context.Context, bundle, backup string, continuin
 	if _, e = c.compose(ctx, old, nil, nil, "down", "--timeout", "90"); e != nil {
 		return e
 	}
+	if e = c.journal(&j, "old-fleet-stopped"); e != nil {
+		return e
+	}
 	if e = c.importModel(next, m); e != nil {
 		return e
 	}

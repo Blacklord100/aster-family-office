@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 
 
@@ -15,10 +16,15 @@ def main():
     sources = json.loads((root / 'upstream-sources.json').read_text())
     source = root / 'sources' / sources['tesseract']['directory']
     includes = [source, source / 'include', source / 'include/tesseract', root / 'tesseract-build',
+                root / 'tesseract-build/include',
                 *sorted(path for path in (source / 'src').iterdir() if path.is_dir())]
     binary = root / 'security-regression'
+    # Internal Classify headers include Leptonica's allheaders.h. Use the same
+    # installed development package metadata as Tesseract's own build.
+    lept_flags = shlex.split(subprocess.run(['pkg-config', '--cflags', 'lept'], check=True,
+                                           capture_output=True, text=True, timeout=10).stdout)
     subprocess.run(['g++', '-std=c++17', '-O1', '-fstack-protector-strong', '-DGRAPHICS_DISABLED',
-                    *(f'-I{path}' for path in includes), '-I/opt/libtiff/include',
+                    *(f'-I{path}' for path in includes), *lept_flags, '-I/opt/libtiff/include',
                     str(root / 'security-regression.cc'), '-o', str(binary),
                     '-L/opt/tesseract/lib', '-L/opt/libtiff/lib', '-ltesseract', '-ltiff', '-llept', '-pthread'],
                    check=True, timeout=120)

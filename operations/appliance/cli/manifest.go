@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"unicode"
 )
 
 type FileEntry struct {
@@ -120,10 +121,21 @@ func uniqueJSON(d *json.Decoder, depth int) error {
 				return e
 			}
 			name, ok := key.(string)
-			if !ok || seen[name] {
+			// encoding/json also matches struct fields through Unicode case
+			// folding. Reject those aliases as duplicates before decoding.
+			folded := strings.Map(func(r rune) rune {
+				minimum := r
+				for next := unicode.SimpleFold(r); next != r; next = unicode.SimpleFold(next) {
+					if next < minimum {
+						minimum = next
+					}
+				}
+				return minimum
+			}, name)
+			if !ok || seen[folded] {
 				return fmt.Errorf("duplicate or invalid JSON key")
 			}
-			seen[name] = true
+			seen[folded] = true
 			if e = uniqueJSON(d, depth+1); e != nil {
 				return e
 			}

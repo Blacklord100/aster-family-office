@@ -151,3 +151,9 @@ describe('engine HTTP permissions', () => {
     expect(f.documentDecrypt).not.toHaveBeenCalled();
   });
 });
+
+// These tests isolate route behavior; the real admission barrier is exercised
+// against disposable PostgreSQL in lifecycle.integration.test.ts.
+vi.mock('./lifecycle', () => ({
+  lifecycleRoute: (handler: (...args: unknown[]) => unknown) => handler,
+}));
