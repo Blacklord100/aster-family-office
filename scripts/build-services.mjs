@@ -20,6 +20,8 @@ for (const name of [
   });
 for (const name of [
   'migrate',
+  'lifecycle',
+  'recovery-sessions',
   'bootstrap',
   'rotate-keys',
   'encryption-maintenance',

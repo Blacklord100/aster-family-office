@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible application or installation problem.
+body:
+  - type: markdown
+    attributes:
+      value: For vulnerabilities use the private reporting instructions in SECURITY.md. Include only synthetic examples; remove credentials, office data and original emails.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit and installation type
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction and expected result
+      description: Include a minimal synthetic example and the observed result.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and redacted diagnostics
+      description: OS, browser, engine version and relevant error code; never include tokens or private configuration.

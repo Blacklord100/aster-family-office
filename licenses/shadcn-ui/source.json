@@ -1,0 +1,9 @@
+{
+  "upstream": "https://github.com/shadcn-ui/ui",
+  "package": "shadcn",
+  "version": "4.18.0",
+  "registryStyle": "base-nova",
+  "appliesTo": "Generated shadcn registry components under components/ui; Aster modifications are separately licensed",
+  "file": "LICENSE.md",
+  "sha256": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f"
+}

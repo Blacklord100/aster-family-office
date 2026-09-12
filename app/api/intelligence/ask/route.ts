@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -6,7 +7,7 @@ import {
 } from '@/lib/server/access';
 import { json, parseJson } from '@/lib/server/http';
 import { askIntelligence } from '@/lib/server/intelligence-store';
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     const input = await parseJson(
@@ -40,3 +41,5 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

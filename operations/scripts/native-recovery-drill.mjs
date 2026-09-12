@@ -50,6 +50,9 @@ const order = [
   'app_folder_queue',
   'app_folder_receipts',
   'app_integration_tokens',
+  'app_lifecycle_control',
+  'app_lifecycle_operations',
+  'app_lifecycle_events',
   'aster_migrations',
 ];
 let stage = 'configuration';
@@ -160,8 +163,9 @@ async function main() {
         .sort())
         await target.query(await readFile('migrations/' + name, 'utf8'));
       await target.query(
-        'CREATE TABLE aster_migrations(name text PRIMARY KEY,applied_at timestamptz DEFAULT now())',
+        'CREATE TABLE IF NOT EXISTS aster_migrations(name text PRIMARY KEY,applied_at timestamptz DEFAULT now())',
       );
+      await target.query('DELETE FROM app_lifecycle_control');
       const content = JSON.parse(recovered.toString());
       stage = 'record-restore';
       for (const name of order) {

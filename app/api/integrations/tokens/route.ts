@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { requireWorkspace, errorResponse } from '@/lib/server/access';
 import { json, parseJson } from '@/lib/server/http';
@@ -9,7 +10,7 @@ import {
 } from '@/lib/server/mcp-access';
 import { authEnvironment } from '@/lib/server/auth';
 export const runtime = 'nodejs';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const context = await requireWorkspace(request, 'admin');
     return json({
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     return errorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const context = await requireWorkspace(request, 'admin');
     const input = await parseJson(request, CreateIntegrationSchema);
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
   try {
     const context = await requireWorkspace(request, 'admin');
     const { id } = await parseJson(
@@ -42,3 +43,7 @@ export async function DELETE(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);
+export const DELETE = lifecycleRoute(handleDELETE);

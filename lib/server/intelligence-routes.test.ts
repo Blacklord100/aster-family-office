@@ -59,3 +59,9 @@ it('forwards cancellation and returns answers only for an unchanged authorized s
     input.signal,
   );
 });
+
+// Admission and writer fencing are exercised in lifecycle.integration.test.ts.
+vi.mock('./lifecycle', async (original) => ({
+  ...(await original<typeof import('./lifecycle')>()),
+  lifecycleRoute: (handler: (...args: unknown[]) => unknown) => handler,
+}));

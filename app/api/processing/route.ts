@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { withTenant } from '@/lib/server/db';
 import {
@@ -13,7 +14,7 @@ import {
   listProcessingJobs,
   processingListQuery,
 } from '@/lib/server/processing-list';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     const input = processingListQuery(new URL(request.url));
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
   try {
     assertSameOrigin(request);
     const ctx = await requireWorkspace(request, 'admin'),
@@ -87,3 +88,6 @@ export async function PATCH(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const PATCH = lifecycleRoute(handlePATCH);

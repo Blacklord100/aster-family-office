@@ -377,6 +377,63 @@ suite('real durable worker lifecycle', () => {
     if (temp) await rm(temp, { recursive: true, force: true });
   }, 20000);
 
+  it('finishes an admitted extraction while draining and leaves the next job untouched until resume', async () => {
+    const { controlLifecycle, lifecycleStatus } =
+      await import('./lifecycle-control');
+    const job = await fixture(),
+      worker = startWorker();
+    const request = await firstRequest(job.documentId);
+    const next = await fixture('success');
+    const c = await admin.connect();
+    try {
+      const drained = await controlLifecycle(c, {
+        action: 'drain',
+        expectedGeneration: 1,
+      });
+      expect(drained.activeOperations).toBeGreaterThan(0);
+      expect(drained.activeLeases.document).toBe(1);
+      await expect(
+        controlLifecycle(c, { action: 'seal', expectedGeneration: 1 }),
+      ).rejects.toMatchObject({ code: 'DRAIN_BUSY' });
+      request.release('completed during drain');
+      await eventually(
+        () => state(job.id),
+        (s) => s.status === 'awaiting_review',
+        'admitted extraction drain',
+      );
+      await eventually(
+        () => lifecycleStatus(c),
+        (s) => s.canSeal,
+        'durable drain without active leases',
+      );
+      await controlLifecycle(c, { action: 'seal', expectedGeneration: 1 });
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      expect(await state(next.id)).toMatchObject({
+        status: 'queued',
+        attempts: 0,
+        lease_owner: null,
+      });
+      expect(requests.get(next.documentId)).toBeUndefined();
+      await controlLifecycle(c, {
+        action: 'resume',
+        release: 'legacy',
+        expectedGeneration: 1,
+      });
+      await eventually(
+        () => state(next.id),
+        (s) => s.status === 'awaiting_review',
+        'queued extraction after resume',
+      );
+      await stopWorker(worker);
+      expect(worker.stderrBytes).toBe(0);
+    } finally {
+      await admin.query(
+        "UPDATE app_lifecycle_control SET mode='open' WHERE id",
+      );
+      c.release();
+    }
+  }, 20000);
+
   it('requeues an interrupted attempt without charging a failure and disconnects the processor', async () => {
     const job = await fixture(),
       worker = startWorker();

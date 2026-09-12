@@ -1,3 +1,4 @@
+import { runWorkerOperation } from '../lib/server/lifecycle';
 import { writeFile } from 'node:fs/promises';
 import { pool, assertDatabaseRole } from '../lib/server/db';
 import { workerOrganizationScope } from '../lib/server/worker-scope';
@@ -41,18 +42,25 @@ async function pause(milliseconds: number) {
 async function main() {
   await assertDatabaseRole();
   while (!stopping) {
+    const allowed = await runWorkerOperation('reporting', iteration);
+    if (!allowed) {
+      await writeFile(heartbeatFile, String(Date.now()), { mode: 0o600 });
+      await pause(2000);
+    }
+  }
+  async function iteration(lifecycleSignal: AbortSignal) {
     try {
       const claim = await claimReportObligations(organizations);
       // Only successful DB polls refresh health; database outages become visible.
       await writeFile(heartbeatFile, String(Date.now()), { mode: 0o600 });
       if (!claim) {
         await pause(2000);
-        continue;
+        return;
       }
       const outcome = await processReportObligationsClaim(
         claim,
         reconcileReportObligations,
-        () => stopping,
+        () => stopping || lifecycleSignal.aborted,
       );
       if (outcome === 'failed')
         console.error(

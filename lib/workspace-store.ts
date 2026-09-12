@@ -1,3 +1,4 @@
+import { maintenanceRead } from './server/lifecycle-context';
 import type { PoolClient } from 'pg';
 import { initialWorkspace, type WorkspaceState } from './workspace';
 import { withTenant } from './server/db';
@@ -34,6 +35,7 @@ export async function readWorkspaceInTransaction(
     ...initialWorkspace(false),
     officeName: org.rows[0]?.name ?? 'Family office',
   };
+  if (maintenanceRead()) return { state, revision: 0 };
   await client.query(
     'INSERT INTO app_workspace(organization_id,payload) VALUES($1,$2) ON CONFLICT DO NOTHING',
     [

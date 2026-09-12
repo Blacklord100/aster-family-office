@@ -1,0 +1,15 @@
+name: Feature request
+description: Describe a workflow or reporting improvement.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and intended user
+      description: Explain the current workflow and the result that would help.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Synthetic example and acceptance criteria
+      description: For financial metrics, describe source data, scope, valuation date and denominator.

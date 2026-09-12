@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -7,7 +8,7 @@ import {
 import { withTenant } from '@/lib/server/db';
 import { json, parseJson } from '@/lib/server/http';
 import { activateEngine } from '@/lib/server/engine-store';
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -44,3 +45,5 @@ export async function POST(
     return errorResponse(e);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

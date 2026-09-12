@@ -1,5 +1,7 @@
 """Fail a release scan that loses runtime package identity or has HIGH/CRITICAL CVEs."""
 import json
+import argparse
+import importlib.util
 from pathlib import Path
 import re
 import sys
@@ -18,7 +20,7 @@ def normalized(name):
     return re.sub(r'[-_.]+', '-', name).lower()
 
 
-def verify(manifest, scan, lock):
+def verify(manifest, scan, lock, assessment=None):
     problems = []
     os_info = scan.get('Metadata', {}).get('OS', {})
     if os_info.get('Family') != 'debian' or os_info.get('Name', '').split('.')[0] != '13':
@@ -54,21 +56,46 @@ def verify(manifest, scan, lock):
     for item in vulnerabilities:
         print(' | '.join(str(item.get(key) or 'no published fix') for key in
                          ['Severity', 'PkgName', 'InstalledVersion', 'VulnerabilityID', 'FixedVersion']))
-    if vulnerabilities:
+    if vulnerabilities and assessment is None:
         problems.append(f'{len(vulnerabilities)} HIGH/CRITICAL findings block release')
+    if assessment is not None and (assessment.get('rawHighOrCritical') != len(vulnerabilities) or
+                                   assessment.get('unassessedHighOrCritical') != 0):
+        problems.append('Exact-image assessment does not cover the raw scan findings')
     if problems:
         raise ValueError('\n'.join(problems))
     return {'copiedSystemPackages': len(manifest['systemPackages']),
             'scannedSystemPackages': len(os_packages), 'scannedPythonPackages': len(python_packages),
-            'highOrCritical': 0}
+            'highOrCritical': len(vulnerabilities),
+            'unassessedHighOrCritical': 0,
+            'artifactAssessmentApplied': assessment is not None}
 
 
 if __name__ == '__main__':
     try:
-        if len(sys.argv) != 3:
-            raise ValueError('Usage: verify-scan.py runtime-manifest.json processor-image-scan.json')
-        result = verify(json.loads(Path(sys.argv[1]).read_text()), json.loads(Path(sys.argv[2]).read_text()),
-                        (Path(__file__).resolve().parents[1] / 'requirements.lock.txt').read_text())
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('manifest', type=Path)
+        parser.add_argument('scan', type=Path)
+        parser.add_argument('--runtime-attestation', type=Path)
+        parser.add_argument('--image-id')
+        parser.add_argument('--assessment-output', type=Path)
+        args = parser.parse_args()
+        runtime_root = Path(__file__).resolve().parent
+        manifest, scan = json.loads(args.manifest.read_text()), json.loads(args.scan.read_text())
+        assessment = None
+        if any([args.runtime_attestation, args.image_id, args.assessment_output]):
+            if not all([args.runtime_attestation, args.image_id, args.assessment_output]):
+                raise ValueError('Exact-image assessment requires runtime attestation, image ID and output')
+            spec = importlib.util.spec_from_file_location('assessment', runtime_root / 'security-assessment.py')
+            assessor = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(assessor)
+            assessment = assessor.assess(manifest, scan, json.loads(args.runtime_attestation.read_text()), args.image_id,
+                                         json.loads((runtime_root / 'security-policy.json').read_text()),
+                                         (runtime_root / 'upstream-sources.json').read_bytes(),
+                                         (runtime_root / 'security-regression.cc').read_bytes())
+        result = verify(manifest, scan, (runtime_root.parent / 'requirements.lock.txt').read_text(), assessment)
+        if assessment:
+            # No success receipt is written until both CVE and full inventory checks pass.
+            args.assessment_output.write_text(json.dumps({**assessment, 'inventory': result}, indent=2) + '\n')
         print(json.dumps(result))
     except (OSError, ValueError, KeyError, TypeError) as error:
         print(str(error), file=sys.stderr)

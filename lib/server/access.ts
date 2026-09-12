@@ -1,4 +1,5 @@
 import 'server-only';
+import { lifecycleDatabaseError, lifecycleResponse } from './lifecycle';
 import { auth, authEnvironment, mfaRequired } from './auth';
 import { isOrganizationId, pool } from './db';
 import { DataScopeSchema, type DataScope } from '../data-scope';
@@ -26,6 +27,7 @@ export class AccessError extends Error {
 }
 
 export function errorResponse(error: unknown): Response {
+  if (lifecycleDatabaseError(error)) return lifecycleResponse(error);
   const known = error instanceof AccessError;
   return Response.json(
     {

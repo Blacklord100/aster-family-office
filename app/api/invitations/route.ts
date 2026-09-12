@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   AccessError,
   assertSameOrigin,
@@ -12,7 +13,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** Public, token-authorized redemption. Creation belongs to the admin API. */
-export async function POST(request: Request): Promise<Response> {
+async function handlePOST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request);
     if (
@@ -85,3 +86,5 @@ export async function POST(request: Request): Promise<Response> {
     return errorResponse(error);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

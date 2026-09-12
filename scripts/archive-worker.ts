@@ -1,3 +1,4 @@
+import { runWorkerOperation } from '../lib/server/lifecycle';
 import { writeFile } from 'node:fs/promises';
 import { pool, assertDatabaseRole } from '../lib/server/db';
 import { workerOrganizationScope } from '../lib/server/worker-scope';
@@ -45,6 +46,13 @@ async function main() {
   let after: string | null = null,
     lastDiscovery = 0;
   while (!stopping) {
+    const allowed = await runWorkerOperation('archive', iteration);
+    if (!allowed) {
+      await heartbeat();
+      await pause(2000);
+    }
+  }
+  async function iteration(lifecycleSignal: AbortSignal) {
     try {
       if (Date.now() - lastDiscovery > 5000) {
         const discovered = await discoverArchives(organizations, after);
@@ -55,10 +63,15 @@ async function main() {
       await heartbeat();
       if (!claim) {
         await pause(2000);
-        continue;
+        return;
       }
       const controller = new AbortController();
       active = controller;
+      const cancelAdmission = () => controller.abort();
+      lifecycleSignal.addEventListener('abort', cancelAdmission, {
+        once: true,
+      });
+      if (lifecycleSignal.aborted) cancelAdmission();
       let renewing = false,
         lost = false;
       const timer = setInterval(() => {
@@ -84,10 +97,13 @@ async function main() {
       } catch (error) {
         await failArchive(
           claim,
-          stopping || lost ? new ArchiveLeaseLost() : error,
+          stopping || lost || lifecycleSignal.aborted
+            ? new ArchiveLeaseLost()
+            : error,
         );
       } finally {
         clearInterval(timer);
+        lifecycleSignal.removeEventListener('abort', cancelAdmission);
         active = undefined;
       }
     } catch {

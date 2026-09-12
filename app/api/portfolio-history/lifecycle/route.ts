@@ -1,8 +1,9 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { errorResponse, requireWorkspace } from '@/lib/server/access';
 import { historyLifecycleRequestSchema } from '@/lib/portfolio-history-lifecycle-contract';
 import { writeHistoryLifecycle } from '@/lib/server/portfolio-history-lifecycle-store';
 import { json, parseJson } from '@/lib/server/http';
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'write');
     return json(
@@ -15,3 +16,5 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

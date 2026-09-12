@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -38,7 +39,7 @@ const Body = z.discriminatedUnion('action', [
     })
     .strict(),
 ]);
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -182,3 +183,5 @@ export async function PATCH(
     return errorResponse(e);
   }
 }
+
+export const PATCH = lifecycleRoute(handlePATCH);

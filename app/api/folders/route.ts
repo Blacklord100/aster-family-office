@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   requireWorkspace,
   errorResponse,
@@ -22,14 +23,14 @@ function folderErrorResponse(error: unknown) {
       : error,
   );
 }
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     return json(await listFolderConnections(await requireWorkspace(request)));
   } catch (error) {
     return folderErrorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const context = await requireWorkspace(request, 'admin');
     return json(
@@ -43,3 +44,6 @@ export async function POST(request: Request) {
     return folderErrorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

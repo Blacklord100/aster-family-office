@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   requireWorkspace,
   errorResponse,
@@ -8,7 +9,7 @@ import { startMailboxAuthorization } from '@/lib/server/mailbox-store';
 import { MailboxConnectSchema } from '@/lib/mailbox-contract';
 import { MailboxError } from '@/lib/server/mailbox-provider';
 export const runtime = 'nodejs';
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const context = await requireWorkspace(request, 'write');
     return json(
@@ -29,3 +30,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

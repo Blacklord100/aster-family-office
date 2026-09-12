@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   requireWorkspace,
   errorResponse,
@@ -14,7 +15,7 @@ import {
   saveEngine,
   cloudReadiness,
 } from '@/lib/server/engine-store';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     return await withTenant(
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin');
     const input = await parseJson(request, EngineInputSchema);
@@ -65,3 +66,6 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

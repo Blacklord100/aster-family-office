@@ -1,5 +1,51 @@
 # Processor release blockers
 
+## Current baseline and security candidate — 12 September 2026
+
+The latest completed baseline is commit `0e0bed07a2867118e75aa00bda110b9bc6a36bdd`,
+[CI run 34580076948](https://github.com/Blacklord100/aster-family-office/actions/runs/34580076948).
+It passed 801 application tests, 90 database integrations (including 16 archive
+cases), 637 host Python tests and 625 built-runtime processor tests. Application
+build, migrations, npm audit, web-image scan, repository checkout secret scan and
+network-disabled authenticated OCR passed. The processor security gate failed with
+**six HIGH findings**, all with no scanner `FixedVersion`: two libtiff and four
+Tesseract advisories. Inventory coverage passed: 27/27 retained native identities
+within 34 OS packages and 32/32 locked Linux Python packages. The older three-CVE
+records below are historical evidence, not the current finding count.
+
+| CVE | Baseline component | Current source evidence and candidate action |
+| --- | --- | --- |
+| [CVE-2026-36849](https://security-tracker.debian.org/tracker/CVE-2026-36849) | libtiff6 4.7.2-1+aster1 | Signed 4.7.2 already includes the upstream compression-ratio guard. Candidate adds a malformed high-SamplesPerPixel strip regression against the actual shared library. |
+| [CVE-2026-52490](https://security-tracker.debian.org/tracker/CVE-2026-52490) | libtiff6 4.7.2-1+aster1 | Signed 4.7.2 includes the fix; the affected tiffcrop program is excluded. Candidate requires inventory and actual runtime absence checks. |
+| [CVE-2026-73066](https://security-tracker.debian.org/tracker/CVE-2026-73066) | tesseract-ocr 5.5.3-1+aster1 | Signed 5.5.3 already includes the fix. Candidate exercises malformed Convolve/Reconfig dimensions and valid controls. |
+| [CVE-2026-88047](https://security-tracker.debian.org/tracker/CVE-2026-88047) | tesseract-ocr 5.5.3-1+aster1 | Backport upstream [1bda507](https://github.com/tesseract-ocr/tesseract/commit/1bda5079b1c8a7e25f523486837426903d29ce84), with overlong, boundary-length and valid normproto inputs. |
+| [CVE-2026-88048](https://security-tracker.debian.org/tracker/CVE-2026-88048) | tesseract-ocr 5.5.3-1+aster1 | Backport upstream [103dc134](https://github.com/tesseract-ocr/tesseract/commit/103dc134eb36411ddc6833ec20aa2c76795bd0ff), with mismatched and valid fully-connected matrices. |
+| [CVE-2026-88049](https://security-tracker.debian.org/tracker/CVE-2026-88049) | tesseract-ocr 5.5.3-1+aster1 | Backport upstream [b494ac18](https://github.com/tesseract-ocr/tesseract/commit/b494ac18925f9d9aff9ef5815475de9943ab19bf), with malformed LSTM dimensions and a valid control. |
+
+All six primary Debian records were rechecked on 12 September. The three new
+upstream commits are unsigned: their official HTTPS patch bytes are SHA256-pinned,
+with exact source preimages and postimages checked and zero patch fuzz. They are
+not described as signed upstream releases. The base Tesseract tag and TIFF archive
+retain their existing signature verification. Original upstream patch files and
+license headers remain under `processor/runtime/source-provenance/`.
+
+The candidate introduces a narrowly scoped exact-image assessment in
+[security-policy.json](../processor/runtime/security-policy.json),
+[security-assessment.py](../processor/runtime/security-assessment.py), and
+[verify-scan.py](../processor/runtime/verify-scan.py). Raw scanner findings are
+retained unchanged. Passing requires the scanner's image ID to match the inspected
+candidate, a scan no older than 48 hours, complete native/Python inventory, reviewed
+source/configuration/harness hashes, all native regression checks, actual runtime
+library hashes, and tiffcrop absence. A new CVE, changed severity/version, missing
+proof or mismatched image fails closed. Successful assessments record each raw
+finding and its exact-image disposition; they do not report a zero-finding scan.
+
+These are candidate build requirements. Local Python verifier tests and exact
+backport application do not qualify the compiled Linux artifact. A new CI image
+build, native harness, offline OCR, complete processor suite, raw scan and independent
+assessment must pass before this candidate receives a cleared release receipt.
+
+
 ## Candidate `edca127` verified 10 September 2026 UTC
 
 [Release run 34529320613](https://github.com/Blacklord100/aster-family-office/actions/runs/34529320613), commit `edca127bf7d44cdd17e0cd966e9ee3d69b7f248d`, passed the complete application job: 769 ordinary tests, all 74 database lifecycle/isolation assertions, 618 host Python tests including runtime checks, lint, typecheck, production build, migrations, zero npm audit vulnerabilities and SBOM generation. Both container builds, nonroot/read-only probes, network-disabled startup/authenticated OCR, 606 built-processor tests, web-image scan and repository secret scan passed.

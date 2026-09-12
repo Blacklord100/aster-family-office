@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   AccessError,
   errorResponse,
@@ -12,7 +13,7 @@ import {
   writeParticipation,
 } from '@/lib/server/participation-store';
 import { json, parseJson } from '@/lib/server/http';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     const raw = new URL(request.url).searchParams.get('query');
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     return errorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'write');
     return json(
@@ -45,3 +46,6 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

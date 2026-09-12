@@ -1,0 +1,19 @@
+{
+	http_port 8080
+	https_port 8443
+	admin 127.0.0.1:2019
+	auto_https off
+	skip_install_trust
+}
+https://{$ASTER_DOMAIN} {
+	# Client PKI: complete leaf+intermediate PEM chain and matching private key.
+	tls /etc/aster/tls/server.crt /etc/aster/tls/server.key
+	import /etc/aster/headers.caddy
+	reverse_proxy web:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up -Forwarded
+	}
+}
+http://{$ASTER_DOMAIN} {
+	redir {$ASTER_ORIGIN}{uri} permanent
+}

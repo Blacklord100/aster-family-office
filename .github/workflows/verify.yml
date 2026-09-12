@@ -63,6 +63,7 @@ jobs:
           ASTER_ARCHIVE_INTEGRATION: '1'
           ASTER_DEMO_INTEGRATION: '1'
           ASTER_MCP_INTEGRATION: '1'
+          ASTER_LIFECYCLE_INTEGRATION: '1'
         run: >-
           node node_modules/vitest/vitest.mjs run --no-file-parallelism
           lib/server/application.integration.test.ts lib/server/auth.integration.test.ts
@@ -76,6 +77,7 @@ jobs:
           lib/server/folder.integration.test.ts lib/server/demo.integration.test.ts
           lib/server/archive.integration.test.ts
           lib/server/mcp.integration.test.ts
+          lib/server/lifecycle.integration.test.ts
       - name: Processor checks with offline model transports
         run: |
           sudo apt-get update
@@ -167,13 +169,17 @@ jobs:
           image-ref: aster-processor:verify
           format: json
           output: processor-image-scan.json
-          exit-code: '1'
+          # Preserve every raw finding. The next independent step fails unless
+          # package coverage and exact-image evidence resolve every HIGH/CRITICAL.
+          exit-code: '0'
           severity: HIGH,CRITICAL
-      - name: Verify processor scan includes every retained native package
+      - name: Verify processor inventory and exact-image security evidence
         if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         run: |
           docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges --entrypoint python aster-processor:verify -c "from pathlib import Path; print(Path('/opt/aster/runtime-manifest.json').read_text())" > processor-runtime-manifest.json
-          python3 processor/runtime/verify-scan.py processor-runtime-manifest.json processor-image-scan.json
+          docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-privileges --mount "type=bind,source=${{ github.workspace }}/processor/runtime/verify-security-runtime.py,target=/opt/aster/verify-security-runtime.py,readonly" --entrypoint python aster-processor:verify /opt/aster/verify-security-runtime.py > processor-runtime-security.json
+          processor_image_id="$(docker image inspect --format '{{.Id}}' aster-processor:verify)"
+          python3 processor/runtime/verify-scan.py processor-runtime-manifest.json processor-image-scan.json --runtime-attestation processor-runtime-security.json --image-id "$processor_image_id" --assessment-output processor-security-assessment.json
       - name: Retain processor image security inventory
         if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -182,6 +188,8 @@ jobs:
           path: |
             processor-runtime-manifest.json
             processor-image-scan.json
+            processor-runtime-security.json
+            processor-security-assessment.json
           if-no-files-found: error
           retention-days: 14
       - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0

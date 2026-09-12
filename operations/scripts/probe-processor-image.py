@@ -79,7 +79,7 @@ def image_identity():
     # Preserve Debian's canonical source identities. A renamed package/source
     # must not make unresolved advisory entries silently disappear from scans.
     for name, version, source in [('libtiff6', '4.7.2-1+aster1', 'tiff (4.7.2)'),
-                                 ('tesseract-ocr', '5.5.3-1+aster1', 'tesseract (5.5.3)')]:
+                                 ('tesseract-ocr', '5.5.3-1+aster2', 'tesseract (5.5.3)')]:
         packages = [item for item in manifest['systemPackages'] if item['name'] == name]
         assert len(packages) == 1 and packages[0]['version'] == version and packages[0]['source'] == source
         metadata = Path(packages[0]['metadataPath']).read_text().splitlines()

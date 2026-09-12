@@ -1,3 +1,4 @@
+import { runWorkerOperation } from '../lib/server/lifecycle';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { pool, withTenant, assertDatabaseRole } from '../lib/server/db';
@@ -60,6 +61,14 @@ const heartbeat = setInterval(
 await writeFile(heartbeatFile, String(Date.now()));
 let lastDemoRecovery = 0;
 while (!stopping) {
+  const allowed = await runWorkerOperation('document', iteration);
+  if (!allowed && !stopping)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+clearInterval(heartbeat);
+await pool.end();
+
+async function iteration(lifecycleSignal: AbortSignal) {
   if (Date.now() - lastDemoRecovery > 30_000) {
     lastDemoRecovery = Date.now();
     await publishReadyDemoJobs(organizationScope).catch(() =>
@@ -76,10 +85,14 @@ while (!stopping) {
   const queue = await claimDocumentJob(pool, owner, organizationScope);
   if (!queue) {
     await new Promise((r) => setTimeout(r, 1000));
-    continue;
+    return;
   }
   const requestController = new AbortController();
   activeRequest = requestController;
+  const cancelAdmission = () =>
+    requestController.abort(new Error('LIFECYCLE_EXPIRED'));
+  lifecycleSignal.addEventListener('abort', cancelAdmission, { once: true });
+  if (lifecycleSignal.aborted) cancelAdmission();
   if (stopping) requestController.abort(new Error('WORKER_STOPPING'));
   const attemptId = randomUUID();
   let attemptStartedAt: number | null = null;
@@ -152,7 +165,7 @@ while (!stopping) {
         'DELETE FROM app_job_queue WHERE id=$1 AND lease_owner=$2 AND lease_until>clock_timestamp()',
         [queue.id, owner],
       );
-      continue;
+      return;
     }
     requestController.signal.throwIfAborted();
     const engine = openJobEngine(
@@ -178,7 +191,7 @@ while (!stopping) {
       new URL('/v1/extract', processorEndpoint(engine.snapshot.execution)),
       {
         method: 'POST',
-        headers: { 'X-Processor-Key': token },
+        headers: { 'X-Processor-Key': token! },
         body: form,
         signal: AbortSignal.any([
           requestController.signal,
@@ -262,7 +275,7 @@ while (!stopping) {
       );
       if (!lease.rowCount) return;
       const decision = retryDecision(
-        stopping,
+        stopping || lifecycleSignal.aborted,
         code,
         queue.attempts,
         queue.capacity_deferrals,
@@ -349,8 +362,7 @@ while (!stopping) {
     });
   } finally {
     clearInterval(renewal);
+    lifecycleSignal.removeEventListener('abort', cancelAdmission);
     if (activeRequest === requestController) activeRequest = null;
   }
 }
-clearInterval(heartbeat);
-await pool.end();

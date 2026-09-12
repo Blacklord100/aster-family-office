@@ -1,10 +1,11 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { requireMcpAccess } from '@/lib/server/mcp-access';
 import { createAsterMcpServer } from '@/lib/server/mcp-server';
 import { AccessError, errorResponse } from '@/lib/server/access';
 import { readBody } from '@/lib/server/http';
 export const runtime = 'nodejs';
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   let server: ReturnType<typeof createAsterMcpServer> | undefined;
   try {
     const principal = await requireMcpAccess(request);
@@ -43,10 +44,13 @@ export async function POST(request: Request) {
     await server?.close();
   }
 }
-export async function GET() {
+async function handleGET() {
   return new Response(null, {
     status: 405,
     headers: { Allow: 'POST', 'Cache-Control': 'no-store' },
   });
 }
-export const DELETE = GET;
+export const DELETE = lifecycleRoute(handleGET);
+
+export const POST = lifecycleRoute(handlePOST);
+export const GET = lifecycleRoute(handleGET);

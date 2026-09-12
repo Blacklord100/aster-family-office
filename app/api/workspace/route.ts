@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { readWorkspace, changeWorkspace } from '@/lib/workspace-store';
 import {
@@ -85,7 +86,7 @@ const Action = z.discriminatedUnion('type', [
       ),
   }),
 ]);
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const context = await requireWorkspace(request, 'read'),
       { state, revision } = await readWorkspace(context);
@@ -109,7 +110,7 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const context = await requireWorkspace(request, 'write'),
@@ -414,3 +415,6 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

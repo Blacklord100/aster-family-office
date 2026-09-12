@@ -39,6 +39,10 @@ describe('tenant transactions', () => {
     });
     expect(result).toBe(42);
     expect(mocked.query.mock.calls).toEqual([
+      [
+        "SELECT set_config('app.operation_id',$1,false),set_config('app.operation_token',$2,false)",
+        ['', ''],
+      ],
       ['BEGIN'],
       ["SELECT set_config('app.organization_id', $1, true)", [org]],
       ['SELECT tenant_data'],
@@ -65,6 +69,10 @@ describe('tenant transactions', () => {
       { readOnlySnapshot: true },
     );
     expect(mocked.query.mock.calls).toEqual([
+      [
+        "SELECT set_config('app.operation_id',$1,false),set_config('app.operation_token',$2,false)",
+        ['', ''],
+      ],
       ['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'],
       ["SELECT set_config('app.organization_id', $1, true)", [org]],
       ['SELECT tenant_data'],

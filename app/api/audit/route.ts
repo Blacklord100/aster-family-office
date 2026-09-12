@@ -1,7 +1,8 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { requireWorkspace, errorResponse } from '@/lib/server/access';
 import { withTenant } from '@/lib/server/db';
 import { json } from '@/lib/server/http';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin');
     return await withTenant(ctx.organizationId, async (c) =>
@@ -18,3 +19,5 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

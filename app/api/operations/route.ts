@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { requireWorkspace, errorResponse } from '@/lib/server/access';
 import { withTenant } from '@/lib/server/db';
@@ -27,7 +28,7 @@ const action = z.discriminatedUnion('action', [
     })
     .strict(),
 ]);
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin');
     return await withTenant(ctx.organizationId, async (c) =>
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin'),
       input = await parseJson(request, action);
@@ -59,3 +60,6 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

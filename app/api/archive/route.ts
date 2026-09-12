@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { ArchiveCommandSchema } from '@/lib/archive-contract';
 import {
   AccessError,
@@ -19,7 +20,7 @@ function failure(error: unknown) {
       : error,
   );
 }
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const query = new URL(request.url).searchParams;
     return json(
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     return failure(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin');
     return json(
@@ -43,3 +44,6 @@ export async function POST(request: Request) {
     return failure(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

@@ -10,12 +10,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_
 # upstream OCR sources are authenticated and pinned separately below.
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends cmake g++ make pkg-config gpgv \
+    && apt-get install -y --no-install-recommends cmake g++ make patch pkg-config gpgv \
       libleptonica-dev tesseract-ocr-eng zlib1g-dev libdeflate-dev libjpeg62-turbo-dev \
       liblzma-dev libzstd-dev libwebp-dev liblerc-dev libjbig-dev
 COPY runtime/upstream-sources.json runtime/fetch-sources.py runtime/check-native-build.py /build/
 COPY runtime/source-provenance/ /build/source-provenance/
 RUN python /build/fetch-sources.py
+COPY runtime/apply-security-backports.py runtime/qualify-security-build.py runtime/security-regression.cc /build/
+RUN python /build/apply-security-backports.py
 # Preserve libtiff's shared C ABI and compression codecs used by Leptonica;
 # only ancillary command-line tools, docs and C++ wrappers are excluded.
 RUN cmake -S /build/sources/tiff-4.7.2 -B /build/tiff-build \
@@ -39,6 +41,7 @@ RUN cmake -S /build/sources/tesseract-5.5.3 -B /build/tesseract-build \
       -DENABLE_NATIVE=OFF -DENABLE_LTO=OFF -DOPENMP_BUILD=ON \
     && cmake --build /build/tesseract-build --parallel 2 \
     && cmake --install /build/tesseract-build
+RUN python /build/qualify-security-build.py
 # Rebuild the same locked Pillow release so its prebuilt wheel cannot retain a
 # second, older bundled libtiff. The isolated, pinned build tools stay in /build.
 RUN python -m venv /build/pillow-venv \

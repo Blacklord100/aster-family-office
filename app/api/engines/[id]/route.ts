@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -8,7 +9,7 @@ import { withTenant } from '@/lib/server/db';
 import { json, parseJson } from '@/lib/server/http';
 import { EngineInputSchema } from '@/lib/engine-contract';
 import { saveEngine, deleteEngine } from '@/lib/server/engine-store';
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -32,7 +33,7 @@ export async function PATCH(
     return errorResponse(e);
   }
 }
-export async function DELETE(
+async function handleDELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -53,3 +54,6 @@ export async function DELETE(
     return errorResponse(e);
   }
 }
+
+export const PATCH = lifecycleRoute(handlePATCH);
+export const DELETE = lifecycleRoute(handleDELETE);

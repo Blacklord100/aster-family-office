@@ -1,6 +1,11 @@
 **
 !package.json
 !package-lock.json
+!LICENSE
+!NOTICE
+!THIRD_PARTY_NOTICES.md
+!licenses/
+!licenses/**
 !tsconfig.json
 !next.config.ts
 !next-env.d.ts

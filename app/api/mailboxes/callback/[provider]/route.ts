@@ -1,9 +1,10 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { requireWorkspace } from '@/lib/server/access';
 import { authEnvironment } from '@/lib/server/auth';
 import { finishMailboxAuthorization } from '@/lib/server/mailbox-store';
 import { MailProviderSchema } from '@/lib/mailbox-contract';
 export const runtime = 'nodejs';
-export async function GET(
+async function handleGET(
   request: Request,
   route: { params: Promise<{ provider: string }> },
 ) {
@@ -41,3 +42,5 @@ export async function GET(
     },
   });
 }
+
+export const GET = lifecycleRoute(handleGET);

@@ -1,3 +1,4 @@
+import { runWorkerOperation } from '../lib/server/lifecycle';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { pool, assertDatabaseRole } from '../lib/server/db';
@@ -24,14 +25,24 @@ async function heartbeat() {
 async function main() {
   await assertDatabaseRole();
   while (!stopping) {
+    const allowed = await runWorkerOperation('mailbox', iteration);
+    if (!allowed) {
+      await heartbeat();
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  async function iteration(lifecycleSignal: AbortSignal) {
     await heartbeat();
     const claim = await claimMailbox(workerId);
     if (!claim) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      continue;
+      return;
     }
     active = new AbortController();
     const controller = active;
+    const cancelAdmission = () => controller.abort();
+    lifecycleSignal.addEventListener('abort', cancelAdmission, { once: true });
+    if (lifecycleSignal.aborted) cancelAdmission();
     let leaseLost = false,
       renewing = false;
     const timer = setInterval(() => {
@@ -62,10 +73,13 @@ async function main() {
     } catch (error) {
       await releaseMailboxClaim(
         claim,
-        stopping || leaseLost ? new MailboxLeaseLost() : error,
+        stopping || leaseLost || lifecycleSignal.aborted
+          ? new MailboxLeaseLost()
+          : error,
       );
     } finally {
       clearInterval(timer);
+      lifecycleSignal.removeEventListener('abort', cancelAdmission);
       active = undefined;
     }
   }

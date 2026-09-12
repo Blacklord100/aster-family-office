@@ -153,6 +153,7 @@ export function createAsterAuth() {
       expiresIn: 8 * 60 * 60,
       freshAge: 15 * 60,
       disableSessionRefresh: true,
+      deferSessionRefresh: true,
       cookieCache: { enabled: false },
       additionalFields: {
         mfaVerifiedAt: { type: 'date', required: false, input: false },
@@ -165,6 +166,7 @@ export function createAsterAuth() {
       window: 60,
       max: 100,
       customRules: {
+        '/get-session': false,
         '/sign-in/email': { window: 60, max: 5 },
         '/two-factor/*': { window: 60, max: 5 },
         '/change-password': { window: 60, max: 5 },

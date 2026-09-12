@@ -1,0 +1,167 @@
+name: Appliance packaging
+on:
+  push:
+    branches: [main, 'feat/**']
+    paths: ['operations/appliance/**', 'operations/Dockerfile*', '.github/workflows/appliance.yml']
+  pull_request:
+    paths: ['operations/appliance/**', 'operations/Dockerfile*', '.github/workflows/appliance.yml']
+  workflow_dispatch:
+    inputs:
+      qualification:
+        description: 'Bounded model smoke or full artifact assembly on an owned disposable32GiB runner'
+        type: choice
+        options: [bounded, full]
+        default: bounded
+permissions:
+  contents: read
+concurrency:
+  group: appliance-${{ github.ref }}-${{ github.event.inputs.qualification || 'contracts' }}
+  cancel-in-progress: false
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with: {node-version: '24', cache: npm}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with: {python-version: '3.12'}
+      - run: npm ci --ignore-scripts
+      - run: node --test operations/appliance/tests/profiles.test.cjs
+      - run: python3 -m unittest discover -s operations/appliance/tests -p 'test_*.py' -v
+      - name: Resolve both standalone profiles through real Docker Compose
+        run: sh operations/appliance/scripts/check-compose.sh
+      - name: Test and cross-build the static Linux controller
+        run: |
+          cd operations/appliance/cli
+          test "$(go env GOVERSION)" = go1.27.1 || GOTOOLCHAIN=go1.27.1 go version
+          GOTOOLCHAIN=go1.27.1 go test -race ./...
+          GOTOOLCHAIN=go1.27.1 go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.27.1 go build -trimpath -o "$RUNNER_TEMP/asterctl" .
+          file "$RUNNER_TEMP/asterctl"
+
+  bounded-model:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualification == 'bounded' }}
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with: {python-version: '3.12'}
+      - name: Build only the pinned inference image and fetch exact approved assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/aster-model-smoke"
+          python3 operations/appliance/scripts/fetch-model.py --output "$RUNNER_TEMP/aster-model-smoke/model"
+          aster_ollama_base=$(python3 -c 'import json;print(json.load(open("operations/appliance/image-lock.json"))["bases"]["ollama"])')
+          docker build --platform linux/amd64 --build-arg "OLLAMA_IMAGE=$aster_ollama_base" -f operations/Dockerfile.ollama -t aster-ollama:bounded operations
+      - name: Start a disposable internal model service with bounded memory/context
+        run: |
+          docker network create --internal aster-bounded-model
+          docker run -d --name aster-bounded-model --network aster-bounded-model --dns 127.0.0.1 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 \
+            --memory 6g --memory-swap 6g --pids-limit 256 \
+            --tmpfs /tmp:rw,nosuid,size=128m,uid=10001,gid=10001 \
+            --tmpfs /home/aster:rw,noexec,nosuid,size=8m,uid=10001,gid=10001 \
+            --mount "type=bind,src=$RUNNER_TEMP/aster-model-smoke/model/ollama,dst=/models,readonly" \
+            -e OLLAMA_MODELS=/models -e OLLAMA_HOST=0.0.0.0:11434 -e OLLAMA_NO_CLOUD=1 \
+            -e OLLAMA_NUM_PARALLEL=1 -e OLLAMA_MAX_LOADED_MODELS=1 -e OLLAMA_CONTEXT_LENGTH=512 \
+            -p 127.0.0.1:11439:11434 aster-ollama:bounded serve
+          for attempt in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:11439/api/version && break
+            sleep 2
+          done
+          python3 operations/appliance/scripts/model-smoke.py --output "$RUNNER_TEMP/aster-model-smoke/linux-smoke.json"
+      - name: Retain bounded proof; this does not qualify32GiB production workload
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bounded-linux-model-evidence
+          path: |
+            ${{ runner.temp }}/aster-model-smoke/linux-smoke.json
+            ${{ runner.temp }}/aster-model-smoke/model/inventory.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop only this job's disposable model
+        if: ${{ always() }}
+        run: |
+          docker rm -f aster-bounded-model || true
+          docker network rm aster-bounded-model || true
+
+  full-assembly:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualification == 'full' }}
+    needs: contracts
+    runs-on: [self-hosted, linux, x64, aster-qualification]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with: {node-version: '24', cache: npm}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with: {python-version: '3.12'}
+      - name: Refuse insufficient or non-disposable qualification host
+        run: |
+          test "${ASTER_DISPOSABLE_RUNNER:-}" = 1
+          test "$(uname -m)" = x86_64
+          test "$(. /etc/os-release; printf '%s:%s' "$ID" "$VERSION_ID")" = ubuntu:24.04
+          test -z "$(docker ps -aq)"
+          python3 -c 'import shutil; m=int(next(x.split()[1] for x in open("/proc/meminfo") if x.startswith("MemTotal:")))*1024; assert m>=31*1024**3,"Full qualification requires32GiB RAM"; assert shutil.disk_usage(".").free>=100*1024**3,"Need100GiB free"'
+          mkdir -p "$RUNNER_TEMP/aster-release"
+      - name: Build all images, runtime closure, controller and model without office data
+        run: |
+          npm ci
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.27.1 go -C operations/appliance/cli build -trimpath -o "$RUNNER_TEMP/aster-release/asterctl" .
+          python3 operations/appliance/scripts/build-images.py --lock operations/appliance/image-lock.json --output "$RUNNER_TEMP/aster-release/images"
+          aster_runtime_base=$(python3 -c 'import json;print(json.load(open("operations/appliance/image-lock.json"))["runtimeBase"])')
+          python3 operations/appliance/scripts/collect-runtime.py --base "$aster_runtime_base" --output "$RUNNER_TEMP/aster-release/runtime"
+          python3 operations/appliance/scripts/fetch-model.py --output "$RUNNER_TEMP/aster-release/model"
+          aster_app_ref=$(python3 -c 'import json,sys;print(next(x["reference"] for x in json.load(open(sys.argv[1]))["images"] if x["service"]=="app"))' "$RUNNER_TEMP/aster-release/images/inventory.json")
+          printf 'ASTER_CANDIDATE_APP=%s\n' "$aster_app_ref" >> "$GITHUB_ENV"
+      - name: Install pinned scanner and retain raw initial scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
+        with:
+          image-ref: ${{ env.ASTER_CANDIDATE_APP }}
+          format: json
+          output: ${{ runner.temp }}/aster-release/app-initial-scan.json
+          exit-code: '0'
+          severity: HIGH,CRITICAL
+      - name: Enforce exact-image security and complete runtime license inventory
+        run: |
+          command -v trivy
+          sh operations/appliance/scripts/collect-compliance.sh "$RUNNER_TEMP/aster-release/images" "$RUNNER_TEMP/aster-release/compliance"
+      - name: Stage complete candidate and sign with ephemeral test trust
+        run: |
+          python3 operations/appliance/scripts/stage-bundle.py --spec operations/appliance/release-spec.json \
+            --images "$RUNNER_TEMP/aster-release/images" --runtime "$RUNNER_TEMP/aster-release/runtime" \
+            --model "$RUNNER_TEMP/aster-release/model" --compliance "$RUNNER_TEMP/aster-release/compliance" \
+            --asterctl "$RUNNER_TEMP/aster-release/asterctl" --output "$RUNNER_TEMP/aster-release/bundle"
+          "$RUNNER_TEMP/aster-release/asterctl" init-trust --keys "$RUNNER_TEMP/aster-release/test-signing-keys"
+          aster_expiry=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ"))')
+          "$RUNNER_TEMP/aster-release/asterctl" sign --bundle "$RUNNER_TEMP/aster-release/bundle" --keys "$RUNNER_TEMP/aster-release/test-signing-keys" --sequence 1 --expires "$aster_expiry"
+          "$RUNNER_TEMP/aster-release/asterctl" verify --bundle "$RUNNER_TEMP/aster-release/bundle" \
+            --trust-root "$RUNNER_TEMP/aster-release/test-signing-keys/root.json" \
+            --trust-root-sha256 "$(cat "$RUNNER_TEMP/aster-release/test-signing-keys/root.sha256")"
+          python3 operations/appliance/scripts/pack-bundle.py --bundle "$RUNNER_TEMP/aster-release/bundle" --output "$RUNNER_TEMP/aster-release/media"
+      - name: Actual TLS, MFA, both ingestion modes, cold restart and same-host sealed restore
+        run: |
+          sudo --preserve-env=RUNNER_TEMP,ASTER_DISPOSABLE_RUNNER sh operations/appliance/scripts/qualify-install.sh "$RUNNER_TEMP/aster-release"
+      - name: Retain release evidence and complete media; no release is published
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: appliance-test-candidate
+          path: |
+            ${{ runner.temp }}/aster-release/media
+            ${{ runner.temp }}/aster-release/compliance
+            ${{ runner.temp }}/aster-release/qualification.json
+            ${{ runner.temp }}/aster-release/proof
+            ${{ runner.temp }}/aster-release/bundle/release.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove ephemeral test signing identities
+        if: ${{ always() }}
+        run: rm -rf "$RUNNER_TEMP/aster-release/test-signing-keys"

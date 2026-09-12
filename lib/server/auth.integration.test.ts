@@ -123,6 +123,65 @@ suite('real PostgreSQL Better Auth integration', () => {
     vi.unstubAllEnvs();
   });
 
+  it('keeps authenticated and expired-session GETs read-only during sealed maintenance', async () => {
+    const browser = new BrowserSession();
+    const signed = await browser.call('/sign-in/email', { email, password });
+    expect(signed.response.status).toBe(200);
+    const { controlLifecycle } = await import('./lifecycle-control');
+    const { GET } = await import('../../app/api/auth/[...all]/route');
+    const c = await admin.connect();
+    try {
+      await controlLifecycle(c, { action: 'drain', expectedGeneration: 1 });
+      await controlLifecycle(c, { action: 'seal', expectedGeneration: 1 });
+      const before = (
+        await c.query('SELECT count(*)::int AS count FROM auth_rate_limit')
+      ).rows[0].count;
+      const valid = await GET(
+        new Request(origin + '/api/auth/get-session', {
+          headers: browser.headers(),
+        }),
+      );
+      expect(valid.status).toBe(200);
+      expect((await valid.json()).user.id).toBe(ownerId);
+      await c.query(
+        `UPDATE auth_session SET "expiresAt"=clock_timestamp()-interval '1 second' WHERE "userId"=$1`,
+        [ownerId],
+      );
+      const sessions = (
+        await c.query(
+          'SELECT count(*)::int AS count FROM auth_session WHERE "userId"=$1',
+          [ownerId],
+        )
+      ).rows[0].count;
+      const expired = await GET(
+        new Request(origin + '/api/auth/get-session', {
+          headers: browser.headers(),
+        }),
+      );
+      expect(expired.status).toBe(200);
+      expect(await expired.json()).toBeNull();
+      expect(
+        (
+          await c.query(
+            'SELECT count(*)::int AS count FROM auth_session WHERE "userId"=$1',
+            [ownerId],
+          )
+        ).rows[0].count,
+      ).toBe(sessions);
+      expect(
+        (await c.query('SELECT count(*)::int AS count FROM auth_rate_limit'))
+          .rows[0].count,
+      ).toBe(before);
+    } finally {
+      await controlLifecycle(c, {
+        action: 'resume',
+        release: 'legacy',
+        expectedGeneration: 1,
+      });
+      c.release();
+    }
+  });
+
   it('keeps public signup closed and rejects cross-origin login', async () => {
     const response = await new BrowserSession().call('/sign-up/email', {
       email: `new-${email}`,

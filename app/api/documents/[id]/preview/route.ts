@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { withTenant } from '@/lib/server/db';
 import {
@@ -10,7 +11,7 @@ import { decrypt } from '@/lib/server/crypto';
 import { audit } from '@/lib/server/audit';
 
 /** Serve only authenticated source bytes. Email markup is never interpreted as HTML. */
-export async function GET(
+async function handleGET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -61,3 +62,5 @@ export async function GET(
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

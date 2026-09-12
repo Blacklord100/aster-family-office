@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -9,7 +10,7 @@ import { FolderActionSchema } from '@/lib/folder-connection-contract';
 import { updateFolderConnection } from '@/lib/server/folder-store';
 import { FolderError } from '@/lib/server/folder-files';
 export const runtime = 'nodejs';
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   route: { params: Promise<{ id: string }> },
 ) {
@@ -41,3 +42,5 @@ export async function PATCH(
     );
   }
 }
+
+export const PATCH = lifecycleRoute(handlePATCH);

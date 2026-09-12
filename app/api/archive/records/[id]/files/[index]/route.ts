@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   AccessError,
   errorResponse,
@@ -6,7 +7,7 @@ import {
 import { downloadArchiveFile } from '@/lib/server/archive-store';
 import { ArchiveError } from '@/lib/server/archive-bundle';
 export const runtime = 'nodejs';
-export async function GET(
+async function handleGET(
   request: Request,
   route: { params: Promise<{ id: string; index: string }> },
 ) {
@@ -49,3 +50,5 @@ export async function GET(
     );
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import {
@@ -21,7 +22,7 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('leave') }).strict(),
   z.object({ action: z.literal('select'), organizationId: z.uuid() }).strict(),
 ]);
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const context = await requireWorkspace(request);
     return clearStaleWorkspaceCookie(
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     return errorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const input = await parseJson(request, actionSchema);
@@ -78,3 +79,6 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

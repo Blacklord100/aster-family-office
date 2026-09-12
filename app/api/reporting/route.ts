@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   requireWorkspace,
   errorResponse,
@@ -9,7 +10,7 @@ import {
   reportingRequestSchema,
 } from '@/lib/reporting-contract';
 import { readReporting, saveReporting } from '@/lib/server/reporting-store';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read'),
       params = new URL(request.url).searchParams,
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     return errorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     return json(
       await saveReporting(
@@ -44,3 +45,6 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

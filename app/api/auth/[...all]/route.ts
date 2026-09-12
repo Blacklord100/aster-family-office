@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { auth } from '@/lib/server/auth';
 import { errorResponse } from '@/lib/server/access';
 import { assertDatabaseRole } from '@/lib/server/db';
@@ -16,5 +17,5 @@ async function handle(request: Request): Promise<Response> {
   }
 }
 
-export const GET = handle;
-export const POST = handle;
+export const GET = lifecycleRoute(handle);
+export const POST = lifecycleRoute(handle);

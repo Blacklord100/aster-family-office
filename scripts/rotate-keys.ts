@@ -1,3 +1,4 @@
+import { assertSealedMaintenance } from '../lib/server/lifecycle-control';
 import { Pool } from 'pg';
 import { readFile, writeFile } from 'node:fs/promises';
 import { rotateEncryptedRecords } from '../lib/server/key-rotation';
@@ -38,6 +39,7 @@ try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
     await client.query("SET LOCAL lock_timeout='5s'");
     await client.query('SELECT pg_advisory_xact_lock(176334523)');
+    if (apply) await assertSealedMaintenance(client);
     stage = 'verify-and-rotate';
     const report = await rotateEncryptedRecords(client, apply);
     stage = 'commit';

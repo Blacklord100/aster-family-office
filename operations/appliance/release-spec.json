@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "0.4.0-appliance-preview.20260912",
+  "productVersion": "0.4.0",
+  "sequence": 1,
+  "channel": "preview",
+  "platform": {
+    "os": "linux",
+    "arch": "amd64"
+  },
+  "schema": {
+    "min": 16,
+    "max": 16,
+    "target": 16
+  },
+  "createdAt": "2026-09-12T00:00:00Z"
+}

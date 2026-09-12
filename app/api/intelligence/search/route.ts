@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -6,7 +7,7 @@ import {
 } from '@/lib/server/access';
 import { json } from '@/lib/server/http';
 import { searchIntelligence } from '@/lib/server/intelligence-store';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     const parsed = z
@@ -22,3 +23,5 @@ export async function GET(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

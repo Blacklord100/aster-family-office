@@ -1,0 +1,12 @@
+encode zstd gzip
+header {
+	Strict-Transport-Security "max-age=31536000"
+	X-Content-Type-Options "nosniff"
+	Referrer-Policy "no-referrer"
+	Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	-Server
+}
+request_body {
+	max_size 25MB
+}
+# Do not enable request logs: document names and query strings are sensitive.

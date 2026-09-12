@@ -1,0 +1,19 @@
+Aster Family Office
+Copyright 2026 Aster contributors
+
+This project is licensed under the Apache License, Version 2.0.
+The project name does not imply endorsement by its dependency authors.
+
+Third-party components retain their own copyright notices and licenses.
+See THIRD_PARTY_NOTICES.md and the license inventory accompanying each binary
+distribution. This project license does not relicense model weights, customer
+documents, third-party assets, system packages, or externally supplied plugins.
+
+The generated components/ui registry components derive from shadcn/ui (MIT).
+The original license is retained in licenses/shadcn-ui. Bundled Geist font
+software retains the SIL Open Font License notices in licenses/geist.
+
+The processor includes local builds of libtiff, Tesseract and Pillow. Tesseract
+security backports retain the original upstream patch headers, copyright and
+Apache-2.0 terms under processor/runtime/source-provenance. The exact source
+versions, archives and modifications are recorded in upstream-sources.json.

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { randomUUID } from 'node:crypto';
 import { withTenant } from '@/lib/server/db';
 import {
@@ -14,7 +15,7 @@ import {
   assertEngineEnabled,
   sealJobEngine,
 } from '@/lib/server/engine-store';
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const ctx = await requireWorkspace(request, 'write');
@@ -167,3 +168,5 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

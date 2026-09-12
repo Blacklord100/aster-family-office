@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "reviewedOn": "2026-09-12",
+  "sourceFiles": {
+    "tesseract": {
+      "src/lstm/convolve.cpp": "4222ec7b075f994d957bdd203307b84bc4d93a74faa8babcdcada3b33109573b",
+      "src/lstm/reconfig.cpp": "36baabb3c9c4e58145ab5ac1a129ff5c657084857c529fb36ea1e063d19fd58d",
+      "src/classify/normmatch.cpp": "21ef9caeacc2517e3bad59512eff0220ffb7e1948277495760fd07394d357f39",
+      "src/lstm/fullyconnected.cpp": "d96e4d431787c7d4118f142facd4979952f02fdafa4b3cd3c939590d85bd9597",
+      "src/lstm/weightmatrix.h": "3214d9e2359eb1a6f438312bcbb0306c68668a3676fc92fe94c1d283c3e82023",
+      "src/lstm/lstm.cpp": "5a4ef05d95b2c3cf4efad0f518dfe32c04140490c85a755649f1839134546e91",
+      "src/lstm/networkio.cpp": "d4f455926656d63284d24e42933b2f5f26add216404b4e1f2002e02967292a71"
+    },
+    "libtiff": {
+      "libtiff/tif_read.c": "332043d298faf86609a1e07eed21fb4da95b0e42d2df0af43e7e25cd2578997e",
+      "libtiff/tif_compress.c": "e569f3502c4af70f4ccd56b7f78aac0f809fedb438419cb1ae09f69e3b1bfb8e",
+      "tools/tiffcrop.c": "05f79178b2a6e1d3124186811b8042bf772f920c0c8b18b4ee655d8651cf04e6"
+    }
+  },
+  "findings": [
+    {
+      "cve": "CVE-2026-36849",
+      "package": "libtiff6",
+      "installedVersion": "4.7.2-1+aster1",
+      "status": "fixed",
+      "basis": "Signed libtiff4.7.2 source, exact decoder linkage, codec guard checks",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-36849"
+    },
+    {
+      "cve": "CVE-2026-52490",
+      "package": "libtiff6",
+      "installedVersion": "4.7.2-1+aster1",
+      "status": "not_affected",
+      "basis": "Affected tiffcrop program absent; signed libtiff4.7.2 includes upstream fix",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-52490"
+    },
+    {
+      "cve": "CVE-2026-73066",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster2",
+      "status": "fixed",
+      "basis": "Signed Tesseract5.5.3 and malformed Convolve/Reconfig deserialization regression",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-73066"
+    },
+    {
+      "cve": "CVE-2026-88047",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster2",
+      "status": "fixed",
+      "basis": "Pinned upstream1bda507 patch, bounded normproto regression",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88047"
+    },
+    {
+      "cve": "CVE-2026-88048",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster2",
+      "status": "fixed",
+      "basis": "Pinned upstream103dc134 patch, mismatched and valid FullyConnected deserialization",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88048"
+    },
+    {
+      "cve": "CVE-2026-88049",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster2",
+      "status": "fixed",
+      "basis": "Pinned upstreamb494ac18 patch, four malformed LSTM dimensions and valid control",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88049"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   AccessError,
   errorResponse,
@@ -6,7 +7,7 @@ import {
 import { PortfolioHistoryQuerySchema } from '@/lib/portfolio-history-contract';
 import { readPortfolioHistory } from '@/lib/server/portfolio-history-store';
 import { json } from '@/lib/server/http';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'read');
     const raw = new URL(request.url).searchParams.get('query');
@@ -26,3 +27,5 @@ export async function GET(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

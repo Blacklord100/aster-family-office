@@ -24,7 +24,7 @@ EXCLUDED_PACKAGES = {'perl-base', 'libsqlite3-0', 'libncursesw6', 'libtinfo6',
                      'libuuid1', 'libacl1', 'libarchive13t64', 'libtiff6'}
 CUSTOM_PACKAGES = {
     '/opt/tesseract': {'id': 'tesseract-ocr:aster', 'name': 'tesseract-ocr',
-                       'version': '5.5.3', 'source': 'tesseract', 'license': 'tesseract-5.5.3/LICENSE'},
+                       'version': '5.5.3', 'revision': 2, 'source': 'tesseract', 'license': 'tesseract-5.5.3/LICENSE'},
     '/opt/libtiff': {'id': 'libtiff6:aster', 'name': 'libtiff6',
                    'version': '4.7.2', 'source': 'tiff', 'license': 'tiff-4.7.2/LICENSE.md'},
 }
@@ -242,7 +242,7 @@ def main():
         # binaries. Keep canonical source names so existing CVEs remain visible.
         stanzas[package['id']] = '\n'.join([
             f'Package: {package["name"]}', 'Status: install ok installed',
-            f'Version: {package["version"]}-1+aster1',
+            f'Version: {package["version"]}-1+aster{package.get("revision", 1)}',
             f'Source: {package["source"]} ({package["version"]})',
             f'Architecture: {architecture}', 'Maintainer: Aster local processor build',
             'Description: Local rebuild of authenticated upstream source; not a Debian binary package',
@@ -297,7 +297,8 @@ def main():
     provenance = []
     evidence_dir = ROOT / 'opt/aster/source-provenance'
     evidence_dir.mkdir()
-    for source in [Path('/build/upstream-sources.json'), *sorted(Path('/build/source-provenance').iterdir())]:
+    for source in [Path('/build/upstream-sources.json'), Path('/build/security-build.json'),
+                   *sorted(Path('/build/source-provenance').iterdir())]:
         target = evidence_dir / source.name
         shutil.copy2(source, target)
         provenance.append({'path': '/' + str(target.relative_to(ROOT)),
@@ -311,7 +312,7 @@ def main():
     manifest = {'schemaVersion': 1,
                 'python': {'version': '3.12.13', 'omittedModules': OMITTED_MODULES,
                            'binarySha256': hashlib.sha256((ROOT / 'usr/local/bin/python3.12').read_bytes()).hexdigest()},
-                'tesseract': {'version': '5.5.3', 'packageVersion': '5.5.3-1+aster1',
+                'tesseract': {'version': '5.5.3', 'packageVersion': '5.5.3-1+aster2',
                               'sourceVersion': '5.5.3', **source_details('tesseract'),
                               'compiledDataPrefix': '/opt/tesseract/share',
                               'options': {'archive': False, 'curl': False, 'graphics': False, 'training': False}},
@@ -320,6 +321,7 @@ def main():
                 'pillow': {**native['pillow'], **source_details('pillow'),
                            'buildDependencies': sources['buildDependencies']},
                 'sourceProvenance': provenance,
+                'securityBuild': json.loads(Path('/build/security-build.json').read_text()),
                 'runtimeConfiguration': {'trustStore': trust_store},
                 'systemPackages': package_manifest}
     (ROOT / 'opt/aster/runtime-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

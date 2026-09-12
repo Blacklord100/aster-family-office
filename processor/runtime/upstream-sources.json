@@ -71,5 +71,80 @@
       "filename": "tiff-4.7.2.tar.xz.sig",
       "sha256": "cc5ca256639eb151041dcae3a4359ec105111f8c610123c9f96fefc456c4c0df"
     }
+  ],
+  "securityBackports": [
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88047",
+      "commit": "1bda5079b1c8a7e25f523486837426903d29ce84",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/1bda5079b1c8a7e25f523486837426903d29ce84",
+      "filename": "tesseract-CVE-2026-88047.patch",
+      "sha256": "81cfeadb66eaaa62215963f4eb613212da3b153cac3685e1c8b8b6d19a9e6980",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/classify/normmatch.cpp",
+          "beforeSha256": "9ac54083f9b944f47d5710c28fb841a9045495eecd2f7c47c51c9de0f35c338b",
+          "afterSha256": "21ef9caeacc2517e3bad59512eff0220ffb7e1948277495760fd07394d357f39"
+        },
+        {
+          "path": "unittest/normproto_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "67433de9281a0fd9394ea87d2a77049764ece86ec4ba64bbf3a32b3ac7f6b19c"
+        }
+      ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88048",
+      "commit": "103dc134eb36411ddc6833ec20aa2c76795bd0ff",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/103dc134eb36411ddc6833ec20aa2c76795bd0ff",
+      "filename": "tesseract-CVE-2026-88048.patch",
+      "sha256": "21af537b323ccfd44501ec07b54476580c8132499de2bd5014ddbff46cc114dd",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/lstm/fullyconnected.cpp",
+          "beforeSha256": "20df7068ba681f61b342ee7c1421ba8bb33e070f806af68c20e43cd63b5e485e",
+          "afterSha256": "d96e4d431787c7d4118f142facd4979952f02fdafa4b3cd3c939590d85bd9597"
+        },
+        {
+          "path": "src/lstm/weightmatrix.h",
+          "beforeSha256": "2f79a3e78ef59da25eabe3b5d4469b0ee56124d8864febb446f419055a4ff8e6",
+          "afterSha256": "3214d9e2359eb1a6f438312bcbb0306c68668a3676fc92fe94c1d283c3e82023"
+        },
+        {
+          "path": "unittest/fullyconnected_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "e227324177c1c11ec854d9cf243216e3bc2e4190ab4423bc2ba40c53dba328d6"
+        }
+      ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88049",
+      "commit": "b494ac18925f9d9aff9ef5815475de9943ab19bf",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/b494ac18925f9d9aff9ef5815475de9943ab19bf",
+      "filename": "tesseract-CVE-2026-88049.patch",
+      "sha256": "b6860ee415aa0f7a5a73d79e8de115f99c09fa66fc010dd7cb7469f4eb10963f",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/lstm/lstm.cpp",
+          "beforeSha256": "e6afad3177ef097dfbb1c2114ef5d93ee98ba25156bb6e978924cc7b8f2d6a91",
+          "afterSha256": "5a4ef05d95b2c3cf4efad0f518dfe32c04140490c85a755649f1839134546e91"
+        },
+        {
+          "path": "src/lstm/networkio.cpp",
+          "beforeSha256": "e88e962d58671ca71177a3e89e110f6434c0d9cd8805f6d371d16680d6627b14",
+          "afterSha256": "d4f455926656d63284d24e42933b2f5f26add216404b4e1f2002e02967292a71"
+        },
+        {
+          "path": "unittest/lstm_layer_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "9209f5a77213f589f42bb0ad862dabd91fd4152b46ce021c953a906dc960561c"
+        }
+      ]
+    }
   ]
 }

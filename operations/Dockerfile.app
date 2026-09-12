@@ -37,6 +37,8 @@ COPY --from=builder --chown=1000:1000 /app/dist-ops ./dist-ops
 COPY --from=builder --chown=1000:1000 /app/migrations ./migrations
 COPY --from=builder --chown=1000:1000 /app/node_modules ./node_modules
 COPY --from=builder --chown=1000:1000 /app/package.json ./package.json
+COPY --from=builder --chown=1000:1000 /app/LICENSE /app/NOTICE /app/THIRD_PARTY_NOTICES.md /opt/aster/licenses/
+COPY --from=builder --chown=1000:1000 /app/licenses /opt/aster/licenses/third-party
 # Optional demo corpus contains synthetic originals and routing metadata only.
 # Financial benchmark answer keys are excluded from the build context and image.
 COPY --from=builder --chown=1000:1000 /app/benchmark/mailroom-v1/catalog.json ./benchmark/mailroom-v1/catalog.json

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { withTenant } from '@/lib/server/db';
 import {
   requireWorkspace,
@@ -7,7 +8,7 @@ import {
 import { decrypt } from '@/lib/server/crypto';
 import { audit } from '@/lib/server/audit';
 import { assertDocumentAccess } from '@/lib/server/data-scope';
-export async function GET(
+async function handleGET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -52,3 +53,5 @@ export async function GET(
     return errorResponse(e);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import {
   requireWorkspace,
   errorResponse,
@@ -10,7 +11,7 @@ import { activeEngine, loadEngineRevision } from '@/lib/server/engine-store';
 import { inspectEngine } from '@/lib/server/engine-processor';
 import { EngineInspectionRequestSchema } from '@/lib/engine-inspection';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const ctx = await requireWorkspace(request, 'admin');
     const input = await parseJson(request, EngineInspectionRequestSchema);
@@ -85,3 +86,5 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const POST = lifecycleRoute(handlePOST);

@@ -1,3 +1,4 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { z } from 'zod';
 import {
   requireWorkspace,
@@ -8,7 +9,7 @@ import { json, parseJson } from '@/lib/server/http';
 import { updateMailbox } from '@/lib/server/mailbox-store';
 import { MailboxActionSchema } from '@/lib/mailbox-contract';
 export const runtime = 'nodejs';
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   route: { params: Promise<{ id: string }> },
 ) {
@@ -28,3 +29,5 @@ export async function PATCH(
     return errorResponse(error);
   }
 }
+
+export const PATCH = lifecycleRoute(handlePATCH);

@@ -1,3 +1,4 @@
+import { maintenanceRead } from './lifecycle-context';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -365,14 +366,17 @@ export async function readReportObligations(
       ctx.organizationId,
       state.obligations ?? emptyReportObligationsState(),
     );
-    const changed = await persistEvaluation(
-      client,
-      ctx.organizationId,
-      state,
-      sources,
-      now,
-    );
-    await ensureReportObligations(client, ctx.organizationId);
+    const changed = maintenanceRead()
+      ? false
+      : await persistEvaluation(
+          client,
+          ctx.organizationId,
+          state,
+          sources,
+          now,
+        );
+    if (!maintenanceRead())
+      await ensureReportObligations(client, ctx.organizationId);
     return response(
       client,
       ctx,

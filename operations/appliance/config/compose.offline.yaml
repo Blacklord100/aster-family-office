@@ -1,0 +1,788 @@
+# Standalone appliance profile. Never merge with legacy compose.yaml.
+name: ${ASTER_PROJECT_NAME:?Set a unique appliance project name}
+services:
+  postgres:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${POSTGRES_IMAGE:?Set verified PostgreSQL image reference}
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aster
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - postgres_password
+      - migration_password
+      - runtime_password
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/postgres
+        target: /var/lib/postgresql/data
+        read_only: false
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_RELEASE_ROOT:?Set the verified release root}/payload/config/postgres/10-roles.sh
+        target: /docker-entrypoint-initdb.d/10-roles.sh
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=999,gid=999
+      - /var/run/postgresql:rw,noexec,nosuid,size=8m,uid=999,gid=999
+    networks:
+      - database
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d aster
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 60s
+    mem_limit: ${POSTGRES_MEMORY:-2g}
+    pids_limit: 256
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  web:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: '1'
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
+      BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      AUTH_REQUIRE_MFA: 'true'
+      AUTH_CLIENT_IP_HEADER: x-real-ip
+      PROCESSOR_URL: http://processor:8000
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      WORKER_HEARTBEAT_FILE: /run/aster-health/document
+      BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
+      MAILBOX_PROVIDERS_FILE: /run/secrets/mailbox_providers
+      EMAIL_DELIVERY_ENABLED: 'false'
+      ASTER_INTAKE_ROOT: /run/aster-intake
+      ASTER_ARCHIVE_ROOT: /run/aster-archive
+      ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive
+      ALLOW_CLOUD_ENGINES: 'false'
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - better_auth_secret
+      - encryption_key
+      - encryption_keyring
+      - processor_token
+      - mailbox_providers
+    command:
+      - node
+      - .next/standalone/server.js
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/health
+        target: /run/aster-health
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/receipts
+        target: /run/aster-receipts
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/intake
+        target: /run/aster-intake
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/archive
+        target: /run/aster-archive
+        read_only: false
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+      - /app/.next/standalone/.next/cache:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+    networks:
+      - edge
+      - database
+      - local-confidential
+    depends_on:
+      postgres:
+        condition: service_healthy
+      processor:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - '-e'
+        - fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    mem_limit: ${WEB_MEMORY:-1g}
+    pids_limit: 128
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  worker:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: '1'
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
+      BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      AUTH_REQUIRE_MFA: 'true'
+      AUTH_CLIENT_IP_HEADER: x-real-ip
+      PROCESSOR_URL: http://processor:8000
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      WORKER_HEARTBEAT_FILE: /run/aster-health/document
+      BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
+      ALLOW_CLOUD_ENGINES: 'false'
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - better_auth_secret
+      - encryption_key
+      - encryption_keyring
+      - processor_token
+    command:
+      - node
+      - dist-worker/index.js
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m,uid=1000,gid=1000
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/health
+        target: /run/aster-health
+        read_only: false
+        bind:
+          create_host_path: false
+    networks:
+      - database
+      - local-confidential
+    depends_on:
+      postgres:
+        condition: service_healthy
+      processor:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - /opt/aster/worker-healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 150s
+    mem_limit: ${WORKER_MEMORY:-1g}
+    pids_limit: 128
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  report-obligations-worker:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: report-obligations
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      REPORT_OBLIGATIONS_HEARTBEAT_FILE: /run/aster-health/report-obligations
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+    command:
+      - node
+      - dist-report-obligations-worker/index.js
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/health
+        target: /run/aster-health
+        read_only: false
+        bind:
+          create_host_path: false
+    networks:
+      - database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - /opt/aster/worker-healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 75s
+    mem_limit: 512m
+    pids_limit: 64
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  folder-worker:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: folder
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      ASTER_INTAKE_ROOT: /run/aster-intake
+      FOLDER_HEARTBEAT_FILE: /run/aster-health/folder
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+    command:
+      - node
+      - dist-folder-worker/index.js
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/intake
+        target: /run/aster-intake
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/health
+        target: /run/aster-health
+        read_only: false
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000
+    networks:
+      - database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - /opt/aster/worker-healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 75s
+    mem_limit: 512m
+    pids_limit: 64
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  archive-worker:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      ASTER_SERVICE: archive
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_runtime
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      PROCESSOR_URL: http://processor:8000
+      ASTER_ARCHIVE_ROOT: /run/aster-archive
+      ARCHIVE_HEARTBEAT_FILE: /run/aster-health/archive
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: runtime_password
+        target: db_password
+      - encryption_key
+      - encryption_keyring
+      - processor_token
+    command:
+      - node
+      - dist-archive-worker/index.js
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/archive
+        target: /run/aster-archive
+        read_only: false
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/health
+        target: /run/aster-health
+        read_only: false
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+    networks:
+      - database
+      - local-confidential
+    depends_on:
+      postgres:
+        condition: service_healthy
+      processor:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - /opt/aster/worker-healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 75s
+    mem_limit: 512m
+    pids_limit: 64
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  migrate:
+    init: true
+    restart: 'no'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    profiles:
+      - maintenance
+    image: ${ASTER_IMAGE:?Set verified Aster image reference}
+    user: '1000:1000'
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: '1'
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: aster
+      DB_USER: aster_migrator
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin in .env}
+      BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      ENCRYPTION_KEYRING_FILE: /run/secrets/encryption_keyring
+      ENCRYPTION_ACTIVE_KEY_ID: ${ENCRYPTION_ACTIVE_KEY_ID:-legacy}
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      AUTH_REQUIRE_MFA: 'true'
+      AUTH_CLIENT_IP_HEADER: x-real-ip
+      PROCESSOR_URL: http://processor:8000
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      WORKER_HEARTBEAT_FILE: /run/aster-health/document
+      BACKUP_STATUS_FILE: /run/aster-receipts/backup.json
+      ASTER_DB_MIGRATION: '1'
+      ASTER_RELEASE_ID: ${ASTER_RELEASE_ID:?Set verified release ID}
+      ASTER_SCHEMA_MIN: ${ASTER_SCHEMA_MIN:?Set supported minimum schema}
+      ASTER_SCHEMA_MAX: ${ASTER_SCHEMA_MAX:?Set supported maximum schema}
+      ASTER_WRITER_GENERATION: ${ASTER_WRITER_GENERATION:?Set active writer generation}
+    secrets:
+      - source: migration_password
+        target: db_password
+      - better_auth_secret
+      - encryption_key
+      - encryption_keyring
+      - processor_token
+    command:
+      - node
+      - dist-ops/migrate.js
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=1000,gid=1000
+    networks:
+      - database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 1g
+    pids_limit: 128
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  processor:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${PROCESSOR_IMAGE:?Set verified processor image reference}
+    user: '10001:10001'
+    entrypoint:
+      - python
+      - /opt/aster/processor-entrypoint.py
+    command:
+      - uvicorn
+      - service.app:create_app
+      - '--factory'
+      - '--host'
+      - 0.0.0.0
+      - '--port'
+      - '8000'
+      - '--workers'
+      - '1'
+      - '--no-access-log'
+      - '--limit-concurrency'
+      - '8'
+      - '--timeout-keep-alive'
+      - '5'
+    environment:
+      PROCESSOR_TOKEN_FILE: /run/secrets/processor_token
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set an operator-approved locally imported model name}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-300}
+      OCR_ENABLED: ${OCR_ENABLED:-true}
+      MAX_AGENT_STEPS: ${MAX_AGENT_STEPS:-32}
+      MAX_MODEL_CALLS: ${MAX_MODEL_CALLS:-64}
+      MAX_PAGE_EXTRACTIONS: ${MAX_PAGE_EXTRACTIONS:-2}
+      VISUAL_PAGES_ENABLED: ${VISUAL_PAGES_ENABLED:-true}
+      MAX_VISUAL_PAGES: ${MAX_VISUAL_PAGES:-6}
+      MAX_VISUAL_BYTES: ${MAX_VISUAL_BYTES:-8388608}
+      MAX_NESTED_EML_DEPTH: ${MAX_NESTED_EML_DEPTH:-3}
+      MAX_EMAIL_PARTS: ${MAX_EMAIL_PARTS:-32}
+      MAX_EMAIL_ATTACHMENTS: ${MAX_EMAIL_ATTACHMENTS:-8}
+      DOCUMENT_DECODE_TIMEOUT_SECONDS: ${DOCUMENT_DECODE_TIMEOUT_SECONDS:-75}
+      ALLOW_CLOUD_ENGINES: 'false'
+    secrets:
+      - processor_token
+    volumes:
+      - type: bind
+        source: ${ASTER_RELEASE_ROOT:?Set the verified release root}/payload/config/scripts/processor-entrypoint.py
+        target: /opt/aster/processor-entrypoint.py
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m,uid=10001,gid=10001
+    networks:
+      - local-confidential
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - '-c'
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    mem_limit: ${PROCESSOR_MEMORY:-2g}
+    pids_limit: 128
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  ollama:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    image: ${OLLAMA_IMAGE:?Set verified Ollama image reference}
+    user: '10001:10001'
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_MODELS: /models
+      OLLAMA_NO_CLOUD: '1'
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_MAX_LOADED_MODELS: '1'
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_QUEUE: '8'
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-8192}
+    volumes:
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/ollama
+        target: /models
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,nosuid,size=256m,uid=10001,gid=10001
+      - /home/aster:rw,noexec,nosuid,size=8m,uid=10001,gid=10001,mode=0700
+    networks:
+      - local-confidential
+    command:
+      - serve
+    healthcheck:
+      test:
+        - CMD
+        - /bin/ollama
+        - list
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: ${OLLAMA_MEMORY:-12g}
+    pids_limit: 256
+    pull_policy: never
+    platform: linux/amd64
+    dns:
+      - 127.0.0.1
+  caddy:
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    user: '10001:10001'
+    environment:
+      ASTER_DOMAIN: ${ASTER_DOMAIN:?Set appliance DNS hostname}
+      ASTER_ORIGIN: ${BETTER_AUTH_URL:?Set the exact public HTTPS origin}
+    ports:
+      - ${ASTER_BIND_ADDRESS:-0.0.0.0}:${ASTER_HTTP_PORT:-80}:8080
+      - ${ASTER_BIND_ADDRESS:-0.0.0.0}:${ASTER_HTTPS_PORT:-443}:8443
+    volumes:
+      - type: bind
+        source: >-
+          ${ASTER_RELEASE_ROOT:?Set the verified release
+          root}/payload/config/Caddyfile.${ASTER_TLS_MODE:?Choose internal or supplied}
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/caddy/data
+        target: /data
+        read_only: false
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/caddy/config
+        target: /config
+        read_only: false
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_DATA_ROOT:?Set the private appliance data root}/caddy/tls
+        target: /etc/aster/tls
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ASTER_RELEASE_ROOT:?Set the verified release root}/payload/config/headers.caddy
+        target: /etc/aster/headers.caddy
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001
+    networks:
+      - edge
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '-q'
+        - '-O'
+        - /dev/null
+        - http://127.0.0.1:2019/config/
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    pids_limit: 64
+    pull_policy: never
+    platform: linux/amd64
+    image: ${CADDY_IMAGE:?Set verified Caddy image reference}
+    dns:
+      - 127.0.0.1
+networks:
+  edge:
+    internal: true
+  database:
+    internal: true
+  local-confidential:
+    internal: true
+secrets:
+  postgres_password:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/postgres_password
+  migration_password:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/migration_password
+  runtime_password:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/runtime_password
+  better_auth_secret:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/better_auth_secret
+  encryption_key:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/encryption_key
+  processor_token:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/processor_token
+  mailbox_providers:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/mailbox_providers
+  encryption_keyring:
+    file: ${ASTER_DATA_ROOT:?Set the private appliance data root}/secrets/encryption_keyring

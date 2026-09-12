@@ -1,15 +1,16 @@
+import { lifecycleRoute } from '@/lib/server/lifecycle';
 import { requireWorkspace, errorResponse } from '@/lib/server/access';
 import { json, parseJson } from '@/lib/server/http';
 import { ledgerRequestSchema } from '@/lib/ledger-contract';
 import { readLedger, writeLedger } from '@/lib/server/ledger-store';
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     return json(await readLedger(await requireWorkspace(request, 'read')));
   } catch (error) {
     return errorResponse(error);
   }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const context = await requireWorkspace(request, 'write');
     const input = await parseJson(request, ledgerRequestSchema);
@@ -18,3 +19,6 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const GET = lifecycleRoute(handleGET);
+export const POST = lifecycleRoute(handlePOST);

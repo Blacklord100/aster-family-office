@@ -298,3 +298,9 @@ describe('metadata inspection route and internal transport', () => {
     ).rejects.toThrow('too large');
   });
 });
+
+// Admission and writer fencing are exercised in lifecycle.integration.test.ts.
+vi.mock('./lifecycle', async (original) => ({
+  ...(await original<typeof import('./lifecycle')>()),
+  lifecycleRoute: (handler: (...args: unknown[]) => unknown) => handler,
+}));

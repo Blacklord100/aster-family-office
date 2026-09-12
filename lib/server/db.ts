@@ -1,5 +1,7 @@
 import 'server-only';
 import { Pool, type PoolClient } from 'pg';
+import { databaseWriterOptions } from '../lifecycle-contract';
+import { lifecycleContext } from './lifecycle-context';
 
 // Connections open on first use. Importing a route during `next build` does not
 // connect to production or require build workers to carry runtime credentials.
@@ -10,7 +12,41 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10_000,
   statement_timeout: 30_000,
   application_name: 'aster',
+  options: databaseWriterOptions(),
 });
+
+// Every checked-out connection receives fresh operation context, including Kysely/Better Auth
+// clients and pool.query callers. Context is reset before a connection can serve another request.
+const acquireConnection = pool.connect.bind(pool);
+pool.connect = ((
+  callback?: (
+    error: Error | undefined,
+    client?: PoolClient,
+    release?: PoolClient['release'],
+  ) => void,
+) => {
+  const context = lifecycleContext.getStore();
+  const pending = acquireConnection().then(async (client) => {
+    try {
+      await client.query(
+        "SELECT set_config('app.operation_id',$1,false),set_config('app.operation_token',$2,false)",
+        [context?.operation?.id ?? '', context?.operation?.token ?? ''],
+      );
+      return client;
+    } catch (error) {
+      client.release(true);
+      throw error;
+    }
+  });
+  if (callback) {
+    void pending.then(
+      (client) => callback(undefined, client, client.release.bind(client)),
+      (error) => callback(error),
+    );
+    return;
+  }
+  return pending;
+}) as typeof pool.connect;
 
 let roleCheck: Promise<void> | undefined;
 
@@ -117,6 +153,9 @@ export async function withTenant<T>(
         ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'
         : 'BEGIN',
     );
+    // Acquire the maintenance barrier before tenant row locks or filesystem publication.
+    if (lifecycleContext.getStore()?.operation && !options.readOnlySnapshot)
+      await client.query('SELECT aster_assert_operation()');
     await client.query("SELECT set_config('app.organization_id', $1, true)", [
       organizationId,
     ]);

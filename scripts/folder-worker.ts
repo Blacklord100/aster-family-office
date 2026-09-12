@@ -1,3 +1,4 @@
+import { runWorkerOperation } from '../lib/server/lifecycle';
 import { writeFile } from 'node:fs/promises';
 import { pool, assertDatabaseRole } from '../lib/server/db';
 import { workerOrganizationScope } from '../lib/server/worker-scope';
@@ -43,15 +44,27 @@ async function heartbeat() {
 async function main() {
   await assertDatabaseRole();
   while (!stopping) {
+    const allowed = await runWorkerOperation('folder', iteration);
+    if (!allowed) {
+      await heartbeat();
+      await pause(2000);
+    }
+  }
+  async function iteration(lifecycleSignal: AbortSignal) {
     try {
       const claim = await claimFolderConnection(organizations);
       await heartbeat();
       if (!claim) {
         await pause(2000);
-        continue;
+        return;
       }
       const controller = new AbortController();
       active = controller;
+      const cancelAdmission = () => controller.abort();
+      lifecycleSignal.addEventListener('abort', cancelAdmission, {
+        once: true,
+      });
+      if (lifecycleSignal.aborted) cancelAdmission();
       let renewing = false,
         leaseLost = false;
       const timer = setInterval(() => {
@@ -77,10 +90,13 @@ async function main() {
       } catch (error) {
         await releaseFolderClaim(
           claim,
-          stopping || leaseLost ? new FolderLeaseLost() : error,
+          stopping || leaseLost || lifecycleSignal.aborted
+            ? new FolderLeaseLost()
+            : error,
         );
       } finally {
         clearInterval(timer);
+        lifecycleSignal.removeEventListener('abort', cancelAdmission);
         active = undefined;
       }
     } catch {
