@@ -52,7 +52,7 @@ jobs:
             --output "$RUNNER_TEMP/aster-controller-evidence"
       - name: Retain exact controller evidence, including refused scans
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: appliance-controller-evidence
           path: ${{ runner.temp }}/aster-controller-evidence
@@ -101,7 +101,7 @@ jobs:
         run: python3 operations/appliance/scripts/capture-bounded-model.py --output "$RUNNER_TEMP/aster-model-smoke/diagnostics"
       - name: Retain bounded proof; this does not qualify32GiB production workload
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: bounded-linux-model-evidence
           path: |
@@ -186,7 +186,7 @@ jobs:
           sudo --preserve-env=RUNNER_TEMP,ASTER_DISPOSABLE_RUNNER,ASTER_QUALIFICATION_NODE sh operations/appliance/scripts/qualify-install.sh "$RUNNER_TEMP/aster-release"
       - name: Retain release evidence and complete media; no release is published
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: appliance-test-candidate
           path: |
