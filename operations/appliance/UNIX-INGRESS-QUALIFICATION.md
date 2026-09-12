@@ -1,5 +1,29 @@
 # Confined Unix ingress qualification
 
+**Bounded ingress gate passed.** [Run34715658483](https://github.com/Blacklord100/aster-family-office/actions/runs/34715658483)
+at exact commit `ac32b5002c4a8c7de53bb45d6ac2097e0d08dcad` passed all 17 ingress
+checks and all 12 cleanup checks on the disposable Ubuntu runner. The artifact
+ZIP was independently matched to GitHub's SHA256; retained unit/configuration/CA
+bytes and both executed controller identities match the receipt.
+
+| Qualified artifact | Exact identity |
+| --- | --- |
+| Caddy image | `sha256:77887dce9b85387d2d6f8a58a9e0310053bad42832b4ffe3145f79e6c25258fc` |
+| Executed controller SHA256 | `3875ac3770fdabe4747f88e2db57b70427e3e7434a5101b0dc00126558712d84` |
+| Persistent public CA SHA256 | `d21b77ad01022def1063607256979f2af03c502215a9e24766d0f43e7a3e2849` |
+| Artifact ZIP SHA256 | `9100380c62645ef28d7a4e5ad285a9c28137cdeb871be6fd48f8fe9aec1ca291` |
+
+Observed results include host HTTPS200/TLS1.3 with verified CA and SNI, HTTP301
+to the exact HTTPS origin, forged-PROXY rejection400 followed by a valid301
+control, and client127.0.0.2 preserved despite forged forwarding headers. Both
+UID10001 relay processes ran in distinct loopback-only network namespaces with
+no effective capabilities, no new privileges, and read-only binary/socket binds.
+Strict CA/SNI negatives, graceful and crash restart recovery with unchanged CA,
+protected socket permissions, and removal of only newly created account/resources
+all passed. This qualifies the bounded ingress path; complete appliance
+install/update/restore, external-LAN routing, supplied-certificate deployment and
+the broader release/source gates remain separate.
+
 The new appliance profile uses host systemd sockets for HTTP80 and HTTPS443.
 The socket-activated `asterctl ingress` process passes a kernel-derived PROXYv1
 prefix and then opaque client bytes to Caddy's protected Unix socket. Caddy stays
@@ -69,11 +93,9 @@ Synthetic private CA keys exist only in the new private synthetic root, are
 removed by its exact cleanup, and are never uploaded. No real emails, office
 data, model or database is used.
 
-**Qualification status:** the latest actual run passed15 of17 checks, including
-host HTTPS, both relay sandboxes, restart recovery and all cleanup. Its HTTP
-status expectation was incorrect and is corrected below. A completely passing
-hosted receipt is still required to clear this bounded gate. This probe does
-not establish a complete appliance install/update/restore, external-LAN reachability,
+**Qualification scope:** the fully passing exact artifact is recorded above.
+The following sections preserve the earlier failures and their corrections.
+This probe does not establish a complete appliance install/update/restore, external-LAN reachability,
 supplied-certificate deployment, or customer firewall policy.
 
 ## First hosted result: missing host service identity
@@ -95,9 +117,9 @@ cleanup passed. The artifact ZIP SHA256
 `d28804c3814e77680fcf88cdae531a1dd4ec8451987395ff647c8a065e81937b`
 was independently verified against GitHub's published digest.
 
-The follow-up adds the production static-account provisioning call and immediate
-exec-status checks to the probe. It retains these original failures and requires
-a new actual run. The [systemd v255 execution documentation](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml)
+The follow-up added the production static-account provisioning call and immediate
+exec-status checks to the probe. The original failures remain retained; subsequent
+actual results are recorded below. The [systemd v255 execution documentation](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml)
 requires the configured user/group to exist in the static user database when
 `DynamicUser` is not used; accepting a numeric `User` value does not create it.
 
@@ -123,8 +145,9 @@ result; the primary GID remains independently checked in the passwd record, and
 any foreign supplementary GID still fails. Safe validation error categories are
 now retained. The probe also records the controller/template hashes before
 provisioning and captures only bounded selected public account fields plus the
-systemd version on failure; it never retains password or shadow records. A new
-actual hosted run is required to confirm this correction and the ingress path.
+systemd version on failure; it never retains password or shadow records. The
+subsequent actual runs confirmed this correction, culminating in the fully
+passing ingress receipt above.
 
 ## Actual HTTPS success and HTTP assertion correction
 
@@ -155,8 +178,8 @@ but the unchanged production configuration uses `redir ... permanent`, which
 The correction requires301 and the exact HTTPS destination, rejects other codes
 or origins, and retains actual response status/location on mismatch. The forged
 PROXY request had reached its required400 check before the subsequent ordinary
-HTTP assertion failed. This raw failed receipt remains retained; a fresh actual
-run must verify the corrected complete control set.
+HTTP assertion failed. This raw failed receipt remains retained; the fully
+passing run recorded above subsequently verified the corrected complete controls.
 
 The upstream interfaces are documented by [Caddy's Unix bind directive](https://caddyserver.com/docs/caddyfile/directives/bind)
 and [its PROXY listener wrapper](https://caddyserver.com/docs/caddyfile/options#listener-wrappers).

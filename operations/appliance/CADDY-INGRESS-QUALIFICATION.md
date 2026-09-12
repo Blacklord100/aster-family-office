@@ -9,6 +9,13 @@ historical probe does not exercise the new relay. It does not change either
 profile or prove a complete installation, reverse proxy, external LAN route,
 firewall policy, or supplied-certificate deployment.
 
+The replacement Unix/systemd ingress subsequently passed all 17 actual checks and
+all 12 cleanup checks in [run34715658483](https://github.com/Blacklord100/aster-family-office/actions/runs/34715658483)
+at commit `ac32b5002c4a8c7de53bb45d6ac2097e0d08dcad`. Its exact image/controller,
+TLS and artifact identities are recorded in the [Unix qualification receipt](UNIX-INGRESS-QUALIFICATION.md).
+That result leaves the original Docker-publication failures below intact and
+does not establish complete appliance or external-LAN qualification.
+
 Run the **Qualify synthetic Caddy ingress** workflow at a reviewed commit. It
 builds the existing `operations/Dockerfile.caddy` using the digest-pinned Caddy
 base from `image-lock.json`. The resulting immutable image runs as UID/GID10001
@@ -107,6 +114,7 @@ and the untrusted-root control still requires a certificate verification error.
 The publication failures remain failures regardless of that corrected
 classification. No Caddy/web egress, host firewall or network policy was relaxed.
 
-Appliance ingress remains blocked pending a separately qualified path from the
-host's listening sockets into restricted Caddy. These results do not qualify a
-Unix-socket relay or a full appliance installation.
+These publication tests did not qualify a Unix relay. The separate
+[Unix/systemd path has since passed its bounded hosted qualification](UNIX-INGRESS-QUALIFICATION.md)
+without relaxing Caddy's internal network. Complete appliance installation and
+external-LAN qualification remain separate gates.

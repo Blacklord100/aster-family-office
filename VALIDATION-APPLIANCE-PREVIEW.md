@@ -162,8 +162,17 @@ actively rejected during TLS, which the initial probe classified too narrowly;
 the untrusted-root negative control passed. These are genuine failed ingress
 results, not deployment qualification. The repair uses protected Caddy Unix
 listeners and a systemd socket-activated relay with its own private network and
-filesystem. Its hosted proof is separate and remains pending until executed.
-See [Caddy ingress qualification](operations/appliance/CADDY-INGRESS-QUALIFICATION.md).
+filesystem. Its separate [actual Linux run at `ac32b50`](https://github.com/Blacklord100/aster-family-office/actions/runs/34715658483)
+passed all 17 checks and 12 cleanup checks: host HTTPS/TLS 1.3, exact HTTP redirect,
+client-address and forged-PROXY protections, untrusted-CA/wrong-hostname refusal,
+both real process sandboxes, dedicated account setup/removal, and HTTPS recovery
+after graceful and crash restarts with unchanged CA. The downloaded artifact's
+SHA256 matched GitHub's published digest, and retained configuration, unit, public
+CA and executed-controller identities were independently checked. This qualifies
+the bounded internal-CA ingress path only; it does not establish external-LAN or
+supplied-certificate deployment, the complete appliance or host-level egress
+isolation. See [the exact ingress record](operations/appliance/UNIX-INGRESS-QUALIFICATION.md)
+for immutable identities and the preceding failures.
 
 The complete qualification runner is a disposable Ubuntu 24.04 amd64 host with
 32 GiB RAM and 250 GiB free temporary space for media, retained releases and sealed
@@ -179,7 +188,7 @@ host-level egress isolation. The Packer VM recipe has syntax validation only.
 
 ## Source publication
 
-The repeatable full-history scan at `25118b8` covered 42 reachable commits, with
+The repeatable full-history scan at `ac32b50` covered 53 reachable commits, with
 ten exact previously reviewed false positives and no unresolved credential finding.
 The initial data/asset review covered all 128 historical synthetic PDF fixtures and
 retained third-party asset notices. See [public source review](PUBLIC_RELEASE_REVIEW.md).
