@@ -151,7 +151,7 @@ jobs:
           aster_app_ref=$(python3 -c 'import json,sys;print(next(x["reference"] for x in json.load(open(sys.argv[1]))["images"] if x["service"]=="app"))' "$RUNNER_TEMP/aster-release/images/inventory.json")
           printf 'ASTER_CANDIDATE_APP=%s\n' "$aster_app_ref" >> "$GITHUB_ENV"
       - name: Install pinned scanner and retain raw initial scan
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.ASTER_CANDIDATE_APP }}
           format: json
