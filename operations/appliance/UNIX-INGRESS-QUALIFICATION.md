@@ -18,9 +18,15 @@ same Caddy image returns only a synthetic header-evidence response. Neither
 container has a published port or a noninternal network.
 
 The probe requires a disposable GitHub-hosted Ubuntu24.04 runner. It refuses
-existing host80/443 listeners and never replaces another unit, installation or
-container. It creates only its own randomly named synthetic root, hashed unit
-prefix, exact container IDs and one internal network. Unit startup changes no
+existing host80/443 listeners and any pre-existing `aster-ingress` name or
+UID/GID10001 identity. It calls the exact built controller's
+`prepare-ingress-account` command, validates its public creation receipt, and
+retains only the selected identity/presence flags. The production helper verifies
+the dedicated locked, nonlogin static account and group; numeric IDs alone are
+insufficient for systemd startup. The probe never replaces another unit,
+installation or container. It creates only its own service identity, randomly
+named synthetic root, hashed unit prefix, exact container IDs and one internal
+network. Unit startup changes no
 host firewall or trust store. The relay runs as UID/GID10001 inside an empty
 root directory, with the actual executable and socket directory bound read-only,
 `PrivateNetwork=true`, `RestrictAddressFamilies=AF_UNIX`, no capabilities and no
@@ -42,13 +48,19 @@ The retained checks require:
 - Actual systemd properties and process UID, effective capabilities, no-new-
   privileges, separate network namespace, loopback-only interfaces, no external
   routes, read-only socket/executable mounts, and the executed binary's SHA256.
+  A real socket connection first triggers activation. A reported systemd exec
+  failure stops the probe before TLS retries, retaining the exact status/journal.
 - Successful HTTPS after graceful Caddy restart and again after a synthetic
   SIGKILL/start that leaves old socket paths. Socket ownership/modes must remain
   protected; the relay services remain running during both cases. A fresh private
   persistent Caddy data bind matches production certificate storage, and the
   public root hash must remain identical after both restarts.
 - Successful cleanup of only the probe's units, containers, network, image tag
-  and synthetic root. A failed cleanup keeps the overall receipt failed.
+  and synthetic root. Only after resource cleanup and another strict production
+  account check may the two newly created identities be removed. Existing or
+  unproven identities are never deleted. Partial account provisioning without a
+  verified creation receipt remains a failed cleanup record. A failed cleanup
+  keeps the overall receipt failed.
 
 The `synthetic-systemd-unix-ingress` artifact retains `receipt.json`, configuration
 and template-derived units, exact image/controller identities, public CA
@@ -62,6 +74,31 @@ checks, topology rejection and failure handling. A passing actual hosted receipt
 is still required before claiming the new ingress works. This bounded probe does
 not establish a complete appliance install/update/restore, external-LAN reachability,
 supplied-certificate deployment, or customer firewall policy.
+
+## First hosted result: missing host service identity
+
+[Run34714096001](https://github.com/Blacklord100/aster-family-office/actions/runs/34714096001)
+at commit `59aab5bb948cca0825d23a717c320ab93e037d1b` passed the actual Linux Go
+race suite and static build. Exact Caddy image
+`sha256:752a537e2cd5e4d2cad97fcc13518b2c88870c72b35ba63acf6d9d7566de3cba`
+created both protected Unix sockets, retained its internal-only topology with no
+Docker publications, and preserved the same CA and socket permissions after
+graceful and crash restarts. Controller SHA256 was
+`3cd271cb8ed5dec0d7475f7bfaa890632c381ad47f409e8ad1e708264d16e1a9`.
+
+The actual relay never executed: both systemd services repeatedly exited with
+`217/USER` and reported failure to determine user credentials. Host HTTP/TLS
+requests timed out, so this run does not prove working ingress or process
+confinement. The receipt contains6 passing and9 failing checks; exact-resource
+cleanup passed. The artifact ZIP SHA256
+`d28804c3814e77680fcf88cdae531a1dd4ec8451987395ff647c8a065e81937b`
+was independently verified against GitHub's published digest.
+
+The follow-up adds the production static-account provisioning call and immediate
+exec-status checks to the probe. It retains these original failures and requires
+a new actual run. The [systemd v255 execution documentation](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml)
+requires the configured user/group to exist in the static user database when
+`DynamicUser` is not used; accepting a numeric `User` value does not create it.
 
 The upstream interfaces are documented by [Caddy's Unix bind directive](https://caddyserver.com/docs/caddyfile/directives/bind)
 and [its PROXY listener wrapper](https://caddyserver.com/docs/caddyfile/options#listener-wrappers).

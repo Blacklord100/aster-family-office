@@ -9,6 +9,8 @@ import http.client
 import importlib.util
 import json
 import os
+import grp
+import pwd
 from pathlib import Path
 import re
 import secrets
@@ -37,6 +39,7 @@ http://:3000 {
 '''
 PATH_PATTERN = re.compile(r'/[A-Za-z0-9._/-]+')
 TEMPLATES = ROOT / 'operations/appliance/cli/ingress_templates'
+ACCOUNT = 'aster-ingress'
 
 
 def render_units(root, binary, templates=TEMPLATES):
@@ -71,6 +74,67 @@ def privileged(arguments, timeout=30, check=True):
         raise RuntimeError('Synthetic command failed: ' + ' '.join(arguments[:2]) + ': '
                            + (result.stdout + result.stderr)[-8192:])
     return result
+
+
+def account_presence():
+    result = {}
+    for key, lookup, identifier in [('userName', pwd.getpwnam, ACCOUNT), ('userId', pwd.getpwuid, 10001),
+                                    ('groupName', grp.getgrnam, ACCOUNT), ('groupId', grp.getgrgid, 10001)]:
+        try:
+            lookup(identifier)
+            result[key] = True
+        except KeyError:
+            result[key] = False
+    return result
+
+
+def prepare_account(binary):
+    # The copied, root-owned exact Linux controller executes its production
+    # account helper; the probe has no separate account creation implementation.
+    result = privileged(['/usr/bin/env', str(binary), 'prepare-ingress-account'], timeout=35)
+    if len(result.stdout.encode()) > 4096:
+        raise ValueError('Oversized public account receipt')
+    value = json.loads(result.stdout)
+    if (not isinstance(value, dict) or set(value) != {'name', 'uid', 'gid', 'createdUser', 'createdGroup'}
+            or value['name'] != ACCOUNT or type(value['uid']) is not int or value['uid'] != 10001
+            or type(value['gid']) is not int or value['gid'] != 10001
+            or type(value['createdUser']) is not bool or type(value['createdGroup']) is not bool):
+        raise ValueError('Unexpected public ingress account receipt')
+    return value
+
+
+def cleanup_account(before, prepared, binary):
+    if before is None or any(before.values()):
+        return {'result': 'passed', 'action': 'preexisting identities preserved; no provisioning attempted'}
+    current = account_presence()
+    if prepared is None:
+        if any(current.values()):
+            raise ValueError('Account changed without a validated creation receipt; no unproven identity will be deleted')
+        return {'result': 'passed', 'action': 'no account created'}
+    if not prepared['createdUser'] or not prepared['createdGroup'] or not all(current.values()):
+        raise ValueError('Only this probe\'s two positively verified newly created identities may be removed')
+    validated = prepare_account(binary)
+    if validated['createdUser'] or validated['createdGroup']:
+        raise ValueError('Account changed during cleanup validation; no deletion attempted')
+    # The production helper just rechecked local/static+NSS identity, lock and
+    # no supplementary memberships. Also refuse a group used by another UID.
+    if any(user.pw_gid == 10001 and (user.pw_uid != 10001 or user.pw_name != ACCOUNT) for user in pwd.getpwall()):
+        raise ValueError('Probe group is used by another account; no deletion attempted')
+    privileged(['/usr/bin/env', '/usr/sbin/userdel', ACCOUNT])
+    after_user = account_presence()
+    if after_user['userName'] or after_user['userId']:
+        raise ValueError('Newly created synthetic user still exists after removal')
+    # Shadow userdel may already remove this newly created private group.
+    if after_user['groupName'] or after_user['groupId']:
+        by_name, by_id = grp.getgrnam(ACCOUNT), grp.getgrgid(10001)
+        if (by_name.gr_name != ACCOUNT or by_name.gr_gid != 10001 or by_name.gr_mem
+                or by_id.gr_name != ACCOUNT or by_id.gr_gid != 10001 or by_id.gr_mem
+                or any(user.pw_gid == 10001 for user in pwd.getpwall())):
+            raise ValueError('Newly created synthetic group changed; no deletion attempted')
+        privileged(['/usr/bin/env', '/usr/sbin/groupdel', ACCOUNT])
+    if any(account_presence().values()):
+        raise ValueError('Synthetic account cleanup did not restore initial absence')
+    return {'result': 'passed', 'action': 'removed only the two verified newly created identities'}
 
 
 def https(ca, hostname=HOSTNAME):
@@ -221,13 +285,34 @@ def confinement(unit, expected_binary_sha, output, expected_root):
 
 def ready_https(ca):
     last_error = None
-    for _ in range(20):
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
         try:
             return https(ca)
         except (OSError, ValueError, http.client.HTTPException) as error:
             last_error = error
             time.sleep(0.25)
     raise ValueError('Synthetic HTTPS readiness failed: ' + str(last_error))
+
+
+def activated_relay(unit, port, expected_binary_sha, output, expected_root):
+    """Trigger the inherited socket and prove exec, not only systemd's fork."""
+    deadline = time.monotonic() + 10
+    last_error = None
+    with socket.create_connection(('127.0.0.1', port), timeout=3, source_address=(CLIENT_IP, 0)):
+        while time.monotonic() < deadline:
+            state = privileged(['/usr/bin/systemctl', 'show', unit,
+                                '--property=MainPID,ActiveState,ExecMainCode,ExecMainStatus,Result']).stdout
+            values = dict(line.split('=', 1) for line in state.splitlines() if '=' in line)
+            (output / (unit + '.startup.json')).write_text(json.dumps(values, indent=2) + '\n')
+            if values.get('ExecMainStatus', '0') != '0':
+                raise ValueError('Relay failed before serving clients: ' + json.dumps(values))
+            try:
+                return confinement(unit, expected_binary_sha, output, expected_root)
+            except (OSError, ValueError, RuntimeError) as error:
+                last_error = error
+                time.sleep(0.1)
+    raise ValueError('Relay did not become a verified running process: ' + str(last_error))
 
 
 def cleanup_command(function, *args, **kwargs):
@@ -251,11 +336,16 @@ def qualify(output, source_binary):
                'scope': 'Actual Linux systemd relay and internal Caddy; not full appliance or external-LAN qualification',
                'checks': [], 'cleanup': [], 'sourceCommit': os.environ.get('GITHUB_SHA')}
     containers, created_units, nid, built = [], [], None, False
+    before_account, prepared_account, binary = None, None, None
     units = {}
     try:
         listeners = privileged(['/usr/bin/ss', '-H', '-ltn', 'sport = :80 or sport = :443'])
         if listeners.stdout.strip():
             raise ValueError('Disposable runner already has a listener on port 80 or 443; no service will be replaced')
+        before_account = account_presence()
+        receipt['accountBefore'] = before_account
+        if any(before_account.values()):
+            raise ValueError('Disposable probe requires absent ingress account name and UID/GID10001; existing identities are preserved')
         binary = root / 'releases/synthetic/payload/bin/asterctl'
         binary.parent.mkdir(parents=True)
         shutil.copyfile(source_binary, binary); binary.chmod(0o755)
@@ -264,6 +354,10 @@ def qualify(output, source_binary):
         sockets = root / 'run/ingress-sockets'; sockets.mkdir(mode=0o700)
         caddy_data = root / 'synthetic-caddy-data'; caddy_data.mkdir(mode=0o700)
         privileged(['/usr/bin/chown', '-R', '0:0', str(root)])
+        prepared_account = prepare_account(binary)
+        receipt['accountProvisioning'] = prepared_account
+        if not prepared_account['createdUser'] or not prepared_account['createdGroup']:
+            raise ValueError('Fresh probe identities were not both created by this exact controller')
         privileged(['/usr/bin/chown', '10001:10001', str(sockets)])
         privileged(['/usr/bin/chown', '10001:10001', str(caddy_data)])
         units, template_hashes = render_units(root, binary)
@@ -348,6 +442,15 @@ def qualify(output, source_binary):
         for unit in units:
             if unit.endswith('.socket'):
                 privileged(['/usr/bin/systemctl', 'start', unit])
+        startup_passed = True
+        for unit in units:
+            if unit.endswith('.service'):
+                port = 443 if unit.endswith('-https.service') else 80
+                okay = common.check(receipt, 'actual socket-activated relay startup ' + unit,
+                                    lambda unit=unit, port=port: activated_relay(unit, port, receipt['controllerSha256'], output, root))
+                startup_passed = okay and startup_passed
+        if not startup_passed:
+            raise ValueError('Host relay startup failed; TLS/restart checks were not attempted. See retained unit startup state and journals.')
         common.check(receipt, 'host HTTPS and client IP / header-spoof control', lambda: ready_https(ca))
         common.check(receipt, 'host HTTP redirect', host_redirect)
         common.check(receipt, 'client-supplied PROXY line cannot replace kernel source', forged_proxy_line)
@@ -394,6 +497,13 @@ def qualify(output, source_binary):
         if built:
             result = cleanup_command(common.docker, ['image', 'rm', name], work, check=False)
             receipt['cleanup'].append({'kind': 'probe-image-tag', 'result': 'passed' if result.returncode == 0 else 'failed'})
+        try:
+            if any(item['result'] != 'passed' for item in receipt['cleanup']):
+                raise ValueError('Owned resources did not finish cleanup; account deletion will not be attempted')
+            account_cleanup = cleanup_account(before_account, prepared_account, binary)
+        except (OSError, ValueError, RuntimeError, KeyError, subprocess.SubprocessError) as error:
+            account_cleanup = {'result': 'failed', 'error': str(error)[-4096:]}
+        receipt['cleanup'].append({'kind': 'only-new-ingress-account', **account_cleanup})
         # Only this freshly created random synthetic root; it contains no real
         # installation data. The persistent synthetic Caddy private keys are
         # confined to this root and are never selected for evidence upload.

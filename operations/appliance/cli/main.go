@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -65,6 +66,21 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	// inherit the administrative command flags, root path or operation timeout.
 	if name == "ingress" {
 		return runIngress(ctx, args[1:], out)
+	}
+	// Internal qualification entry point: exercise the same fixed account
+	// provisioning used by installation, without invoking Docker or accepting
+	// arbitrary user IDs, paths, account names or administrative flags.
+	if name == "prepare-ingress-account" {
+		if len(args) != 1 || runtime.GOOS != "linux" || os.Geteuid() != 0 {
+			return fmt.Errorf("prepare-ingress-account requires root on Linux and accepts no arguments")
+		}
+		accountContext, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		receipt, err := ensureIngressAccount(accountContext, systemCommands{})
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(receipt)
 	}
 	f := flag.NewFlagSet(name, flag.ContinueOnError)
 	f.SetOutput(out)

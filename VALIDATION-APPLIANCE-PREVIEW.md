@@ -7,6 +7,14 @@ these checks. Existing native development services and their data were not repla
 
 ## Application and durable operations
 
+The later candidate `59aab5bb948cca0825d23a717c320ab93e037d1b` passed both
+[application/container verification](https://github.com/Blacklord100/aster-family-office/actions/runs/34714077978)
+and [appliance packaging contracts](https://github.com/Blacklord100/aster-family-office/actions/runs/34714078024).
+Its separate actual ingress test failed before relay execution with systemd
+`217/USER`; the [retained ingress record](operations/appliance/UNIX-INGRESS-QUALIFICATION.md)
+describes that defect and the account-provisioning follow-up. Passing the general
+checks did not establish working host ingress.
+
 Candidate `a6b4a3f2a4f21a9ce66449c7e96901b02d39a808` passed both complete jobs
 in [Linux run 34712254758](https://github.com/Blacklord100/aster-family-office/actions/runs/34712254758).
 Its application job passed:

@@ -89,7 +89,7 @@ func (b *boundedBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 func (systemCommands) Run(ctx context.Context, in io.Reader, out io.Writer, name string, args ...string) ([]byte, error) {
-	allowed := map[string]bool{"docker": true, "apt-get": true, "dpkg-deb": true, "dpkg-query": true, "systemctl": true, "systemd-analyze": true}
+	allowed := map[string]bool{"docker": true, "apt-get": true, "dpkg-deb": true, "dpkg-query": true, "systemctl": true, "systemd-analyze": true, "getent": true, "systemd-sysusers": true}
 	if !allowed[name] {
 		return nil, fmt.Errorf("unsupported appliance command")
 	}
@@ -106,7 +106,13 @@ func (systemCommands) Run(ctx context.Context, in io.Reader, out io.Writer, name
 	cmd.Stderr = &stderr
 	cmd.Env = commandEnvironment()
 	if e := cmd.Run(); e != nil {
-		return nil, fmt.Errorf("%s command failed (%v); inspect local service logs without sharing secrets", filepath.Base(name), e)
+		if name == "getent" {
+			// A keyed NSS miss is safe to classify only when no partial
+			// record was returned. This buffer is inspected privately and
+			// never included in the error or account receipt.
+			return stdout.Bytes(), fmt.Errorf("getent command failed (%w)", e)
+		}
+		return nil, fmt.Errorf("%s command failed (%w); inspect local service logs without sharing secrets", filepath.Base(name), e)
 	}
 	return stdout.Bytes(), nil
 }
@@ -217,6 +223,12 @@ func (c Controller) compose(ctx context.Context, s Installation, in io.Reader, o
 		if start {
 			binary, e = c.verifiedIngressBinary(s, m)
 			if e != nil {
+				return nil, e
+			}
+			// systemd requires an actual static account even for numeric User=.
+			// Provision before Docker sees the socket directory; continuation
+			// revalidates the exact locked identity instead of adopting another UID.
+			if _, e = ensureIngressAccount(ctx, c.Commands); e != nil {
 				return nil, e
 			}
 			if e = ingress.prepare(); e != nil {

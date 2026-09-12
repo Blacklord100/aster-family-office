@@ -44,7 +44,7 @@ The new risk and engine panels, including actual Gemma runs in both modes, are c
 
 Use [operations/README.md](operations/README.md) for the single-repository Docker Compose setup, private processor/Ollama network, optional Caddy TLS, secret provisioning and backup procedures. Build context is this repository. No external deployment runs automatically.
 
-The [readiness record](operations/readiness.md) separates checks completed here from checks required on the target host. Docker is not installed on this development machine. GitHub CI has built and exercised the Linux application/processor images, non-root controls and network-disabled startup/OCR. The processor security gate and the complete target-host deployment, enforced egress restrictions and production backup/restore qualification remain open.
+The [readiness record](operations/readiness.md) separates checks completed here from checks required on the target host. Docker is not installed on this development machine. GitHub CI has built and exercised the Linux application/processor images, non-root controls and network-disabled startup/OCR; the exact-image processor security assessment has passed for the candidates recorded in [appliance validation](VALIDATION-APPLIANCE-PREVIEW.md). Complete target-host deployment, enforced host egress restrictions, production backup/restore qualification and full binary-distribution coverage remain open.
 
 ## Local development
 

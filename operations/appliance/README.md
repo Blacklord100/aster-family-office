@@ -143,8 +143,8 @@ so Caddy can overwrite the client-address header used for authentication and
 audit. The relay has a private network namespace, can create only Unix sockets,
 and sees only its verified static executable and the socket directory in an empty
 filesystem root. It has no Docker socket, application credentials or TLS keys.
-The web container never gets host command authority. This fixes the observed
-[internal-network port publication failure](CADDY-INGRESS-QUALIFICATION.md);
+The web container never gets host command authority. This replaces the topology
+affected by the observed [internal-network port publication failure](CADDY-INGRESS-QUALIFICATION.md);
 the new relay's hosted qualification is separate from that historical probe.
 Durable storage is explicitly bound beneath the
 installation root's `data/` directory, so backups can enumerate the entire set:
@@ -162,6 +162,13 @@ these operations; direct Compose commands do not manage the host listeners.
 Each installation has distinct unit names. Existing unit files must match the
 controller's current templates or its prior receipt; manual modifications are
 refused. A failed port activation performs bounded cleanup of only those units.
+Before starting the fleet, the controller provisions and verifies a locked,
+non-login `aster-ingress` host account with UID/GID 10001 and no supplementary
+groups. A conflicting name or ID fails without replacing the existing identity.
+The fixed systemd-sysusers input restricts allocation to that single ID; numeric
+`User=` alone cannot create the account required by systemd. Stop operations do
+not create or delete accounts, and interrupted installation can validate and
+complete an already created group without changing unrelated users.
 
 Offline: all container networks are internal, external DNS forwarding is disabled,
 mail/delivery workers are absent, cloud engines are disabled, and Ollama cloud is

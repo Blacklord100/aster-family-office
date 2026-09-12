@@ -70,6 +70,13 @@ dot, dash and underscore, such as `/var/lib/aster`. The signed release includes
 the exact static relay executable. The controller manages four scoped systemd
 units and their byte receipts; it refuses unreviewed edits to existing units.
 
+Installation provisions the locked, non-login host account `aster-ingress` with
+UID/GID 10001, no home directory creation and no supplementary groups. The
+controller revalidates that identity whenever the fleet starts. An existing
+different account or group using that name or numeric ID blocks startup; it is
+never renamed, reassigned or overwritten. Resolve such a conflict on the dedicated
+host before installation. Stopping the appliance does not remove the account.
+
 Generate the recovery identity on an independently controlled machine. The command
 prints only the public recipient. Create its private parent directory first; the
 output file must not exist. Keep the private file offline and outside the appliance

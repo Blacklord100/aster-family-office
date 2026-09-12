@@ -3,6 +3,7 @@ import copy
 import hashlib
 import http.server
 import importlib.util
+import json
 import os
 from pathlib import Path
 import ssl
@@ -12,6 +13,8 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
+from contextlib import nullcontext
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('unix_ingress', Path(__file__).parents[1] / 'scripts/probe-unix-ingress.py')
@@ -35,6 +38,60 @@ def topology():
 
 
 class Controls(unittest.TestCase):
+    def test_only_exact_public_account_receipt_is_accepted(self):
+        good = {'name': 'aster-ingress', 'uid': 10001, 'gid': 10001, 'createdUser': True, 'createdGroup': True}
+        with patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, json.dumps(good), '')) as run:
+            self.assertEqual(PROBE.prepare_account(Path('/SYNTHETIC/asterctl')), good)
+        self.assertEqual(run.call_args.args[0], ['/usr/bin/env', '/SYNTHETIC/asterctl', 'prepare-ingress-account'])
+        for field, value in [('uid', True), ('name', 'other'), ('gid', 10002), ('createdUser', 'true')]:
+            invalid = {**good, field: value}
+            with patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, json.dumps(invalid), '')), \
+                    self.assertRaises(ValueError):
+                PROBE.prepare_account(Path('/SYNTHETIC/asterctl'))
+
+    def test_existing_or_unproven_accounts_are_never_deleted(self):
+        absent = dict.fromkeys(['userName', 'userId', 'groupName', 'groupId'], False)
+        with patch.object(PROBE, 'privileged') as run:
+            result = PROBE.cleanup_account({**absent, 'groupId': True}, None, None)
+        self.assertEqual(result['result'], 'passed'); run.assert_not_called()
+        with patch.object(PROBE, 'privileged') as run, patch.object(PROBE, 'account_presence', return_value={**absent, 'groupId': True}), \
+                self.assertRaisesRegex(ValueError, 'without a validated creation receipt'):
+            PROBE.cleanup_account(absent, None, None)
+        run.assert_not_called()
+
+    def test_new_account_cleanup_revalidates_and_handles_userdel_private_group_removal(self):
+        absent = dict.fromkeys(['userName', 'userId', 'groupName', 'groupId'], False)
+        present = dict.fromkeys(absent, True)
+        created = {'name': 'aster-ingress', 'uid': 10001, 'gid': 10001, 'createdUser': True, 'createdGroup': True}
+        validated = {**created, 'createdUser': False, 'createdGroup': False}
+        user = SimpleNamespace(pw_name='aster-ingress', pw_uid=10001, pw_gid=10001)
+        for removes_group in [True, False]:
+            after_user = absent if removes_group else {**absent, 'groupName': True, 'groupId': True}
+            group = SimpleNamespace(gr_name='aster-ingress', gr_gid=10001, gr_mem=[])
+            with patch.object(PROBE, 'account_presence', side_effect=[present, after_user, absent]), \
+                    patch.object(PROBE, 'prepare_account', return_value=validated) as verify, \
+                    patch.object(PROBE.pwd, 'getpwall', side_effect=[[user], []]), \
+                    patch.object(PROBE.grp, 'getgrnam', return_value=group), patch.object(PROBE.grp, 'getgrgid', return_value=group), \
+                    patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, '', '')) as run:
+                result = PROBE.cleanup_account(absent, created, Path('/SYNTHETIC/asterctl'))
+            self.assertEqual(result['result'], 'passed'); verify.assert_called_once()
+            calls = [call.args[0] for call in run.call_args_list]
+            self.assertEqual(calls[0], ['/usr/bin/env', '/usr/sbin/userdel', 'aster-ingress'])
+            self.assertEqual(len(calls), 1 if removes_group else 2)
+            if not removes_group:
+                self.assertEqual(calls[1], ['/usr/bin/env', '/usr/sbin/groupdel', 'aster-ingress'])
+
+    def test_changed_or_shared_identity_is_not_deleted(self):
+        absent = dict.fromkeys(['userName', 'userId', 'groupName', 'groupId'], False)
+        present = dict.fromkeys(absent, True)
+        created = {'name': 'aster-ingress', 'uid': 10001, 'gid': 10001, 'createdUser': True, 'createdGroup': True}
+        with patch.object(PROBE, 'account_presence', return_value=present), \
+                patch.object(PROBE, 'prepare_account', return_value={**created, 'createdUser': False, 'createdGroup': False}), \
+                patch.object(PROBE.pwd, 'getpwall', return_value=[SimpleNamespace(pw_name='other', pw_uid=10002, pw_gid=10001)]), \
+                patch.object(PROBE, 'privileged') as run, self.assertRaisesRegex(ValueError, 'another account'):
+            PROBE.cleanup_account(absent, created, Path('/SYNTHETIC/asterctl'))
+        run.assert_not_called()
+
     def test_actual_shared_templates_use_private_paths_and_inherited_sockets(self):
         root = Path('/tmp/aster-synthetic-test')
         binary = root / 'releases/synthetic/payload/bin/asterctl'
@@ -115,6 +172,27 @@ class Controls(unittest.TestCase):
             self.assertTrue(PROBE.persistent_ca('a' * 64, Path(directory), hashlib.sha256(public).hexdigest())['unchanged'])
             with self.assertRaisesRegex(ValueError, 'CA changed'):
                 PROBE.persistent_ca('a' * 64, Path(directory), '0' * 64)
+
+    def test_actual_user217_failure_stops_before_a_tls_retry_loop(self):
+        state = 'MainPID=0\nActiveState=activating\nExecMainCode=1\nExecMainStatus=217\nResult=exit-code\n'
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(PROBE.socket, 'create_connection', return_value=nullcontext()), \
+                patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, state, '')), \
+                patch.object(PROBE, 'confinement') as confinement, \
+                self.assertRaisesRegex(ValueError, '217'):
+            PROBE.activated_relay('SYNTHETIC.service', 443, 'a' * 64, Path(directory), Path('/SYNTHETIC'))
+        confinement.assert_not_called()
+
+    def test_socket_activation_success_requires_actual_process_confinement(self):
+        state = 'MainPID=1234\nActiveState=active\nExecMainCode=0\nExecMainStatus=0\nResult=success\n'
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(PROBE.socket, 'create_connection', return_value=nullcontext()) as connection, \
+                patch.object(PROBE, 'privileged', return_value=subprocess.CompletedProcess([], 0, state, '')), \
+                patch.object(PROBE, 'confinement', return_value={'uid': 10001}) as confinement:
+            result = PROBE.activated_relay('SYNTHETIC.service', 443, 'a' * 64, Path(directory), Path('/SYNTHETIC'))
+        self.assertEqual(result, {'uid': 10001})
+        self.assertEqual(connection.call_args.args, (('127.0.0.1', 443),))
+        confinement.assert_called_once()
 
     def test_unix_paths_must_be_exact_protected_sockets_not_links_or_regular_files(self):
         def run(args):
