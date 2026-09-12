@@ -94,6 +94,16 @@ class NativeSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'required recursive dependency metadata') as error:
                 native.inspect_archive(path, self.policy(), ('missing.lock',))
             self.assertNotIsInstance(error.exception, native.MissingOriginalNotice)
+
+    def test_rust_glib_binding_does_not_borrow_native_glib_recursive_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / 'glib-0.1.crate'
+            archive(path, {'glib-0.1/LICENSE': b'Original synthetic Rust binding license',
+                           'glib-0.1/Cargo.toml': b'[package]\nname="glib"\nversion="0.1"\n'})
+            texts = native.source_notices(path, {'kind': 'cargo-source', 'name': 'glib', 'version': '0.1'},
+                                          self.policy(), root, root, [])
+            self.assertEqual(texts, [('glib-0.1/LICENSE', b'Original synthetic Rust binding license')])
             expected = Path(temporary) / 'policy/metadata'; expected.mkdir(parents=True)
             (expected / 'glib-gvdb.wrap').write_bytes(b'expected recursive revision')
             archive(path, {'source/subprojects/gvdb.wrap': b'wrong recursive revision'})

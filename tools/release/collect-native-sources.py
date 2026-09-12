@@ -357,6 +357,8 @@ def expected_records(policy, crates):
 
 
 def recursive_metadata(record, captured, policy_root):
+    if record['kind'] != 'native-source':
+        return  # Rust bindings can share a name with a separate native library.
     if record['name'] == 'rsvg':
         if captured['Cargo.lock'] != (policy_root / 'metadata/librsvg-Cargo.lock').read_bytes():
             raise ValueError('Actual librsvg Cargo lock differs from pinned transitive closure')
