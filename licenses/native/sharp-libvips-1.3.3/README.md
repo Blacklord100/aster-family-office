@@ -54,6 +54,45 @@ files remain under `supplemental-notices/` and are bound by both the source lock
 and receipt. Collection records any other missing notices across the complete
 archive inventory, then fails; unresolved cases cannot produce a passing receipt.
 
+For older crates without embedded VCS metadata, the policy can instead retain
+an immutable, digest-pinned upstream source archive. Every packaged file must
+match its declared upstream subtree, including Windows import libraries and
+README files. The only path conversion is `Cargo.toml.orig` to `Cargo.toml`;
+the generated manifest must have exactly the same parsed TOML as the original.
+Reviewed `notice-provenance/*.json` files retain every path, byte count and
+SHA256 mapping. Those mappings and the additional `notice-source-archives/`
+originals are checked again during offline verification and release staging.
+The current three mappings cover 1,390 i686 files, 1,419 x86_64 files and seven
+difflib files, plus each separately validated generated manifest.
+
+Original notices can be embedded in source files. The selectors 0.40.0 policy
+pins all 16 original Rust members and their existing 205-byte MPL Exhibit A
+headers, along with the crate checksum, VCS commit and repository subtree.
+It retains the original complete members unchanged; it does not synthesize a
+copyright statement or substitute an unrelated license. The MPL describes
+this source-header mechanism in [Exhibit A](https://www.mozilla.org/en-US/MPL/2.0/).
+Likewise, r-efi's explicitly reviewed `AUTHORS` files contain its original
+copyright holders and full MIT grant; filename guessing alone missed them.
+
+The full inventory run at commit `66b26d2` retained all 379 archives (29 native
+and 350 Cargo). A subsequent source-only reread with the reviewed notice policy
+resolved eight of its 12 reported omissions. Four original-text gaps remain:
+
+| Crate archive | Declared license | SHA256 |
+| --- | --- | --- |
+| `block-0.1.6.crate` | MIT | `0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a` |
+| `malloc_buf-0.0.6.crate` | MIT | `62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb` |
+| `objc-foundation-0.1.1.crate` | MIT | `1add1b659e36c9607c7aab864a76c7a4c2760cd0cd2e120f3fb8b952c7e22bf9` |
+| `objc_id-0.1.1.crate` | MIT | `c92d4ddb4bd7b50d730c215ff871754d0da6b2178849f8a2a2ab69712d0c073b` |
+
+Their exact upstream version revisions also omit the original notice text.
+These declarations are not replaced with generic MIT templates. The full-graph
+gate remains failed until original texts can be obtained or a separately
+measured, reviewed Linux build graph establishes a narrower actual scope.
+Retaining the full lockfile graph does not imply that all 350 crates are linked
+into the Linux library. This source-only reread is not a successful kernel
+network-isolated verification, rebuild qualification, or legal approval.
+
 Distribute the **entire output directory**, not merely its receipt or URLs.
 The output contains original compressed sources, Cargo crate sources, build
 scripts/modifications, original notices, registry provenance and the hash lock.

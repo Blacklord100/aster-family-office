@@ -201,7 +201,7 @@ def native_source_evidence(root, image_id, policy_root):
             or any(s.get('kind') not in ('native-source', 'cargo-source') for s in sources)):
         raise ValueError('Native source transitive inventory differs from its verification receipt')
     retained = {'receipt.json', 'source-lock.json'}
-    supplement_files = [item for supplement in supplements for item in supplement['files']]
+    supplement_files = module.supplemental_materials(supplements)
     for item, prefix, field in [(i, 'reviewed-recipe/', 'path') for i in material] + [(i, '', 'path') for i in sources + [lock['registryArchive']] + supplement_files] + [(i, '', 'file') for i in notices]:
         name = prefix + item[field]
         if not re.fullmatch(r'[0-9a-f]{64}', item.get('sha256', '')) or not isinstance(item.get('bytes'), int) or item['bytes'] <= 0:

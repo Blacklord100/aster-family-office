@@ -262,7 +262,7 @@ def network_proof(host_network, host_mount):
 def readonly_paths(output):
     return [ROOT, output / 'runtime-export', output / 'system-dependencies', output / 'package-lock.json', output / 'image-export.json'] + [
         output / 'native-sources' / name for name in (
-            'source-lock.json', 'reviewed-recipe', 'original-sources', 'cargo-sources', 'registry-provenance', 'supplemental-notices')]
+            'source-lock.json', 'reviewed-recipe', 'original-sources', 'cargo-sources', 'registry-provenance', 'supplemental-notices', 'notice-source-archives')]
 
 
 def enter_offline(output, host_network, host_mount, uid, gid):

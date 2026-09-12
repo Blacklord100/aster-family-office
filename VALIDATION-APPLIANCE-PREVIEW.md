@@ -70,10 +70,17 @@ executable itself; the exact-binary binding comes from the recorded CI collectio
 
 Source-notice and tamper checks are included in the packaging regressions.
 The sharp native source policy includes the original build recipe, 29 native
-source archives and 350
-checksum-pinned Cargo archives. The dedicated connected Linux collection has been
-attempted, but source/notice closure and its independent offline verification have
-not passed. OS/runtime-service corresponding-source material and final
+source archives and 350 checksum-pinned Cargo archives. The
+[Linux collection at `66b26d2`](https://github.com/Blacklord100/aster-family-office/actions/runs/34713572531)
+retained all 379 archives and stopped with 12 original-notice gaps. A subsequent
+source-only reread with reviewed provenance resolved eight, checking 738 original
+notice records, all 2,816 older-source file mappings and 16 unchanged MPL source
+headers. Four original-text gaps remain in `block` 0.1.6, `malloc_buf` 0.0.6,
+`objc-foundation` 0.1.1 and `objc_id` 0.1.1. Their SPDX declarations are retained;
+missing originals are not replaced with generic templates. The
+[native source record](licenses/native/sharp-libvips-1.3.3/README.md) lists exact
+identities and scope. The full graph still fails, and independent kernel-isolated
+verification has not passed. OS/runtime-service corresponding-source material and final
 binary-distribution review remain separate obligations. Staged test candidates
 include an explicit `distributionReady: false` receipt.
 

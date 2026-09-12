@@ -27,6 +27,89 @@ def archive(path, files):
 
 
 class NativeSourceTests(unittest.TestCase):
+    def source_match_fixture(self, root):
+        source = root / 'source'; source.mkdir()
+        record = {'name': 'old', 'version': '1.0', 'kind': 'cargo-source', 'path': 'cargo-sources/old-1.0.crate'}
+        metadata = b'[package]\nname="old"\nversion="1.0"\nrepository="https://github.com/example/old"\nlicense="MIT"\n'
+        contents = {'old/Cargo.toml.orig': metadata, 'old/Cargo.toml': b'# normalized\n' + metadata,
+                    'old/src/lib.rs': b'// synthetic', 'old/lib/import.a': b'!<arch>\nsynthetic import library',
+                    'old/README': b'Every packaged byte must be represented'}
+        path = source / record['path']; archive(path, contents)
+        original = b'Original synthetic license'
+        upstream_contents = {'upstream/LICENSE': original, **{
+            'upstream/sub/' + ('Cargo.toml' if k == 'old/Cargo.toml.orig' else k.removeprefix('old/')): v
+            for k, v in contents.items() if k != 'old/Cargo.toml'}}
+        upstream = source / 'notice-source-archives/old-1.0.tar.gz'; archive(upstream, upstream_contents)
+        supplement = {'name': 'old', 'version': '1.0', 'crateSha256': native.sha(path),
+                      'repository': 'https://github.com/example/old', 'vcsCommit': 'a' * 40, 'license': 'MIT'}
+        mapping = [{'path': k.removeprefix('old/'), 'upstreamPath': 'sub/' + ('Cargo.toml' if k == 'old/Cargo.toml.orig' else k.removeprefix('old/')),
+                    'sha256': hashlib.sha256(v).hexdigest(), 'bytes': len(v)} for k, v in sorted(contents.items()) if k != 'old/Cargo.toml']
+        proof = root / 'notice-provenance/old-1.0.json'; proof.parent.mkdir()
+        proof.write_text(json.dumps({**{k: supplement[k] for k in ('name', 'version', 'crateSha256', 'repository', 'vcsCommit')}, 'files': mapping}))
+        supplement.update({'files': [{'filename': 'LICENSE', 'url': 'https://raw.githubusercontent.com/example/old/' + 'a' * 40 + '/LICENSE',
+                                     'sha256': hashlib.sha256(original).hexdigest(), 'bytes': len(original)}],
+            'sourceArchive': {'url': 'https://codeload.github.com/example/old/tar.gz/' + 'a' * 40,
+                'sha256': native.sha(upstream), 'bytes': upstream.stat().st_size, 'packagePath': 'sub',
+                'fileProof': {'path': 'notice-provenance/old-1.0.json', 'sha256': native.sha(proof),
+                              'bytes': proof.stat().st_size, 'fileCount': len(mapping)}}})
+        policy = {**self.policy(), 'noticeSupplements': [supplement]}
+        supplements = native.expected_supplements(policy, [{'name': 'old', 'version': '1.0', 'sha256': native.sha(path)}])
+        target = source / supplements[0]['files'][0]['path']; target.parent.mkdir(parents=True); target.write_bytes(original)
+        return source, path, record, policy, supplements, contents, upstream, upstream_contents, proof
+
+    def test_older_crate_complete_source_match_retains_import_libraries_and_original_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, path, record, policy, supplements, _, _, _, _ = self.source_match_fixture(root)
+            self.assertEqual(native.source_notices(path, record, policy, root, source, supplements),
+                             [('upstream/' + 'a' * 40 + '/LICENSE', b'Original synthetic license')])
+            self.assertEqual(supplements[0]['sourceArchive']['fileProof']['fileCount'], 4)
+
+    def test_rehashed_import_library_or_omitted_readme_cannot_borrow_upstream_proof(self):
+        for target, replacement in [('old/lib/import.a', b'changed executable bytes'), ('old/README', None)]:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source, path, record, policy, supplements, contents, _, _, _ = self.source_match_fixture(root)
+                if replacement is None: contents.pop(target)
+                else: contents[target] = replacement
+                archive(path, contents)
+                supplements[0]['crateSha256'] = native.sha(path)
+                # Even a new approved crate hash cannot reuse a mismatched old
+                # complete-source proof or silently omit a packaged artifact.
+                with self.assertRaisesRegex(ValueError, 'different original source|differs'):
+                    native.source_notices(path, record, policy, root, source, supplements)
+
+    def test_source_match_rejects_changed_mapping_subtree_generated_metadata_and_notice(self):
+        for change in ('mapping', 'subtree', 'generated', 'generated_dependencies', 'upstream_notice', 'upstream_binary'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source, path, record, policy, supplements, contents, upstream, upstream_contents, proof = self.source_match_fixture(root)
+                original = supplements[0]['sourceArchive']
+                if change == 'mapping':
+                    value = json.loads(proof.read_text()); value['files'].pop(); proof.write_text(json.dumps(value))
+                    original['fileProof'].update({'sha256': native.sha(proof), 'bytes': proof.stat().st_size})
+                elif change == 'subtree': original['packagePath'] = 'other'
+                elif change in ('generated', 'generated_dependencies'):
+                    contents['old/Cargo.toml'] = (contents['old/Cargo.toml'].replace(b'license="MIT"', b'license="Apache-2.0"')
+                        if change == 'generated' else contents['old/Cargo.toml'] + b'\n[dependencies]\nunreviewed="1"\n')
+                    archive(path, contents); supplements[0]['crateSha256'] = native.sha(path)
+                else:
+                    upstream_contents['upstream/LICENSE' if change == 'upstream_notice' else 'upstream/sub/lib/import.a'] = b'replacement'
+                    archive(upstream, upstream_contents); original.update({'sha256': native.sha(upstream), 'bytes': upstream.stat().st_size})
+                with self.assertRaises(ValueError):
+                    native.source_notices(path, record, policy, root, source, supplements)
+
+    def test_source_match_policy_rejects_mutable_archive_and_malformed_proof(self):
+        for change in ('url', 'proof', 'subtree'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
+                source, path, _, policy, _, _, _, _, _ = self.source_match_fixture(Path(temporary))
+                original = policy['noticeSupplements'][0]['sourceArchive']
+                if change == 'url': original['url'] = 'https://codeload.github.com/example/old/tar.gz/main'
+                elif change == 'proof': original['fileProof']['path'] = '../other.json'
+                else: original['packagePath'] = '../other'
+                with self.assertRaises(ValueError):
+                    native.expected_supplements(policy, [{'name': 'old', 'version': '1.0', 'sha256': native.sha(path)}])
+
     def supplemental_fixture(self, root):
         source = root / 'source'; source.mkdir()
         record = {'name': 'fixture', 'version': '1.0', 'kind': 'cargo-source', 'path': 'cargo-sources/fixture-1.0.crate'}
@@ -73,6 +156,35 @@ class NativeSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'supplemental notice bytes changed'):
                 native.source_notices(path, record, policy, Path(temporary), source, [{**records[0], 'crateSha256': native.sha(path)}])
 
+    def test_embedded_original_members_and_headers_are_all_verified_without_filename_guessing(self):
+        for change in ('none', 'missing_member', 'changed_header', 'wrong_subtree'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source, path, record, policy, _, contents = self.supplemental_fixture(root)
+                header = b'/* Original synthetic source license notice */\n'
+                contents['fixture-1.0/src/lib.rs'] = header + b'pub fn original() {}'
+                contents['fixture-1.0/build.rs'] = header + b'fn main() {}'
+                contents['fixture-1.0/.cargo_vcs_info.json'] = json.dumps({'git': {'sha1': 'a' * 40}, 'path_in_vcs': 'sub'}).encode()
+                archive(path, contents)
+                supplement = policy['noticeSupplements'][0]
+                supplement.update({'crateSha256': native.sha(path), 'files': [], 'pathInVcs': 'sub',
+                    'embeddedOriginalNotices': [{'filename': name, 'classification': 'embedded-upstream-notice',
+                        'sha256': hashlib.sha256(contents['fixture-1.0/' + name]).hexdigest(),
+                        'bytes': len(contents['fixture-1.0/' + name]), 'headerBytes': len(header),
+                        'headerSha256': hashlib.sha256(header).hexdigest()} for name in ('src/lib.rs', 'build.rs')]})
+                if change == 'missing_member': contents.pop('fixture-1.0/build.rs')
+                elif change == 'changed_header':
+                    contents['fixture-1.0/build.rs'] = header.replace(b'Original', b'Modified') + b'fn main() {}'
+                    supplement['embeddedOriginalNotices'][1].update({'sha256': hashlib.sha256(contents['fixture-1.0/build.rs']).hexdigest(),
+                                                                   'bytes': len(contents['fixture-1.0/build.rs'])})
+                elif change == 'wrong_subtree': supplement['pathInVcs'] = 'different'
+                archive(path, contents); supplement['crateSha256'] = native.sha(path)
+                records = native.expected_supplements(policy, [{'name': 'fixture', 'version': '1.0', 'sha256': native.sha(path)}])
+                if change == 'none':
+                    self.assertEqual(len(native.source_notices(path, record, policy, root, source, records)), 2)
+                    self.assertEqual(native.supplemental_materials(records), [])
+                else:
+                    with self.assertRaises(ValueError): native.source_notices(path, record, policy, root, source, records)
     def test_supplement_policy_refuses_mutable_urls_and_wrong_crate_digest(self):
         with tempfile.TemporaryDirectory() as temporary:
             source, path, record, policy, records, _ = self.supplemental_fixture(Path(temporary))

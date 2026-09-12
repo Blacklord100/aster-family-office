@@ -140,7 +140,13 @@ def load_policy(root=POLICY_ROOT):
                        'url': f'https://static.crates.io/crates/{item["name"]}/{item["name"]}-{item["version"]}.crate'})
     if not crates or len(crates) > 1000 or len({(x['name'], x['version']) for x in crates}) != len(crates):
         raise ValueError('Invalid transitive Cargo dependency coverage')
-    expected_supplements(policy, crates)
+    for supplement in expected_supplements(policy, crates):
+        if 'sourceArchive' in supplement:
+            proof = supplement['sourceArchive']['fileProof']
+            path = checked_file(root, proof['path'])
+            if path.stat().st_size != proof['bytes'] or sha(path) != proof['sha256']:
+                raise ValueError('Reviewed complete crate source mapping changed')
+            material.append({key: proof[key] for key in ('path', 'sha256', 'bytes')})
     return policy, material, crates
 
 
@@ -156,21 +162,54 @@ def expected_supplements(policy, crates):
                 or not isinstance(item.get('license'), str) or not 1 <= len(item['license']) <= 200):
             raise ValueError('Supplemental notice is not bound to a reviewed crate and repository commit')
         seen.add(key)
+        archive = item.get('sourceArchive')
+        if archive:
+            expected_url = 'https://codeload.github.com/' + item['repository'].removeprefix('https://github.com/') + '/tar.gz/' + item['vcsCommit']
+            proof = archive.get('fileProof', {})
+            subtree = archive.get('packagePath')
+            if (archive.get('url') != expected_url or not DIGEST.fullmatch(archive.get('sha256', ''))
+                    or not isinstance(archive.get('bytes'), int) or not 0 < archive['bytes'] <= policy['limits']['perSourceBytes']
+                    or not isinstance(subtree, str) or (subtree and relative(subtree).as_posix() != subtree)
+                    or proof.get('path') != 'notice-provenance/' + item['name'] + '-' + item['version'] + '.json'
+                    or not DIGEST.fullmatch(proof.get('sha256', ''))
+                    or not isinstance(proof.get('bytes'), int) or not 0 < proof['bytes'] <= MAX_METADATA
+                    or not isinstance(proof.get('fileCount'), int) or not 1 <= proof['fileCount'] <= policy['limits']['archiveMembers']):
+                raise ValueError('Supplemental upstream source identity or complete file proof is invalid')
+            archive = {**archive, 'path': 'notice-source-archives/' + item['name'] + '-' + item['version'] + '.tar.gz'}
         files = []
         for notice in item['files']:
             name = notice['filename']
             expected_url = 'https://raw.githubusercontent.com/' + item['repository'].removeprefix('https://github.com/') + '/' + item['vcsCommit'] + '/' + name
-            if (not IDENTIFIER.fullmatch(name) or not notices.license_path(PurePosixPath(name))
+            if (not IDENTIFIER.fullmatch(name) or not (notices.license_path(PurePosixPath(name)) or name == 'AUTHORS')
                     or notice['url'] != expected_url or not DIGEST.fullmatch(notice['sha256'])
                     or not isinstance(notice['bytes'], int) or not 0 < notice['bytes'] <= MAX_METADATA):
                 raise ValueError('Original supplemental notice URL, identity or size differs from reviewed provenance')
             files.append({**notice, 'path': 'supplemental-notices/' + item['name'] + '-' + item['version'] + '/' + name})
-        if not 1 <= len(files) <= 8 or len({x['path'] for x in files}) != len(files):
+        embedded = item.get('embeddedOriginalNotices', [])
+        if not isinstance(embedded, list) or len(embedded) > 100:
+            raise ValueError('Embedded original notice inventory exceeds its review limit')
+        for notice in embedded:
+            name = notice.get('filename', '')
+            if (len(name) > 240 or relative(name).as_posix() != name
+                    or notice.get('classification') != 'embedded-upstream-notice'
+                    or not DIGEST.fullmatch(notice.get('sha256', ''))
+                    or not isinstance(notice.get('bytes'), int) or not 0 < notice['bytes'] <= MAX_METADATA
+                    or not DIGEST.fullmatch(notice.get('headerSha256', ''))
+                    or not isinstance(notice.get('headerBytes'), int) or not 0 < notice['headerBytes'] <= notice['bytes']):
+                raise ValueError('Embedded original source notice is not bound to reviewed member and header bytes')
+        if (not 1 <= len(files) + len(embedded) or len(files) > 8
+                or len({x['path'] for x in files}) != len(files)
+                or len({x['filename'] for x in embedded}) != len(embedded)):
             raise ValueError('Supplemental notice file set is empty, duplicated or oversized')
-        records.append({**item, 'files': files})
+        records.append({**item, **({'sourceArchive': archive} if archive else {}), 'files': files})
     if len(records) > 100:
         raise ValueError('Supplemental notice policy exceeds its review limit')
     return records
+
+
+def supplemental_materials(supplements):
+    return [file for supplement in supplements for file in (
+        *supplement['files'], *((supplement['sourceArchive'],) if 'sourceArchive' in supplement else ()))]
 
 
 def runtime_inventory(root, lock_path, image_id, policy):
@@ -367,6 +406,74 @@ def recursive_metadata(record, captured, policy_root):
             raise ValueError('Actual glib fallback dependency differs from pinned closure')
 
 
+def archive_file_hashes(path, policy):
+    """Hash every regular member under one top-level directory without extraction."""
+    records, seen, roots = {}, set(), set()
+    total = count = 0
+    with tarfile.open(path, 'r:*') as archive:
+        for member in archive:
+            count += 1
+            name = member.name.removeprefix('./').rstrip('/')
+            if not name:
+                continue
+            relative(name)
+            if name in seen:
+                raise ValueError('Duplicate upstream source proof path')
+            seen.add(name)
+            roots.add(name.split('/')[0])
+            total += member.size
+            if (count > policy['limits']['archiveMembers'] or member.size < 0
+                    or total > policy['limits']['expandedSourceBytes']):
+                raise ValueError('Upstream source proof exceeds archive bounds')
+            if member.isdir():
+                continue
+            if not member.isfile() or '/' not in name:
+                raise ValueError('Upstream source proof contains unsupported links or special members')
+            h, size = hashlib.sha256(), 0
+            with archive.extractfile(member) as stream:
+                for data in iter(lambda: stream.read(1024 * 1024), b''):
+                    size += len(data)
+                    h.update(data)
+            if size != member.size:
+                raise ValueError('Truncated upstream source proof member')
+            records[name.split('/', 1)[1]] = {'sha256': h.hexdigest(), 'bytes': size}
+    if len(roots) != 1 or not records:
+        raise ValueError('Upstream source proof has an ambiguous or empty package root')
+    return records
+
+
+def verify_source_match(path, supplement, source_root, policy_root, policy):
+    original = supplement['sourceArchive']
+    archive = checked_file(source_root, original['path'])
+    if archive.stat().st_size != original['bytes'] or sha(archive) != original['sha256']:
+        raise ValueError('Original source-match archive changed')
+    proof_record = original['fileProof']
+    proof_path = checked_file(policy_root, proof_record['path'])
+    if proof_path.stat().st_size != proof_record['bytes'] or sha(proof_path) != proof_record['sha256']:
+        raise ValueError('Reviewed crate file mapping changed')
+    proof = bounded_json(proof_path)
+    if any(proof.get(k) != supplement[k] for k in ('name', 'version', 'crateSha256', 'repository', 'vcsCommit')):
+        raise ValueError('Crate file mapping belongs to different original source')
+    actual, upstream = archive_file_hashes(path, policy), archive_file_hashes(archive, policy)
+    for notice in supplement['files']:
+        if upstream.get(notice['filename']) != {key: notice[key] for key in ('sha256', 'bytes')}:
+            raise ValueError('Supplemental notice does not belong to the matched upstream source')
+    if 'Cargo.toml.orig' not in actual or 'Cargo.toml' not in actual:
+        raise ValueError('Source matching requires original and generated Cargo metadata')
+    # Generated Cargo metadata is separately parsed below. Every other packaged
+    # byte, including import libraries, must match this immutable upstream tree.
+    actual.pop('Cargo.toml')
+    prefix = original['packagePath'] + '/' if original['packagePath'] else ''
+    mapping = []
+    for name, item in sorted(actual.items()):
+        upstream_name = prefix + ('Cargo.toml' if name == 'Cargo.toml.orig' else name)
+        if upstream.get(upstream_name) != item:
+            raise ValueError('Packaged source differs from pinned upstream: ' + name)
+        mapping.append({'path': name, 'upstreamPath': upstream_name, **item})
+    if proof.get('files') != mapping or len(mapping) != proof_record['fileCount']:
+        raise ValueError('Complete packaged source file inventory differs from reviewed proof')
+
+
 def captures(record):
     if record['kind'] != 'native-source':
         return ()
@@ -376,16 +483,35 @@ def captures(record):
 def source_notices(path, record, policy, policy_root, source_root, supplements):
     supplement = next((x for x in supplements if record['kind'] == 'cargo-source'
                        and (x['name'], x['version']) == (record['name'], record['version'])), None)
-    wanted = (*captures(record), *(('Cargo.toml.orig', '.cargo_vcs_info.json') if supplement else ()))
+    wanted = captures(record)
+    if supplement:
+        metadata_names = ('Cargo.toml.orig', 'Cargo.toml') if 'sourceArchive' in supplement else ('Cargo.toml.orig', '.cargo_vcs_info.json')
+        wanted = (*wanted, *metadata_names, *(notice['filename'] for notice in supplement.get('embeddedOriginalNotices', [])))
     texts, captured = inspect_archive(path, policy, wanted, allow_missing_notices=True)
     recursive_metadata(record, captured, policy_root)
     if supplement:
-        metadata = tomllib.loads(captured['Cargo.toml.orig'].decode())['package']
-        vcs = json.loads(captured['.cargo_vcs_info.json'])
+        original_manifest = tomllib.loads(captured['Cargo.toml.orig'].decode())
+        metadata = original_manifest['package']
         if (sha(path) != supplement['crateSha256'] or metadata.get('name') != supplement['name']
                 or metadata.get('version') != supplement['version'] or metadata.get('repository') != supplement['repository']
-                or metadata.get('license') != supplement['license'] or vcs.get('git', {}).get('sha1') != supplement['vcsCommit']):
+                or metadata.get('license') != supplement['license']):
             raise ValueError('Original notice provenance differs from embedded crate identity, license or VCS commit')
+        if 'sourceArchive' in supplement:
+            generated = tomllib.loads(captured['Cargo.toml'].decode())
+            if generated != original_manifest:
+                raise ValueError('Generated Cargo metadata differs from complete original build metadata')
+            verify_source_match(path, supplement, source_root, policy_root, policy)
+        else:
+            vcs = json.loads(captured['.cargo_vcs_info.json'])
+            if (vcs.get('git', {}).get('sha1') != supplement['vcsCommit']
+                    or ('pathInVcs' in supplement and vcs.get('path_in_vcs') != supplement['pathInVcs'])):
+                raise ValueError('Original notice provenance differs from embedded crate identity, license or VCS commit')
+        for notice in supplement.get('embeddedOriginalNotices', []):
+            data = captured[notice['filename']]
+            if (len(data) != notice['bytes'] or hashlib.sha256(data).hexdigest() != notice['sha256']
+                    or hashlib.sha256(data[:notice['headerBytes']]).hexdigest() != notice['headerSha256']):
+                raise ValueError('Embedded original notice member or header differs from reviewed source')
+            texts.append((record['name'] + '-' + record['version'] + '/' + notice['filename'], data))
         for notice in supplement['files']:
             original = checked_file(source_root, notice['path'])
             if original.stat().st_size != notice['bytes'] or sha(original) != notice['sha256']:
@@ -405,7 +531,7 @@ def resolve(runtime_root, lock_path, image_id, output, policy_root=POLICY_ROOT):
     policy, material, crates = load_policy(policy_root)
     runtime = runtime_inventory(runtime_root, lock_path, image_id, policy)
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
-    for name in ('reviewed-recipe', 'original-sources', 'cargo-sources', 'notices', 'registry-provenance', 'supplemental-notices'):
+    for name in ('reviewed-recipe', 'original-sources', 'cargo-sources', 'notices', 'registry-provenance', 'supplemental-notices', 'notice-source-archives'):
         (output / name).mkdir()
     for record in material:
         target = output / 'reviewed-recipe' / record['path']
@@ -417,17 +543,17 @@ def resolve(runtime_root, lock_path, image_id, output, policy_root=POLICY_ROOT):
     verify_npm_archive(npm_path, runtime)
     downloaded = npm['bytes']
     supplements = expected_supplements(policy, crates)
-    for supplement in supplements:
-        for notice in supplement['files']:
-            path = output / notice['path']
-            path.parent.mkdir(parents=True, exist_ok=True)
-            available = min(MAX_METADATA, policy['limits']['totalDownloadBytes'] - downloaded)
-            if available <= 0:
-                raise ValueError('Corresponding source exceeds its total download budget')
-            saved = download(notice['url'], path, available, expected_sha=notice['sha256'])
-            if saved['bytes'] != notice['bytes']:
-                raise ValueError('Original supplemental notice size changed')
-            downloaded += saved['bytes']
+    for notice in supplemental_materials(supplements):
+        path = output / notice['path']
+        path.parent.mkdir(parents=True, exist_ok=True)
+        available = min(policy['limits']['perSourceBytes'] if 'fileProof' in notice else MAX_METADATA,
+                        policy['limits']['totalDownloadBytes'] - downloaded)
+        if available <= 0:
+            raise ValueError('Corresponding source exceeds its total download budget')
+        saved = download(notice['url'], path, available, expected_sha=notice['sha256'])
+        if saved['bytes'] != notice['bytes']:
+            raise ValueError('Original supplemental notice size changed')
+        downloaded += saved['bytes']
     records = []
     unresolved = []
     started = time.monotonic()
@@ -496,7 +622,7 @@ def verify(runtime_root, lock_path, image_id, source_root, policy_root=POLICY_RO
     checked_directory(source_root, 'notices')
     total_source_bytes = p.stat().st_size + sum(
         checked_file(source_root, notice['path']).stat().st_size
-        for supplement in supplements for notice in supplement['files'])
+        for notice in supplemental_materials(supplements))
     if total_source_bytes > policy['limits']['totalDownloadBytes']:
         raise ValueError('Corresponding source exceeds its total download budget')
     text_bytes, text_records = 0, []
