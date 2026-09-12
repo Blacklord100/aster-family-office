@@ -187,6 +187,10 @@ def native_source_evidence(root, image_id, policy_root):
     policy, expected_material, crates = module.load_policy(policy_root)
     if lock.get('policySha256') != sha256(policy_root / 'source-policy.json') or material != expected_material:
         raise ValueError('Native source receipt differs from the reviewed repository policy or recipe')
+    supplements = module.expected_supplements(policy, crates)
+    if (lock.get('noticeSupplements', []) != supplements or receipt.get('noticeSupplements', []) != supplements
+            or lock.get('unresolvedNotices', [])):
+        raise ValueError('Native source original notice supplements are changed or unresolved')
     expected_sources = module.expected_records(policy, crates)
     if len(sources) != len(expected_sources) or any(any(actual.get(k) != v for k, v in expected.items()) for actual, expected in zip(sources, expected_sources)):
         raise ValueError('Native source receipt omits or changes reviewed transitive source coverage')
@@ -197,7 +201,8 @@ def native_source_evidence(root, image_id, policy_root):
             or any(s.get('kind') not in ('native-source', 'cargo-source') for s in sources)):
         raise ValueError('Native source transitive inventory differs from its verification receipt')
     retained = {'receipt.json', 'source-lock.json'}
-    for item, prefix, field in [(i, 'reviewed-recipe/', 'path') for i in material] + [(i, '', 'path') for i in sources + [lock['registryArchive']]] + [(i, '', 'file') for i in notices]:
+    supplement_files = [item for supplement in supplements for item in supplement['files']]
+    for item, prefix, field in [(i, 'reviewed-recipe/', 'path') for i in material] + [(i, '', 'path') for i in sources + [lock['registryArchive']] + supplement_files] + [(i, '', 'file') for i in notices]:
         name = prefix + item[field]
         if not re.fullmatch(r'[0-9a-f]{64}', item.get('sha256', '')) or not isinstance(item.get('bytes'), int) or item['bytes'] <= 0:
             raise ValueError('Native source material hash/length is missing')
@@ -206,6 +211,16 @@ def native_source_evidence(root, image_id, policy_root):
     actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
     if actual != retained:
         raise ValueError('Native source retained files differ from the complete receipt inventory')
+    for supplement in supplements:
+        record = next(x for x in expected_sources if x['kind'] == 'cargo-source'
+                      and (x['name'], x['version']) == (supplement['name'], supplement['version']))
+        texts = module.source_notices(checked_file(root, record['path']), record, policy, policy_root, root, supplements)
+        for original, data in texts:
+            digest = hashlib.sha256(data).hexdigest()
+            expected = {'source': record['path'], 'originalPath': original, 'file': 'notices/' + digest + '.txt',
+                        'sha256': digest, 'bytes': len(data)}
+            if expected not in notices:
+                raise ValueError('Original supplemental notice is missing from the independently checked receipt')
 
 
 def processor_source_evidence(root, image_id, processor_source, raw_runtime_manifest):

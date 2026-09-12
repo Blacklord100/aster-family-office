@@ -44,6 +44,16 @@ offline pass checks all identities, source coverage, recipes, patches and
 notices before emitting `receipt.json`. Interrupted/incomplete resolution does
 not produce a passing receipt. A new unknown ELF dependency fails the gate.
 
+Some nested crates omit their repository-root notices from the registry archive.
+The reviewed `noticeSupplements` policy retains the original notice files from
+the exact commit recorded in that crate's `.cargo_vcs_info.json`, with fixed
+SHA256 hashes. Verification also requires the exact crate checksum, repository,
+version and license expression from `Cargo.toml.orig`. It never substitutes a
+generic license template or a file from a mutable branch. Original supplemental
+files remain under `supplemental-notices/` and are bound by both the source lock
+and receipt. Collection records any other missing notices across the complete
+archive inventory, then fails; unresolved cases cannot produce a passing receipt.
+
 Distribute the **entire output directory**, not merely its receipt or URLs.
 The output contains original compressed sources, Cargo crate sources, build
 scripts/modifications, original notices, registry provenance and the hash lock.

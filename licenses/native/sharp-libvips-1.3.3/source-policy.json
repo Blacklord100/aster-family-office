@@ -184,6 +184,30 @@
       "url": "https://github.com/GNOME/gvdb/archive/2b42fc75f09dbe1cd1057580b5782b08f2dcb400.tar.gz"
     }
   ],
+  "noticeSupplements": [
+    {
+      "name": "anes",
+      "version": "0.1.6",
+      "crateSha256": "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299",
+      "repository": "https://github.com/zrzka/anes-rs",
+      "vcsCommit": "378ac7461ecac29fde9e10df7b08359d1315a9ad",
+      "license": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "filename": "LICENSE-APACHE",
+          "url": "https://raw.githubusercontent.com/zrzka/anes-rs/378ac7461ecac29fde9e10df7b08359d1315a9ad/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "bytes": 10847
+        },
+        {
+          "filename": "LICENSE-MIT",
+          "url": "https://raw.githubusercontent.com/zrzka/anes-rs/378ac7461ecac29fde9e10df7b08359d1315a9ad/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "bytes": 1023
+        }
+      ]
+    }
+  ],
   "systemLibraries": [
     "libc.so.6",
     "libdl.so.2",

@@ -20,6 +20,7 @@ jobs:
         run: |
           /usr/bin/python3 -m unittest discover -s tools/release -p 'test_collect_native_sources.py' -v
           /usr/bin/python3 -m unittest discover -s operations/appliance/tests -p 'test_native_source_qualification.py' -v
+          /usr/bin/python3 -m unittest discover -s operations/appliance/tests -p 'test_native_notice_staging.py' -v
           /usr/bin/python3 tools/release/collect-native-sources.py policy
           /usr/bin/python3 operations/appliance/scripts/qualify-native-sources.py preflight \
             --output "$RUNNER_TEMP/native-source-qualification"

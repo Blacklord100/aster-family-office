@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 from types import SimpleNamespace
@@ -26,6 +27,155 @@ def archive(path, files):
 
 
 class NativeSourceTests(unittest.TestCase):
+    def supplemental_fixture(self, root):
+        source = root / 'source'; source.mkdir()
+        record = {'name': 'fixture', 'version': '1.0', 'kind': 'cargo-source', 'path': 'cargo-sources/fixture-1.0.crate'}
+        path = source / record['path']
+        commit = 'a' * 40
+        metadata = b'[package]\nname="fixture"\nversion="1.0"\nrepository="https://github.com/example/fixture"\nlicense="MIT"\n'
+        contents = {'fixture-1.0/Cargo.toml.orig': metadata,
+                    'fixture-1.0/.cargo_vcs_info.json': json.dumps({'git': {'sha1': commit}}).encode(),
+                    'fixture-1.0/src/lib.rs': b'// synthetic source'}
+        archive(path, contents)
+        original = b'Original fixture license from the exact synthetic upstream revision'
+        supplement = {'name': 'fixture', 'version': '1.0', 'crateSha256': native.sha(path),
+                      'repository': 'https://github.com/example/fixture', 'vcsCommit': commit, 'license': 'MIT',
+                      'files': [{'filename': 'LICENSE', 'url': 'https://raw.githubusercontent.com/example/fixture/' + commit + '/LICENSE',
+                                 'sha256': hashlib.sha256(original).hexdigest(), 'bytes': len(original)}]}
+        policy = {**self.policy(), 'noticeSupplements': [supplement]}
+        records = native.expected_supplements(policy, [{'name': 'fixture', 'version': '1.0', 'sha256': native.sha(path)}])
+        target = source / records[0]['files'][0]['path']; target.parent.mkdir(parents=True); target.write_bytes(original)
+        return source, path, record, policy, records, contents
+
+    def test_original_supplement_is_bound_to_crate_commit_repository_license_and_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, path, record, policy, records, contents = self.supplemental_fixture(Path(temporary))
+            texts = native.source_notices(path, record, policy, Path(temporary), source, records)
+            self.assertEqual(texts[0][0], 'upstream/' + 'a' * 40 + '/LICENSE')
+            self.assertTrue(texts[0][1].startswith(b'Original fixture license'))
+            for field, replacement in (('repository', 'https://github.com/other/fixture'), ('license', 'Apache-2.0'), ('version', '2.0')):
+                with self.subTest(field=field):
+                    changed = dict(contents)
+                    changed['fixture-1.0/Cargo.toml.orig'] = contents['fixture-1.0/Cargo.toml.orig'].replace(
+                        (field + '="' + {'repository': 'https://github.com/example/fixture', 'license': 'MIT', 'version': '1.0'}[field] + '"').encode(),
+                        (field + '="' + replacement + '"').encode())
+                    archive(path, changed)
+                    # Even a rehashed source cannot borrow another package's notice.
+                    altered = [{**records[0], 'crateSha256': native.sha(path)}]
+                    with self.assertRaisesRegex(ValueError, 'embedded crate identity'):
+                        native.source_notices(path, record, policy, Path(temporary), source, altered)
+            changed = {**contents, 'fixture-1.0/.cargo_vcs_info.json': json.dumps({'git': {'sha1': 'b' * 40}}).encode()}
+            archive(path, changed)
+            with self.assertRaisesRegex(ValueError, 'embedded crate identity'):
+                native.source_notices(path, record, policy, Path(temporary), source, [{**records[0], 'crateSha256': native.sha(path)}])
+            archive(path, contents)
+            (source / records[0]['files'][0]['path']).write_bytes(b'generic replacement')
+            with self.assertRaisesRegex(ValueError, 'supplemental notice bytes changed'):
+                native.source_notices(path, record, policy, Path(temporary), source, [{**records[0], 'crateSha256': native.sha(path)}])
+
+    def test_supplement_policy_refuses_mutable_urls_and_wrong_crate_digest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, path, record, policy, records, _ = self.supplemental_fixture(Path(temporary))
+            crates = [{'name': 'fixture', 'version': '1.0', 'sha256': native.sha(path)}]
+            policy['noticeSupplements'][0]['files'][0]['url'] = 'https://raw.githubusercontent.com/example/fixture/main/LICENSE'
+            with self.assertRaisesRegex(ValueError, 'reviewed provenance'):
+                native.expected_supplements(policy, crates)
+            policy['noticeSupplements'][0]['files'][0]['url'] = records[0]['files'][0]['url']
+            policy['noticeSupplements'][0]['crateSha256'] = 'c' * 64
+            with self.assertRaisesRegex(ValueError, 'reviewed crate'):
+                native.expected_supplements(policy, crates)
+
+    def test_empty_notice_is_a_missing_original_and_invalid_metadata_is_not(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'source.tar.gz'
+            archive(path, {'source/LICENSE': b' \n', 'source/Cargo.lock': b'valid metadata'})
+            with self.assertRaises(native.MissingOriginalNotice):
+                native.inspect_archive(path, self.policy(), ('Cargo.lock',))
+            with self.assertRaisesRegex(ValueError, 'required recursive dependency metadata') as error:
+                native.inspect_archive(path, self.policy(), ('missing.lock',))
+            self.assertNotIsInstance(error.exception, native.MissingOriginalNotice)
+            expected = Path(temporary) / 'policy/metadata'; expected.mkdir(parents=True)
+            (expected / 'glib-gvdb.wrap').write_bytes(b'expected recursive revision')
+            archive(path, {'source/subprojects/gvdb.wrap': b'wrong recursive revision'})
+            with self.assertRaisesRegex(ValueError, 'fallback dependency differs') as error:
+                native.source_notices(path, {'kind': 'native-source', 'name': 'glib'}, self.policy(), expected.parent, Path(temporary), [])
+            self.assertNotIsInstance(error.exception, native.MissingOriginalNotice)
+
+    def test_reviewed_supplement_cannot_contain_only_whitespace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, path, record, policy, records, _ = self.supplemental_fixture(Path(temporary))
+            original = source / records[0]['files'][0]['path']
+            original.write_bytes(b' \n')
+            records[0]['files'][0].update({'bytes': 2, 'sha256': native.sha(original)})
+            with self.assertRaisesRegex(ValueError, 'contains no text'):
+                native.source_notices(path, record, policy, Path(temporary), source, records)
+
+    def test_offline_budget_counts_original_supplement_and_npm_provenance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = self.fixture(Path(temporary))
+            policy, crates, source, reviewed, runtime, lock = fixture
+            extra = source / 'supplemental-notices/fixture/LICENSE'; extra.parent.mkdir(parents=True); extra.write_bytes(b'x' * 1024)
+            supplements = [{'files': [{'path': 'supplemental-notices/fixture/LICENSE'}]}]
+            lock['noticeSupplements'] = supplements
+            (source / 'source-lock.json').write_text(json.dumps(lock))
+            policy['limits']['totalDownloadBytes'] = 1024
+            with patch.object(native, 'expected_supplements', return_value=supplements), \
+                    self.assertRaisesRegex(ValueError, 'total download budget'):
+                self.verify(fixture)
+
+    def test_missing_notices_accumulate_after_all_downloads_but_never_verify(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            policy, crates, source, reviewed, runtime, lock = self.fixture(root)
+            archive(source / lock['sources'][0]['path'], {'fixture/subprojects/gvdb.wrap': b'pinned gvdb revision'})
+            runtime['runtimePackage']['registryArchive'] = 'https://registry.npmjs.org/synthetic.tgz'
+            by_url = {x['url']: source / x['path'] for x in lock['sources']}
+            by_url[runtime['runtimePackage']['registryArchive']] = source / 'registry-provenance/native-package.tgz'
+            requested = []
+            def download(url, path, limit, **kwargs):
+                requested.append(url); shutil.copyfile(by_url[url], path)
+                return {'sha256': native.sha(path), 'bytes': path.stat().st_size}
+            output = root / 'resolved'
+            with patch.object(native.platform, 'system', return_value='Linux'), \
+                    patch.object(native, 'load_policy', return_value=(policy, [], crates)), \
+                    patch.object(native, 'runtime_inventory', return_value=runtime), \
+                    patch.object(native, 'download', side_effect=download), \
+                    self.assertRaisesRegex(native.MissingOriginalNotice, 'full diagnostic inventory'):
+                native.resolve(root, root / 'lock.json', runtime['appImageId'], output, reviewed)
+            saved = json.loads((output / 'source-lock.json').read_text())
+            self.assertEqual(len(requested), 4)
+            self.assertEqual(len(saved['sources']), 3)
+            self.assertEqual(saved['status'], 'incomplete-original-notices')
+            self.assertEqual(saved['unresolvedNotices'], [{'source': lock['sources'][0]['path'], 'reason': 'missing-original-notice'}])
+            self.assertFalse((output / 'receipt.json').exists())
+            with patch.object(native, 'load_policy', return_value=(policy, [], crates)), \
+                    patch.object(native, 'runtime_inventory', return_value=runtime), \
+                    self.assertRaisesRegex(native.MissingOriginalNotice, 'unresolved original notices'):
+                native.verify(root, root / 'lock.json', runtime['appImageId'], output, reviewed)
+
+    def test_identity_or_archive_errors_are_not_accumulated_as_missing_notices(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            policy, crates, source, reviewed, runtime, lock = self.fixture(root)
+            runtime['runtimePackage']['registryArchive'] = 'https://registry.npmjs.org/synthetic.tgz'
+            requested = []
+            def download(url, path, limit, **kwargs):
+                requested.append(url)
+                target = source / 'registry-provenance/native-package.tgz' if len(requested) == 1 else source / lock['sources'][0]['path']
+                shutil.copyfile(target, path)
+                return {'sha256': native.sha(path), 'bytes': path.stat().st_size}
+            output = root / 'resolved'
+            with patch.object(native.platform, 'system', return_value='Linux'), \
+                    patch.object(native, 'load_policy', return_value=(policy, [], crates)), \
+                    patch.object(native, 'runtime_inventory', return_value=runtime), \
+                    patch.object(native, 'download', side_effect=download), \
+                    patch.object(native, 'source_notices', side_effect=ValueError('Synthetic identity mismatch')), \
+                    self.assertRaisesRegex(ValueError, 'identity mismatch'):
+                native.resolve(root, root / 'lock.json', runtime['appImageId'], output, reviewed)
+            self.assertEqual(len(requested), 2)
+            self.assertFalse((output / 'source-lock.json').exists())
+            self.assertFalse((output / 'receipt.json').exists())
+
     def policy(self):
         return {'sources': [{'name': 'glib', 'version': '1.0', 'url': 'https://github.com/fixture/glib.tar.gz'},
                             {'name': 'rsvg', 'version': '1.0', 'url': 'https://github.com/fixture/rsvg.tar.gz'}],
