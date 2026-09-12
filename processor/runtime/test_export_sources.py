@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -195,6 +196,40 @@ class CustomProcessorSources(unittest.TestCase):
         self.assertIn('--read-only', command)
         self.assertIn('no-new-privileges', command)
         self.assertIn('/opt/aster/verify-custom-sources.py', command)
+
+    def test_private_export_root_never_enters_nonroot_container_mount(self):
+        paths = create_export(self.root)
+        paths['output'].chmod(0o700)
+        (paths['output'] / 'source-manifest.json').chmod(0o600)
+        mounted_paths = []
+        def run(command, **options):
+            mounts = [command[index + 1] for index, value in enumerate(command) if value == '--mount']
+            manifest_mount = next(value for value in mounts if 'source-manifest-to-verify.json' in value)
+            source = Path(manifest_mount.split('src=', 1)[1].split(',dst=', 1)[0])
+            mounted_paths.append(source)
+            self.assertTrue(source.is_file())
+            self.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o444)
+            self.assertTrue(manifest_mount.endswith(',readonly'))
+            self.assertNotIn(str(paths['output']), ' '.join(mounts))
+            self.assertEqual(source.read_bytes(), (paths['output'] / 'source-manifest.json').read_bytes())
+            attestation = EXPORT.attest(paths['runtime'], source)
+            return subprocess.CompletedProcess(command, 0, json.dumps(attestation), '')
+        with patch.object(COLLECT.subprocess, 'run', side_effect=run):
+            COLLECT.collect(paths['output'], IMAGE, paths['recipe'], self.root / 'collected')
+        self.assertFalse(mounted_paths[0].exists())
+        self.assertEqual(stat.S_IMODE(paths['output'].stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE((paths['output'] / 'source-manifest.json').stat().st_mode), 0o600)
+
+    def test_runtime_failure_preserves_bounded_diagnostic_and_writes_no_receipt(self):
+        paths = create_export(self.root)
+        output = self.root / 'collected'
+        result = subprocess.CompletedProcess([], 1, 'X' * 5000, 'Y' * 9000 + '\nSYNTHETIC PermissionError')
+        with patch.object(COLLECT.subprocess, 'run', return_value=result), self.assertRaises(RuntimeError) as failure:
+            COLLECT.collect(paths['output'], IMAGE, paths['recipe'], output)
+        self.assertIn('SYNTHETIC PermissionError', str(failure.exception))
+        self.assertIn('exited 1', str(failure.exception))
+        self.assertLess(len(str(failure.exception)), 12500)
+        self.assertFalse(output.exists())
 
 
 if __name__ == '__main__':

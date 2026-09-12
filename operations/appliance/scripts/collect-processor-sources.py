@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -98,14 +99,30 @@ def collect(evidence, image_id, processor_source, output):
     frozen = module.files(evidence)
     if any(item['path'] in ('receipt.json', 'runtime-attestation.json') for item in frozen):
         raise ValueError('Collect only a fresh builder export, never an adopted receipt')
-    # The mounted verifier is reviewed local code, not a script from the export.
-    command = ['docker', 'run', '--rm', '--read-only', '--network', 'none', '--cap-drop', 'ALL',
-               '--security-opt', 'no-new-privileges', '--entrypoint', 'python',
-               '--mount', f'type=bind,src={evidence.resolve()},dst=/source-evidence,readonly',
-               '--mount', f'type=bind,src={(ROOT / "processor/runtime/export-sources.py").resolve()},dst=/opt/aster/verify-custom-sources.py,readonly',
-               image_id, '/opt/aster/verify-custom-sources.py', 'attest',
-               '--manifest', '/source-evidence/source-manifest.json']
-    result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=120)
+    # Mount only a checked manifest file. BuildKit's host export root may be
+    # private to the builder UID, while the service image runs as UID 10001.
+    # No source directory permissions are changed or unrelated bytes exposed.
+    with tempfile.TemporaryDirectory(prefix='aster-custom-source-attestation-') as directory:
+        mounted = Path(directory) / 'source-manifest.json'
+        mounted.write_bytes(module.regular(evidence, 'source-manifest.json').read_bytes())
+        mounted.chmod(0o444)
+        if module.record(mounted.parent, mounted.name) != next(item for item in frozen if item['path'] == mounted.name):
+            raise ValueError('Custom source manifest changed before exact-image verification')
+        # The mounted verifier is reviewed local code, not a script from the export.
+        command = ['docker', 'run', '--rm', '--read-only', '--network', 'none', '--cap-drop', 'ALL',
+                   '--security-opt', 'no-new-privileges', '--entrypoint', 'python',
+                   '--mount', f'type=bind,src={mounted},dst=/opt/aster/source-manifest-to-verify.json,readonly',
+                   '--mount', f'type=bind,src={(ROOT / "processor/runtime/export-sources.py").resolve()},dst=/opt/aster/verify-custom-sources.py,readonly',
+                   image_id, '/opt/aster/verify-custom-sources.py', 'attest',
+                   '--manifest', '/opt/aster/source-manifest-to-verify.json']
+        try:
+            result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=120)
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError('Exact-image custom source attestation exceeded its 120 second limit') from error
+        if result.returncode != 0:
+            raise RuntimeError(f'Exact-image custom source attestation exited {result.returncode}\n'
+                               f'stdout (last 4096 characters):\n{result.stdout[-4096:]}\n'
+                               f'stderr (last 8192 characters):\n{result.stderr[-8192:]}')
     if len(result.stdout) > 4 * 1024**2:
         raise ValueError('Exact-image custom source attestation is too large')
     attestation = json.loads(result.stdout)

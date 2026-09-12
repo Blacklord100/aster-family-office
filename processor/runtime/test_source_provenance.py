@@ -27,6 +27,36 @@ class SourceProvenanceTests(unittest.TestCase):
                     for item in assembly.CUSTOM_PACKAGES.values()}
         for finding in policy['findings']:
             self.assertEqual(finding['installedVersion'], packages[finding['package']])
+        spec = importlib.util.spec_from_file_location(
+            'processor_probe', ROOT.parents[1] / 'operations/scripts/probe-processor-image.py')
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        self.assertEqual({name: version for name, version, _ in probe.EXPECTED_CUSTOM_PACKAGES}, packages)
+
+    def test_runtime_probe_rejects_stale_or_renamed_package_identities(self):
+        spec = importlib.util.spec_from_file_location(
+            'processor_probe', ROOT.parents[1] / 'operations/scripts/probe-processor-image.py')
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as directory:
+            packages = []
+            for name, version, source in probe.EXPECTED_CUSTOM_PACKAGES:
+                path = Path(directory) / name
+                path.write_text(f'Package: {name}\nVersion: {version}\nSource: {source}\n')
+                packages.append({'name': name, 'version': version, 'source': source, 'metadataPath': str(path)})
+            manifest = {'systemPackages': packages}
+            probe.custom_package_identity(manifest)
+            for field, value in [('version', '5.5.3-1+aster2'), ('source', 'unrelated (5.5.3)')]:
+                with self.subTest(field=field):
+                    changed = copy.deepcopy(manifest)
+                    changed['systemPackages'][1][field] = value
+                    with self.assertRaisesRegex(AssertionError, 'Unexpected custom package'):
+                        probe.custom_package_identity(changed)
+            with self.assertRaisesRegex(AssertionError, 'Missing or duplicate'):
+                probe.custom_package_identity({'systemPackages': packages + [packages[1]]})
+            Path(packages[1]['metadataPath']).write_text('Package: tesseract-ocr\nVersion: 5.5.3-1+aster2\nSource: tesseract (5.5.3)\n')
+            with self.assertRaisesRegex(AssertionError, 'Version: 5.5.3-1\\+aster3'):
+                probe.custom_package_identity(manifest)
 
     def test_signed_git_tag_binds_the_exact_release_commit(self):
         sources = json.loads((ROOT / 'upstream-sources.json').read_text())

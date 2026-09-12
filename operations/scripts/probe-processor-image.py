@@ -22,6 +22,25 @@ import time
 import uuid
 
 
+EXPECTED_CUSTOM_PACKAGES = (
+    ('libtiff6', '4.7.2-1+aster1', 'tiff (4.7.2)'),
+    ('tesseract-ocr', '5.5.3-1+aster3', 'tesseract (5.5.3)'),
+)
+
+
+def custom_package_identity(manifest):
+    # Preserve Debian's canonical source identities. A renamed package/source
+    # must not make unresolved advisory entries silently disappear from scans.
+    for name, version, source in EXPECTED_CUSTOM_PACKAGES:
+        packages = [item for item in manifest['systemPackages'] if item['name'] == name]
+        assert len(packages) == 1, 'Missing or duplicate custom package: ' + name
+        assert packages[0]['version'] == version, 'Unexpected custom package version: ' + name
+        assert packages[0]['source'] == source, 'Unexpected custom package source: ' + name
+        metadata = Path(packages[0]['metadataPath']).read_text().splitlines()
+        for field in ['Package: ' + name, 'Version: ' + version, 'Source: ' + source]:
+            assert field in metadata, field
+
+
 def image_identity():
     assert (os.getuid(), os.getgid()) == (10001, 10001)
     assert sys.version_info[:3] == (3, 12, 13)
@@ -76,15 +95,7 @@ def image_identity():
                 assert hashlib.sha256(path.read_bytes()).hexdigest() == retained['sha256'], str(path)
             else:
                 assert path.is_symlink() and os.readlink(path) == retained['symlink'], str(path)
-    # Preserve Debian's canonical source identities. A renamed package/source
-    # must not make unresolved advisory entries silently disappear from scans.
-    for name, version, source in [('libtiff6', '4.7.2-1+aster1', 'tiff (4.7.2)'),
-                                 ('tesseract-ocr', '5.5.3-1+aster2', 'tesseract (5.5.3)')]:
-        packages = [item for item in manifest['systemPackages'] if item['name'] == name]
-        assert len(packages) == 1 and packages[0]['version'] == version and packages[0]['source'] == source
-        metadata = Path(packages[0]['metadataPath']).read_text().splitlines()
-        for field in ['Package: ' + name, 'Version: ' + version, 'Source: ' + source]:
-            assert field in metadata, field
+    custom_package_identity(manifest)
 
 
 def image_codec_roundtrips():
