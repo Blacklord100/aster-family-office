@@ -31,7 +31,8 @@ def assess(manifest, scan, runtime, image_id, policy, source_bytes, harness_byte
     if build.get('backports') != expected_backports:
         raise ValueError('Missing or altered upstream security backports')
     if build.get('checks') != {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
-                               'tiffCodecCases': 3, 'passed': True}:
+                               'tiffCodecCases': 3, 'genericVectorCases': 5, 'unicharsetCases': 4,
+                               'intprotoCases': 6, 'passed': True}:
         raise ValueError('Native security regressions did not pass with full coverage')
     expected_paths = {'/opt/tesseract/bin/tesseract', '/opt/tesseract/lib/libtesseract.so.5.5',
                       '/opt/libtiff/lib/libtiff.so.6'}

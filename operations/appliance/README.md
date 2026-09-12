@@ -65,6 +65,8 @@ and `python3`, plus the pinned tools required by each collector.
 2. Run `python3.12 operations/appliance/scripts/build-images.py
    --lock operations/appliance/image-lock.json --output <new-images-dir>`.
    It exports all 5 images and records exact image IDs and tar hashes.
+   Its `processor-sources/` directory separately retains custom OCR/Pillow build
+   sources for the exact-image compliance check; those archives stay outside the service image.
 3. Run `python3.12 operations/appliance/scripts/collect-runtime.py --base <runtimeBase-from-image-lock>
    --output <new-runtime-dir>` on the connected builder. It uses Ubuntu's signed
    APT indexes and an empty package status to download the entire runtime dependency

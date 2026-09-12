@@ -23,7 +23,8 @@ class ExactImageAssessmentTests(unittest.TestCase):
         build = {'sourceConfigurationSha256': assessment.digest(source_bytes),
                  'harnessSha256': assessment.digest(harness), 'sourceFiles': policy['sourceFiles'],
                  'nativeFiles': files, 'checks': {'schemaVersion': 1, 'networkCases': 12,
-                 'normprotoCases': 3, 'tiffCodecCases': 3, 'passed': True},
+                 'normprotoCases': 3, 'tiffCodecCases': 3, 'genericVectorCases': 5,
+                 'unicharsetCases': 4, 'intprotoCases': 6, 'passed': True},
                  'backports': {'schemaVersion': 1, 'component': 'tesseract', 'baseVersion': '5.5.3',
                    'backports': [{key: item[key] for key in ['cve', 'commit', 'url', 'sha256',
                                   'authentication', 'files']} for item in source['securityBackports']]}}
@@ -47,13 +48,13 @@ class ExactImageAssessmentTests(unittest.TestCase):
         # checked-in source policy, rather than a self-declared receipt, rejects it.
         data[2]['manifestSha256'] = assessment.digest(json.dumps(data[0], sort_keys=True).encode())
 
-    def test_keeps_all_six_raw_findings_and_binds_each_disposition_to_image(self):
+    def test_keeps_all_nine_raw_findings_and_binds_each_disposition_to_image(self):
         data = self.fixture()
         result = self.check(data)
-        self.assertEqual(result['rawHighOrCritical'], 6)
+        self.assertEqual(result['rawHighOrCritical'], 9)
         self.assertEqual(result['unassessedHighOrCritical'], 0)
         self.assertTrue(all(item['imageID'] == data[3] for item in result['assessments']))
-        self.assertEqual(len(data[1]['Results'][0]['Vulnerabilities']), 6)
+        self.assertEqual(len(data[1]['Results'][0]['Vulnerabilities']), 9)
 
     def test_known_vulnerable_or_other_package_version_cannot_use_disposition(self):
         data = self.fixture()
@@ -68,10 +69,11 @@ class ExactImageAssessmentTests(unittest.TestCase):
             self.check(data)
 
     def test_pre_backport_package_revision_cannot_use_candidate_assessment(self):
-        data = self.fixture()
-        data[1]['Results'][0]['Vulnerabilities'][2]['InstalledVersion'] = '5.5.3-1+aster1'
-        with self.assertRaisesRegex(ValueError, 'Unassessed'):
-            self.check(data)
+        for revision in ['5.5.3-1+aster1', '5.5.3-1+aster2']:
+            data = self.fixture()
+            data[1]['Results'][0]['Vulnerabilities'][2]['InstalledVersion'] = revision
+            with self.subTest(revision=revision), self.assertRaisesRegex(ValueError, 'Unassessed'):
+                self.check(data)
 
     def test_changed_severity_requires_review(self):
         data = self.fixture()

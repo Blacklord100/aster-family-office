@@ -65,4 +65,4 @@ if __name__ == '__main__':
     receipt = apply_backports(config, Path('/build/source-provenance'),
                              Path('/build/sources') / config['tesseract']['directory'])
     Path('/build/security-backports.json').write_text(json.dumps(receipt, indent=2) + '\n')
-    print('Applied three reviewed upstream security fixes with exact source hashes')
+    print(f'Applied {len(receipt["backports"])} reviewed upstream patches with exact source hashes')

@@ -145,6 +145,125 @@
           "afterSha256": "9209f5a77213f589f42bb0ad862dabd91fd4152b46ce021c953a906dc960561c"
         }
       ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88051",
+      "commit": "56e09ca12e751623fe796ce1554ce704bffd2ef0",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/56e09ca12e751623fe796ce1554ce704bffd2ef0",
+      "filename": "tesseract-CVE-2026-88051.patch",
+      "sha256": "fe931cd9ccc6787ef22076d9b12507b6429043e0f7792272bdbc8e3c47cacf41",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/ccutil/genericvector.h",
+          "beforeSha256": "a6555461bfd94479fd983cceb072e1f390a7d6f8f41c788fb2fba6b62f97c411",
+          "afterSha256": "f3841a151a3bac841a4036cb2623582aeebb0d1d54574beaa3cd356913c37113"
+        },
+        {
+          "path": "unittest/genericvector_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "8f956b5b9600339c61783df33c7dc568d3c4748e1087117a1073d740f202bf04"
+        }
+      ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88052",
+      "commit": "2d04d640db2e8c7e3bab2369d599343b5a8b8443",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/2d04d640db2e8c7e3bab2369d599343b5a8b8443",
+      "filename": "tesseract-CVE-2026-88052.patch",
+      "sha256": "8bfd76c5dbe80249ad48152d286fc87fcefd8a57129099413a70476321cb7feb",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/ccutil/unicharset.cpp",
+          "beforeSha256": "efe074fd526ea06ccd9d2c42f1e25ba917eca1ff9e43ee13b46d620c34166b06",
+          "afterSha256": "59741460af16260bc9e3251869328723b652e31ac2796824af95bcfca77d6b1f"
+        },
+        {
+          "path": "unittest/unicharset_load_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "404e53e067ddf0017196ea2f52c1b61b37be6b4d15048f2225f9d497d257633a"
+        }
+      ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88053",
+      "commit": "b27e1bd66deb23c6d8db92d252c4dc45d91c7246",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/b27e1bd66deb23c6d8db92d252c4dc45d91c7246",
+      "filename": "tesseract-intproto-prerequisite.patch",
+      "sha256": "37eab3471a2b6fd4d41181d0828dfc40680db46d8b6199b53d481c0f98c95bc9",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned; only intproto.cpp initialization prerequisite is selected",
+      "files": [
+        {
+          "path": "src/classify/intproto.cpp",
+          "beforeSha256": "90f94e18897dbcec2370ee122ac60eca210995440f8c1bb5753097e6ea54c09d",
+          "afterSha256": "2c2ce8b7b9fcf62144fec000fa8fe4ee5146745e725a618adc12bcc41d4bcb2c"
+        }
+      ]
+    },
+    {
+      "component": "tesseract",
+      "cve": "CVE-2026-88053",
+      "commit": "8b0574680f3b22f246ade6a4c8e3029104255c63",
+      "url": "https://github.com/tesseract-ocr/tesseract/commit/8b0574680f3b22f246ade6a4c8e3029104255c63",
+      "filename": "tesseract-CVE-2026-88053.patch",
+      "sha256": "1b80580e4d3e33f9f4d31e3f88cddbf2a7ede75408d2ccc4159ece6acbcd4b46",
+      "authentication": "Official upstream HTTPS commit patch with pinned SHA256; upstream commit is unsigned",
+      "files": [
+        {
+          "path": "src/ccmain/tessedit.cpp",
+          "beforeSha256": "1e78f6bc11a7bbe14bf6c6a748a709e4163fafe7d415987b9ff41efefa9cb7d9",
+          "afterSha256": "a9f340e8c9c05f010244b565ed837d0fcc79b079c78a536da6804eda44222d54"
+        },
+        {
+          "path": "src/classify/adaptive.cpp",
+          "beforeSha256": "5b38d16f901e680e3c9d3127b9b46547a0beb3fbee62e1a8ecd2ca0b55970430",
+          "afterSha256": "66aaea979500bf2f6bf9db1cf23fc525885a5ef4768f0f01a9a13b442a847065"
+        },
+        {
+          "path": "src/classify/adaptive.h",
+          "beforeSha256": "0194463310ed4201e5c3b4a1243ba67926d5f6546216564c1ffeac49bbb0cd2a",
+          "afterSha256": "e754568450ae0b821e5fe795679b08cf1588f14b6e1ef6e64fcdb34a5764d880"
+        },
+        {
+          "path": "src/classify/adaptmatch.cpp",
+          "beforeSha256": "f585179c045d6f5ee8d137799c9a13ac6ccd8fb40d4cd1e4d1abec369905a9cb",
+          "afterSha256": "12f30d2997bf964d592a748e3a4427b414d5df925b5c81d9a8068f7a524419e5"
+        },
+        {
+          "path": "src/classify/classify.h",
+          "beforeSha256": "385f54e3e4415c967c6cef1a6516219aea6db3ef19ce6d1300d899a162244059",
+          "afterSha256": "6039957d78f01b3bb213e3481992e1cbf87ea08da0b48938b678cc1348334872"
+        },
+        {
+          "path": "src/classify/intproto.cpp",
+          "beforeSha256": "2c2ce8b7b9fcf62144fec000fa8fe4ee5146745e725a618adc12bcc41d4bcb2c",
+          "afterSha256": "e2b6ddba737c05259b4158617324fae559cdfc51a4efab560270e0a2fd640626"
+        },
+        {
+          "path": "src/classify/intproto.h",
+          "beforeSha256": "f46b5d4ccd39fa214cd3143e78227c2878af2ce8c344c1ae857fa4eac770a0a9",
+          "afterSha256": "525da323623163552f3b6e727a55b6a795bf18d537e577348f1e7d03157baa44"
+        },
+        {
+          "path": "src/wordrec/tface.cpp",
+          "beforeSha256": "9b3ab294d6c018fe36a72868a16edf550f6b550088597e49f49e1346fabd77ac",
+          "afterSha256": "05f7cfc7ab89412ef888bf00a1b8d9b8c58a6ed86e016ccbb54ca0970b101d17"
+        },
+        {
+          "path": "src/wordrec/wordrec.h",
+          "beforeSha256": "ec3880f2ac7e5ad7013d1f90c95e19ecd277b30e2895aac15d9b884531c1b739",
+          "afterSha256": "923d3524498fd7acb5ef9ce1c36c5d4b46d7119975a641d0368a8d600cb82e68"
+        },
+        {
+          "path": "unittest/intproto_test.cc",
+          "beforeSha256": null,
+          "afterSha256": "ab57c1fbb220ee1d883eb57a93f67d5766062fa06b4075b479ed7cc3e5a94e05"
+        }
+      ]
     }
   ]
 }

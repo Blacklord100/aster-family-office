@@ -62,14 +62,31 @@ stopped at its disk-capacity preflight before inference. It produced no Linux
 accuracy or latency measurement. The existing native macOS synthetic demonstration
 is separate evidence, documented in [live demo validation](VALIDATION-LIVE-DEMO.md).
 
-The [bounded run at `b214384`](https://github.com/Blacklord100/aster-family-office/actions/runs/34708057717)
+The [bounded run at `0ac2b19`](https://github.com/Blacklord100/aster-family-office/actions/runs/34709097583)
+passed exact-model identity, text and vision execution on Linux amd64 with
+Ollama 0.33.3. Text returned `SYNTHETIC` in 7.475 seconds; vision identified the
+known red square in 11.906 seconds. The runner had four CPU cores and about
+15.6 GiB visible memory; the model had a 12 GiB cap, with no OOM kill. The service
+remained nonroot, read-only and on its sole internal bridge, with no published
+ports. The client bypassed proxies, refused redirects and rechecked the admitted
+container/image/network identity around every request.
+
+Both requests asked for 512 context tokens. The retained vision runner log shows
+an effective context of 2,048, so these timings do not qualify a 512-token runtime
+memory profile. They establish bounded startup/inference only, not financial
+extraction accuracy, throughput, full-context capacity or full-host egress isolation.
+The exact image was
+`sha256:f77c3010bf4c1f834ab9e209e357be2545fe741edf6f995d7fd63febefa7a433`;
+the model digest was
+`sha256:ee665637121887cf3befff38abbb1be4ee117c7db867d97a67e29049ecd7e15f`.
+
+The preceding [run at `b214384`](https://github.com/Blacklord100/aster-family-office/actions/runs/34708057717)
 downloaded the exact six-file Gemma pack and started Ollama 0.33.3 successfully
 as UID 10001 on a read-only filesystem. Its retained logs show one model, CPU
 execution and a 12 GiB memory limit, with no OOM. The test client could not reach
 the host-published port on the internal bridge, so it never performed inference.
-The revised client uses the inspected internal container IP directly, as supported
-on a Linux Docker host, with no published port, proxy or redirects. Its real
-text/vision result requires a later run; passing client tests is not model proof.
+The successful later run uses the inspected internal container IP directly,
+as supported on a Linux Docker host, with no published port, proxy or redirects.
 
 At `2e2264c`, the built processor passed all 18 native security regression cases,
 625 tests in the network-disabled runtime and authenticated offline OCR. Its exact

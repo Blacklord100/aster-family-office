@@ -9,7 +9,18 @@
       "src/lstm/fullyconnected.cpp": "d96e4d431787c7d4118f142facd4979952f02fdafa4b3cd3c939590d85bd9597",
       "src/lstm/weightmatrix.h": "3214d9e2359eb1a6f438312bcbb0306c68668a3676fc92fe94c1d283c3e82023",
       "src/lstm/lstm.cpp": "5a4ef05d95b2c3cf4efad0f518dfe32c04140490c85a755649f1839134546e91",
-      "src/lstm/networkio.cpp": "d4f455926656d63284d24e42933b2f5f26add216404b4e1f2002e02967292a71"
+      "src/lstm/networkio.cpp": "d4f455926656d63284d24e42933b2f5f26add216404b4e1f2002e02967292a71",
+      "src/ccutil/genericvector.h": "f3841a151a3bac841a4036cb2623582aeebb0d1d54574beaa3cd356913c37113",
+      "src/ccutil/unicharset.cpp": "59741460af16260bc9e3251869328723b652e31ac2796824af95bcfca77d6b1f",
+      "src/classify/intproto.cpp": "e2b6ddba737c05259b4158617324fae559cdfc51a4efab560270e0a2fd640626",
+      "src/ccmain/tessedit.cpp": "a9f340e8c9c05f010244b565ed837d0fcc79b079c78a536da6804eda44222d54",
+      "src/classify/adaptive.cpp": "66aaea979500bf2f6bf9db1cf23fc525885a5ef4768f0f01a9a13b442a847065",
+      "src/classify/adaptive.h": "e754568450ae0b821e5fe795679b08cf1588f14b6e1ef6e64fcdb34a5764d880",
+      "src/classify/adaptmatch.cpp": "12f30d2997bf964d592a748e3a4427b414d5df925b5c81d9a8068f7a524419e5",
+      "src/classify/classify.h": "6039957d78f01b3bb213e3481992e1cbf87ea08da0b48938b678cc1348334872",
+      "src/classify/intproto.h": "525da323623163552f3b6e727a55b6a795bf18d537e577348f1e7d03157baa44",
+      "src/wordrec/tface.cpp": "05f7cfc7ab89412ef888bf00a1b8d9b8c58a6ed86e016ccbb54ca0970b101d17",
+      "src/wordrec/wordrec.h": "923d3524498fd7acb5ef9ce1c36c5d4b46d7119975a641d0368a8d600cb82e68"
     },
     "libtiff": {
       "libtiff/tif_read.c": "332043d298faf86609a1e07eed21fb4da95b0e42d2df0af43e7e25cd2578997e",
@@ -37,7 +48,7 @@
     {
       "cve": "CVE-2026-73066",
       "package": "tesseract-ocr",
-      "installedVersion": "5.5.3-1+aster2",
+      "installedVersion": "5.5.3-1+aster3",
       "status": "fixed",
       "basis": "Signed Tesseract5.5.3 and malformed Convolve/Reconfig deserialization regression",
       "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-73066"
@@ -45,7 +56,7 @@
     {
       "cve": "CVE-2026-88047",
       "package": "tesseract-ocr",
-      "installedVersion": "5.5.3-1+aster2",
+      "installedVersion": "5.5.3-1+aster3",
       "status": "fixed",
       "basis": "Pinned upstream1bda507 patch, bounded normproto regression",
       "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88047"
@@ -53,7 +64,7 @@
     {
       "cve": "CVE-2026-88048",
       "package": "tesseract-ocr",
-      "installedVersion": "5.5.3-1+aster2",
+      "installedVersion": "5.5.3-1+aster3",
       "status": "fixed",
       "basis": "Pinned upstream103dc134 patch, mismatched and valid FullyConnected deserialization",
       "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88048"
@@ -61,10 +72,34 @@
     {
       "cve": "CVE-2026-88049",
       "package": "tesseract-ocr",
-      "installedVersion": "5.5.3-1+aster2",
+      "installedVersion": "5.5.3-1+aster3",
       "status": "fixed",
       "basis": "Pinned upstreamb494ac18 patch, four malformed LSTM dimensions and valid control",
       "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88049"
+    },
+    {
+      "cve": "CVE-2026-88051",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster3",
+      "status": "fixed",
+      "basis": "Pinned upstream56e09ca patch; five GenericVector callback bounds and valid-control regressions",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88051"
+    },
+    {
+      "cve": "CVE-2026-88052",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster3",
+      "status": "fixed",
+      "basis": "Pinned upstream2d04d64 patch; duplicate/non-positive unicharset regressions and valid control",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88052"
+    },
+    {
+      "cve": "CVE-2026-88053",
+      "package": "tesseract-ocr",
+      "installedVersion": "5.5.3-1+aster3",
+      "status": "fixed",
+      "basis": "Pinned upstream8b05746 patch plus required b27e1bd initialization hunk; five malformed intproto count cases and complete valid version3 control",
+      "advisory": "https://security-tracker.debian.org/tracker/CVE-2026-88053"
     }
   ]
 }

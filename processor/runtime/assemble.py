@@ -24,10 +24,14 @@ EXCLUDED_PACKAGES = {'perl-base', 'libsqlite3-0', 'libncursesw6', 'libtinfo6',
                      'libuuid1', 'libacl1', 'libarchive13t64', 'libtiff6'}
 CUSTOM_PACKAGES = {
     '/opt/tesseract': {'id': 'tesseract-ocr:aster', 'name': 'tesseract-ocr',
-                       'version': '5.5.3', 'revision': 2, 'source': 'tesseract', 'license': 'tesseract-5.5.3/LICENSE'},
+                       'version': '5.5.3', 'revision': 3, 'source': 'tesseract', 'license': 'tesseract-5.5.3/LICENSE'},
     '/opt/libtiff': {'id': 'libtiff6:aster', 'name': 'libtiff6',
                    'version': '4.7.2', 'source': 'tiff', 'license': 'tiff-4.7.2/LICENSE.md'},
 }
+
+
+def custom_package_version(package):
+    return f'{package["version"]}-1+aster{package.get("revision", 1)}'
 
 
 def fields(stanza):
@@ -242,7 +246,7 @@ def main():
         # binaries. Keep canonical source names so existing CVEs remain visible.
         stanzas[package['id']] = '\n'.join([
             f'Package: {package["name"]}', 'Status: install ok installed',
-            f'Version: {package["version"]}-1+aster{package.get("revision", 1)}',
+            f'Version: {custom_package_version(package)}',
             f'Source: {package["source"]} ({package["version"]})',
             f'Architecture: {architecture}', 'Maintainer: Aster local processor build',
             'Description: Local rebuild of authenticated upstream source; not a Debian binary package',
@@ -312,11 +316,11 @@ def main():
     manifest = {'schemaVersion': 1,
                 'python': {'version': '3.12.13', 'omittedModules': OMITTED_MODULES,
                            'binarySha256': hashlib.sha256((ROOT / 'usr/local/bin/python3.12').read_bytes()).hexdigest()},
-                'tesseract': {'version': '5.5.3', 'packageVersion': '5.5.3-1+aster2',
+                'tesseract': {'version': '5.5.3', 'packageVersion': custom_package_version(CUSTOM_PACKAGES['/opt/tesseract']),
                               'sourceVersion': '5.5.3', **source_details('tesseract'),
                               'compiledDataPrefix': '/opt/tesseract/share',
                               'options': {'archive': False, 'curl': False, 'graphics': False, 'training': False}},
-                'libtiff': {'version': '4.7.2', 'packageVersion': '4.7.2-1+aster1',
+                'libtiff': {'version': '4.7.2', 'packageVersion': custom_package_version(CUSTOM_PACKAGES['/opt/libtiff']),
                             'sourceVersion': '4.7.2', **source_details('libtiff'), **native['libtiff']},
                 'pillow': {**native['pillow'], **source_details('pillow'),
                            'buildDependencies': sources['buildDependencies']},

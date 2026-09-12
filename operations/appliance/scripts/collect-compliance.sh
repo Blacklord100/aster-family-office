@@ -30,6 +30,9 @@ docker run --rm --read-only --network none --cap-drop ALL --security-opt no-new-
   --entrypoint python "$aster_processor_id" /opt/aster/verify-security-runtime.py \
   > "$aster_output/sbom/processor-runtime-security.json"
 python3 operations/appliance/scripts/assess-images.py --images "$aster_images" --evidence "$aster_output/sbom"
+python3 operations/appliance/scripts/collect-processor-sources.py \
+  --export "$aster_images/processor-sources" --image-id "$aster_processor_id" \
+  --output "$aster_output/licenses/processor-custom-sources"
 # Export only the inert runtime package tree. There is no customer state in it.
 aster_app_container=$(docker create --entrypoint node "$aster_app_id" -e 'process.exit(0)')
 test "$(docker inspect --format '{{.Image}}' "$aster_app_container")" = "$aster_app_id"

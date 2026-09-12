@@ -1,0 +1,140 @@
+From b27e1bd66deb23c6d8db92d252c4dc45d91c7246 Mon Sep 17 00:00:00 2001
+From: Stefan Weil <sw@weilnetz.de>
+Date: Sat, 15 Aug 2026 20:22:23 +0200
+Subject: [PATCH] Fix Coverity warnings (Uninitialized pointer field,
+ Uninitialized scalar field)
+
+Fix CID 1586062 and CID 1586061 for elst.h and clst.h: the default
+constructors of their Iterator classes only initialized the list member,
+so all other pointer and scalar members remained uninitialized. Now they
+are initialized to nullptr resp. false.
+CID 1487954 for PAGE_RES_IT is also fixed, because its iterator members
+use the elst.h Iterator.
+
+Fix CID 1451524 for CHAR_DESC_STRUCT: the FeatureSets array was not
+initialized.
+Fix CID 1451515 for INT_TEMPLATES_STRUCT: the ClassPruners array was not
+initialized.
+Fix CID 1451508 for CLUSTER: the Left and Right pointers were not
+initialized.
+Fix CID 1487955 for BlamerBundle: the copy constructor left lattice_size_
+uninitialized when there was no lattice data.
+Fix CID 1164637 for KDPtrPair: the default constructor did not
+initialize the key member.
+
+Assisted-by: OpenCode / big-pickle (opencode)
+Signed-off-by: Stefan Weil <sw@weilnetz.de>
+---
+ src/ccstruct/blamer.h     | 1 +
+ src/ccutil/clst.h         | 7 +++++++
+ src/ccutil/elst.h         | 7 +++++++
+ src/ccutil/kdpair.h       | 2 +-
+ src/classify/cluster.h    | 2 +-
+ src/classify/featdefs.h   | 5 ++---
+ src/classify/intproto.cpp | 3 +++
+ 7 files changed, 22 insertions(+), 5 deletions(-)
+
+diff --git a/src/ccstruct/blamer.h b/src/ccstruct/blamer.h
+index 4d6246837a..ebcfe8a747 100644
+--- a/src/ccstruct/blamer.h
++++ b/src/ccstruct/blamer.h
+@@ -232,6 +232,7 @@ struct BlamerBundle {
+       lattice_size_ = other.lattice_size_;
+     } else {
+       lattice_data_ = nullptr;
++      lattice_size_ = 0;
+     }
+   }
+   const char *IncorrectReason() const;
+diff --git a/src/ccutil/clst.h b/src/ccutil/clst.h
+index 42ae0051df..289a345371 100644
+--- a/src/ccutil/clst.h
++++ b/src/ccutil/clst.h
+@@ -146,6 +146,13 @@ class ConsList {
+   public:
+     Iterator() { // constructor
+       list = nullptr;
++      prev = nullptr;
++      current = nullptr;
++      next = nullptr;
++      cycle_pt = nullptr; // await explicit set
++      started_cycling = false;
++      ex_current_was_last = false;
++      ex_current_was_cycle_pt = false;
+     } // unassigned list
+ 
+   /***********************************************************************
+diff --git a/src/ccutil/elst.h b/src/ccutil/elst.h
+index 16dd8cc608..b540119f29 100644
+--- a/src/ccutil/elst.h
++++ b/src/ccutil/elst.h
+@@ -209,6 +209,13 @@ class IntrusiveForwardList {
+   public:
+     Iterator() { // constructor
+       list = nullptr;
++      prev = nullptr;
++      current = nullptr;
++      next = nullptr;
++      cycle_pt = nullptr; // await explicit set
++      started_cycling = false;
++      ex_current_was_last = false;
++      ex_current_was_cycle_pt = false;
+     } // unassigned list
+     /***********************************************************************
+    *                          ELIST_ITERATOR::ELIST_ITERATOR
+diff --git a/src/ccutil/kdpair.h b/src/ccutil/kdpair.h
+index 4d60e45432..af3b9d615d 100644
+--- a/src/ccutil/kdpair.h
++++ b/src/ccutil/kdpair.h
+@@ -99,7 +99,7 @@ struct KDPairDec : public KDPair<Key, Data> {
+ template <typename Key, typename Data>
+ class KDPtrPair {
+ public:
+-  KDPtrPair() : data_(nullptr) {}
++  KDPtrPair() : data_(nullptr), key_{} {}
+   KDPtrPair(Key k, Data *d) : data_(d), key_(k) {}
+   // Copy constructor steals the pointer from src and nulls it in src, thereby
+   // moving the (single) ownership of the data.
+diff --git a/src/classify/cluster.h b/src/classify/cluster.h
+index 3caf747454..90c18117de 100644
+--- a/src/classify/cluster.h
++++ b/src/classify/cluster.h
+@@ -32,7 +32,7 @@ constexpr int MAXBUCKETS = 39;
+           Types
+ ----------------------------------------------------------------------*/
+ struct CLUSTER {
+-  CLUSTER(size_t n) : Mean(n) {
++  CLUSTER(size_t n) : Left(nullptr), Right(nullptr), Mean(n) {
+   }
+ 
+   ~CLUSTER() {
+diff --git a/src/classify/featdefs.h b/src/classify/featdefs.h
+index b3f60b1578..ab1ce9a53c 100644
+--- a/src/classify/featdefs.h
++++ b/src/classify/featdefs.h
+@@ -47,9 +47,8 @@ using FEATURE_DEFS = FEATURE_DEFS_STRUCT *;
+ struct CHAR_DESC_STRUCT {
+   /// Allocate a new character description, initialize its
+   /// feature sets to be empty, and return it.
+-  CHAR_DESC_STRUCT(const FEATURE_DEFS_STRUCT &FeatureDefs) {
+-    NumFeatureSets = FeatureDefs.NumFeatureTypes;
+-  }
++  CHAR_DESC_STRUCT(const FEATURE_DEFS_STRUCT &FeatureDefs)
++      : NumFeatureSets(FeatureDefs.NumFeatureTypes), FeatureSets{} {}
+ 
+   /// Release the memory consumed by the specified character
+   /// description and all of the features in that description.
+diff --git a/src/classify/intproto.cpp b/src/classify/intproto.cpp
+index fbd9fe9463..b199ae2893 100644
+--- a/src/classify/intproto.cpp
++++ b/src/classify/intproto.cpp
+@@ -608,6 +608,9 @@ INT_TEMPLATES_STRUCT::INT_TEMPLATES_STRUCT() {
+   for (int i = 0; i < MAX_NUM_CLASSES; i++) {
+     ClassForClassId(this, i) = nullptr;
+   }
++  for (int i = 0; i < MAX_NUM_CLASS_PRUNERS; i++) {
++    ClassPruners[i] = nullptr;
++  }
+ }
+ 
+ INT_TEMPLATES_STRUCT::~INT_TEMPLATES_STRUCT() {

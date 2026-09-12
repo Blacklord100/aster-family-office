@@ -4,6 +4,16 @@ import json
 from pathlib import Path
 
 
+def verify_tool_inventory(packages):
+    for package in packages:
+        for entry in package['files']:
+            if (not isinstance(entry, dict) or not isinstance(entry.get('path'), str)
+                    or not Path(entry['path']).is_absolute()):
+                raise ValueError('Malformed runtime package file inventory')
+            if 'tiffcrop' in Path(entry['path']).name.lower():
+                raise ValueError('The affected TIFF command-line tool is in the inventory')
+
+
 def main():
     manifest = json.loads(Path('/opt/aster/runtime-manifest.json').read_text())
     evidence = manifest['securityBuild']
@@ -23,8 +33,7 @@ def main():
             raise ValueError('Runtime source provenance changed')
     # Check every retained package payload and actual executable directories;
     # the tiffcrop CLI is deliberately excluded from this runtime.
-    if any('tiffcrop' in Path(file).name.lower() for package in manifest['systemPackages'] for file in package['files']):
-        raise ValueError('The affected TIFF command-line tool is in the inventory')
+    verify_tool_inventory(manifest['systemPackages'])
     for root in [Path('/opt'), Path('/usr/bin'), Path('/usr/local/bin')]:
         if any('tiffcrop' in path.name.lower() for path in root.rglob('*')):
             raise ValueError('The affected TIFF command-line tool is present')

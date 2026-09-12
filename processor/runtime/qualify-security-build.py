@@ -25,7 +25,8 @@ def run_security_regression(binary):
                            f'stderr (last 8192 characters):\n{run.stderr[-8192:]}')
     checks = json.loads(run.stdout.strip().splitlines()[-1])
     if checks != {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
-                  'tiffCodecCases': 3, 'passed': True}:
+                  'tiffCodecCases': 3, 'genericVectorCases': 5, 'unicharsetCases': 4,
+                  'intprotoCases': 6, 'passed': True}:
         raise RuntimeError('Unexpected security regression coverage')
     return checks
 
@@ -62,6 +63,10 @@ def main():
                               'src/classify/normmatch.cpp', 'src/lstm/fullyconnected.cpp',
                               'src/lstm/weightmatrix.h', 'src/lstm/lstm.cpp', 'src/lstm/networkio.cpp'],
                 'libtiff': ['libtiff/tif_read.c', 'libtiff/tif_compress.c', 'tools/tiffcrop.c']}
+    for record in sources['securityBackports']:
+        for file in record['files']:
+            if file['path'].startswith('src/') and file['path'] not in relevant['tesseract']:
+                relevant['tesseract'].append(file['path'])
     source_files = {name: {path: sha(root / 'sources' / sources[name]['directory'] / path)
                            for path in paths} for name, paths in relevant.items()}
     # The authenticated 5.5.3 CMake build uses SOVERSION 5.5, as recorded in its

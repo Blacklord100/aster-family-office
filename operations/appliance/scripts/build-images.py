@@ -54,6 +54,13 @@ def main():
             for key, value in build_args.items():
                 command += ['--build-arg', f'{key}={value}']
             run(*command, str(context))
+            if service == 'processor':
+                export_command = ['docker', 'build', '--platform', lock['platform'],
+                                  '--file', str(context / dockerfile), '--target', 'source-evidence',
+                                  '--output', 'type=local,dest=' + str((args.output / 'processor-sources').resolve())]
+                for key, value in build_args.items():
+                    export_command += ['--build-arg', f'{key}={value}']
+                run(*export_command, str(context))
         info = json.loads(run('docker', 'image', 'inspect', reference, capture=True))[0]
         if info['Os'] != 'linux' or info['Architecture'] != 'amd64':
             raise ValueError('Built image architecture differs from release platform')

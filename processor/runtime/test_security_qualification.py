@@ -22,7 +22,8 @@ class SecurityQualificationTests(unittest.TestCase):
 
     def test_zero_exit_does_not_waive_missing_security_cases(self):
         partial = {'schemaVersion': 1, 'networkCases': 11, 'normprotoCases': 3,
-                   'tiffCodecCases': 3, 'passed': True}
+                   'tiffCodecCases': 3, 'genericVectorCases': 5, 'unicharsetCases': 4,
+                   'intprotoCases': 6, 'passed': True}
         result = subprocess.CompletedProcess(['synthetic'], 0, json.dumps(partial), '')
         with patch.object(qualification.subprocess, 'run', return_value=result):
             with self.assertRaisesRegex(RuntimeError, 'coverage'):
@@ -35,7 +36,8 @@ class SecurityQualificationTests(unittest.TestCase):
 
     def test_complete_native_case_receipt_is_required(self):
         complete = {'schemaVersion': 1, 'networkCases': 12, 'normprotoCases': 3,
-                    'tiffCodecCases': 3, 'passed': True}
+                    'tiffCodecCases': 3, 'genericVectorCases': 5, 'unicharsetCases': 4,
+                    'intprotoCases': 6, 'passed': True}
         result = subprocess.CompletedProcess(['synthetic'], 0, 'synthetic diagnostic\n' + json.dumps(complete), '')
         with patch.object(qualification.subprocess, 'run', return_value=result):
             self.assertEqual(qualification.run_security_regression(Path('/synthetic/harness')), complete)

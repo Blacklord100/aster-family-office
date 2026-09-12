@@ -1,12 +1,15 @@
 # Runtime image inputs only. Keep environments, caches, evaluations, and
 # operator documents/secrets out of the build context.
 **
+!Dockerfile
+!.dockerignore
 !requirements.lock.txt
 !runtime/
 !runtime/*.py
 !runtime/*.cc
 !runtime/*.sha256
 !runtime/upstream-sources.json
+!runtime/security-policy.json
 !runtime/source-provenance/
 !runtime/source-provenance/*
 !service/

@@ -186,7 +186,9 @@ def qualify(base_url, lock, output, expected_endpoint=None):
             if images:
                 body['images'] = images
             started = time.monotonic()
-            active = {'check': name, 'result': 'running', 'numCtx': 512}
+            # Ollama may enforce a larger minimum internally; this is the request,
+            # while retained runner logs provide the observed runtime context.
+            active = {'check': name, 'result': 'running', 'requestedNumCtx': 512}
             receipt['checks'].append(active)
             atomic_receipt(output, receipt)
             result = checked_request('/api/generate', body)

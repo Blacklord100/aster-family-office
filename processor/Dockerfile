@@ -61,6 +61,14 @@ RUN python -m pip install --no-cache-dir --only-binary=:all: -r requirements.loc
 COPY --from=runtime-base / /runtime-base/
 COPY runtime/assemble.py /build/assemble.py
 RUN python /build/assemble.py
+COPY Dockerfile .dockerignore requirements.lock.txt /build/recipe/
+COPY runtime/ /build/recipe/runtime/
+# Keep original sources outside the service filesystem. Only their manifest
+# digest enters /runtime; collection checks it against the exact built image.
+RUN python /build/recipe/runtime/export-sources.py export
+
+FROM scratch AS source-evidence
+COPY --from=builder /source-evidence/ /
 
 # /runtime already contains the full pinned Distroless base. An exact root copy
 # prevents deleted/replaced base-package files surviving from a lower image layer.

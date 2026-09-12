@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -35,6 +36,9 @@ processor_test_spec.loader.exec_module(PROCESSOR_TEST)
 processor_verify_spec = importlib.util.spec_from_file_location('processor_verify', ROOT.parents[1] / 'processor/runtime/verify-scan.py')
 PROCESSOR_VERIFY = importlib.util.module_from_spec(processor_verify_spec)
 processor_verify_spec.loader.exec_module(PROCESSOR_VERIFY)
+processor_source_spec = importlib.util.spec_from_file_location('processor_source_fixture', ROOT.parents[1] / 'processor/runtime/test_export_sources.py')
+PROCESSOR_SOURCE_TEST = importlib.util.module_from_spec(processor_source_spec)
+processor_source_spec.loader.exec_module(PROCESSOR_SOURCE_TEST)
 
 
 def put(root, name, data=b'SYNTHETIC PACKAGING TEST ONLY'):
@@ -129,19 +133,22 @@ def synthetic_compliance(root, binary, app_image, source_root):
         'sourceArchiveCount': len(sources), 'nativeSourceCount': len(policy['sources']), 'cargoSourceCount': len(crates), 'notices': [notice]}).encode())
 
 
-def synthetic_image_scans(root, images, gate):
+def synthetic_image_scans(root, images, gate, processor_fixture):
     scans = []
     for image in images:
         name = image['service']
         scan = {'Metadata': {'ImageID': image['imageId']}, 'CreatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 'Results': [{'Packages': [{'Name': 'SYNTHETIC'}], 'Vulnerabilities': []}]}
         if name == 'processor':
-            manifest, _, runtime, _, policy, source_bytes, harness = PROCESSOR_TEST.ExactImageAssessmentTests().fixture()
-            manifest.update({'schemaVersion': 1, 'systemPackages': [{'name': 'SYNTHETIC', 'version': '1'}]})
-            runtime['manifestSha256'] = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+            manifest = json.loads((processor_fixture['output'] / 'build/runtime-manifest.json').read_text())
+            runtime = {'nativeFiles': manifest['securityBuild']['nativeFiles'], 'tiffcropAbsent': True, 'provenanceVerified': True,
+                       'manifestSha256': hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()}
+            reviewed = processor_fixture['recipe'] / 'runtime'
+            policy = json.loads((reviewed / 'security-policy.json').read_text())
+            source_bytes, harness = (reviewed / 'upstream-sources.json').read_bytes(), (reviewed / 'security-regression.cc').read_bytes()
             scan['Metadata']['OS'] = {'Family': 'debian', 'Name': '13.6'}
             scan['Results'][0].update({'Class': 'os-pkgs', 'Packages': [{'Name': 'SYNTHETIC', 'Version': '1'}]})
-            requirements = (ROOT.parents[1] / 'processor/requirements.lock.txt').read_text()
+            requirements = (processor_fixture['recipe'] / 'requirements.lock.txt').read_text()
             packages = []
             for line in requirements.splitlines():
                 if line.strip() and not line.startswith('#') and ';' not in line:
@@ -226,15 +233,19 @@ class Packaging(unittest.TestCase):
             packages.append({**item, 'name': name, 'version': '1', 'architecture': 'amd64'})
         (self.root / 'runtime/inventory.json').write_text(json.dumps({'kind': 'ubuntu-deb', 'os': 'ubuntu', 'version': '24.04', 'arch': 'amd64', 'packages': packages}))
         put(self.root / 'compliance', 'licenses/SYNTHETIC.txt')
+        synthetic_source(self.root / 'synthetic-source')
+        processor_fixture = PROCESSOR_SOURCE_TEST.create_export(self.root / 'custom-source-fixture')
+        shutil.copytree(processor_fixture['recipe'], self.root / 'synthetic-source/processor')
+        PROCESSOR_SOURCE_TEST.collect_fixture(processor_fixture, self.root / 'compliance/licenses/processor-custom-sources',
+                                             next(item['imageId'] for item in images if item['service'] == 'processor'))
         gate = {'result': 'passed', 'releaseId': release_id, 'imageIds': {i['service']: i['imageId'] for i in images}}
-        synthetic_image_scans(self.root / 'compliance/sbom', images, gate)
+        synthetic_image_scans(self.root / 'compliance/sbom', images, gate, processor_fixture)
         put(self.root / 'compliance', 'sbom/security-gate.json', json.dumps(gate).encode())
         spec = {'schemaVersion': 1, 'releaseId': release_id, 'productVersion': '0.0.0-test',
                 'channel': 'preview', 'sequence': 1, 'platform': {'os': 'linux', 'arch': 'amd64'},
                 'schema': {'min': 16, 'max': 16, 'target': 16}, 'createdAt': '2026-09-12T00:00:00Z'}
         put(self.root, 'spec.json', json.dumps(spec).encode())
         put(self.root, 'asterctl', b'\x7fELF\x02\x01' + b'\0' * 12 + b'\x3e\x00SYNTHETIC-NEVER-EXECUTED')
-        synthetic_source(self.root / 'synthetic-source')
         synthetic_compliance(self.root / 'compliance', self.root / 'asterctl', images[0]['imageId'], self.root / 'synthetic-source')
         return [sys.executable, str(ROOT / 'scripts/stage-bundle.py'), '--spec', str(self.root / 'spec.json'),
                 '--images', str(self.root / 'images'), '--runtime', str(self.root / 'runtime'),
@@ -320,6 +331,43 @@ class Packaging(unittest.TestCase):
         result = subprocess.run(command, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('exact application image', result.stderr)
+
+    def test_custom_processor_source_receipt_requires_exact_image(self):
+        command = self.inputs()
+        path = self.root / 'compliance/licenses/processor-custom-sources/receipt.json'
+        receipt = json.loads(path.read_text()); receipt['processorImageId'] = 'sha256:' + 'f' * 64
+        path.write_text(json.dumps(receipt))
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('exact image', result.stderr)
+        self.assertFalse((self.root / 'bundle').exists())
+
+    def test_custom_processor_source_runtime_cannot_be_mixed_with_other_security_evidence(self):
+        command = self.inputs()
+        root = self.root / 'compliance/licenses/processor-custom-sources'
+        runtime_path = root / 'build/runtime-manifest.json'
+        runtime = json.loads(runtime_path.read_text()); runtime['SYNTHETIC_MIXED_BUILD'] = True
+        runtime_path.write_text(json.dumps(runtime))
+        manifest_path = root / 'source-manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        manifest['runtimeManifestSha256'] = STAGE.sha256(runtime_path)
+        manifest['files'] = [item for item in PROCESSOR_SOURCE_TEST.EXPORT.files(root)
+                             if item['path'] not in {'source-manifest.json', 'receipt.json', 'runtime-attestation.json'}]
+        manifest_path.write_text(json.dumps(manifest))
+        attestation_path = root / 'runtime-attestation.json'
+        attestation = json.loads(attestation_path.read_text())
+        attestation.update({'sourceManifestSha256': STAGE.sha256(manifest_path), 'runtimeManifestSha256': STAGE.sha256(runtime_path)})
+        attestation_path.write_text(json.dumps(attestation))
+        receipt_path = root / 'receipt.json'
+        receipt = json.loads(receipt_path.read_text())
+        receipt.update({'sourceManifestSha256': STAGE.sha256(manifest_path),
+                        'runtimeAttestationSha256': STAGE.sha256(attestation_path),
+                        'retainedBytes': sum(item['bytes'] for item in manifest['files'])})
+        receipt_path.write_text(json.dumps(receipt))
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('differs from exact-image security evidence', result.stderr)
+        self.assertFalse((self.root / 'bundle').exists())
 
     def test_changed_native_source_archive_is_rejected(self):
         command = self.inputs()

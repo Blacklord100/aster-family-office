@@ -111,7 +111,7 @@ def controller_evidence(root, binary):
     module.scan_messages((root / 'govulncheck.json').read_text())
 
 
-def image_evidence(root, image_inventory):
+def image_evidence(root, image_inventory, processor_source=None):
     gate = json.loads(checked_file(root, 'security-gate.json').read_text())
     images = {i['service']: i['imageId'] for i in image_inventory['images']}
     records = gate.get('scans', [])
@@ -154,16 +154,17 @@ def image_evidence(root, image_inventory):
                     or len(assessment.get('assessments', [])) != len(findings)):
                 raise ValueError('Processor assessment is not bound to the exact raw scan/runtime inputs')
             runtime_root = Path(__file__).resolve().parents[3] / 'processor/runtime'
+            reviewed_runtime = (processor_source / 'runtime') if processor_source else runtime_root
             modules = {}
             for name in ('security-assessment', 'verify-scan'):
                 spec = importlib.util.spec_from_file_location(name, runtime_root / (name + '.py'))
                 modules[name] = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(modules[name])
             rechecked = modules['security-assessment'].assess(manifest, scan, runtime, images[service],
-                json.loads((runtime_root / 'security-policy.json').read_text()),
-                (runtime_root / 'upstream-sources.json').read_bytes(), (runtime_root / 'security-regression.cc').read_bytes())
+                json.loads((reviewed_runtime / 'security-policy.json').read_text()),
+                (reviewed_runtime / 'upstream-sources.json').read_bytes(), (reviewed_runtime / 'security-regression.cc').read_bytes())
             rechecked['inventory'] = modules['verify-scan'].verify(manifest, scan,
-                (runtime_root.parent / 'requirements.lock.txt').read_text(), rechecked)
+                (reviewed_runtime.parent / 'requirements.lock.txt').read_text(), rechecked)
             if assessment != rechecked:
                 raise ValueError('Retained processor assessment differs from independent current-policy verification')
 
@@ -205,6 +206,18 @@ def native_source_evidence(root, image_id, policy_root):
     actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
     if actual != retained:
         raise ValueError('Native source retained files differ from the complete receipt inventory')
+
+
+def processor_source_evidence(root, image_id, processor_source, raw_runtime_manifest):
+    spec = importlib.util.spec_from_file_location('processor_source_collection', Path(__file__).with_name('collect-processor-sources.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.verify_receipt(root, image_id, processor_source)
+    if module.exporter().read_json(root / 'build/runtime-manifest.json') != module.exporter().read_json(raw_runtime_manifest):
+        raise ValueError('Custom source runtime manifest differs from exact-image security evidence')
+    # Freeze every validated byte so a changed source cannot be adopted on copy.
+    for item in module.exporter().files(root):
+        checked_file(root, item['path'], item['sha256'], item['bytes'])
 
 
 def main():
@@ -257,7 +270,7 @@ def main():
     expected_ids = {i['service']: i['imageId'] for i in image_inventory['images']}
     if gate.get('imageIds') != expected_ids:
         raise ValueError('Security receipt does not cover the exact five image IDs')
-    image_evidence(args.compliance / 'sbom', image_inventory)
+    image_evidence(args.compliance / 'sbom', image_inventory, args.source / 'processor')
     # Validate the entire input before creating any output.
     for item in image_inventory['images']:
         if not re.fullmatch(r'sha256:[0-9a-f]{64}', item['imageId']):
@@ -276,6 +289,7 @@ def main():
     controller_evidence(args.compliance / 'controller', args.asterctl)
     native_policy_root = args.source / 'licenses/native/sharp-libvips-1.3.3'
     native_source_evidence(args.compliance / 'licenses/native-sources', expected_ids['app'], native_policy_root)
+    processor_source_evidence(args.compliance / 'licenses/processor-custom-sources', expected_ids['processor'], args.source / 'processor', args.compliance / 'sbom/processor-runtime-manifest.json')
     if args.output.exists():
         raise ValueError('Refusing an existing bundle directory')
     args.output.mkdir(parents=True)
@@ -315,9 +329,10 @@ def main():
     copy_file(args.source / 'operations/appliance/recovery.md', payload / 'docs/recovery.md')
     # Re-evaluate the copied artifacts; a passing input receipt does not authorize
     # a source file to change while staging is in progress.
-    image_evidence(payload / 'sbom', image_inventory)
+    image_evidence(payload / 'sbom', image_inventory, args.source / 'processor')
     controller_evidence(payload / 'sbom/controller', payload / 'bin/asterctl')
     native_source_evidence(payload / 'licenses/native-sources', expected_ids['app'], payload / 'licenses/project/third-party/native/sharp-libvips-1.3.3')
+    processor_source_evidence(payload / 'licenses/processor-custom-sources', expected_ids['processor'], args.source / 'processor', payload / 'sbom/processor-runtime-manifest.json')
     (payload / 'docs/distribution-status.json').write_text(json.dumps({
         'schemaVersion': 1, 'distributionReady': False, 'scope': 'Internal signed test candidate only',
         'remainingObligations': ['Corresponding-source closure for OS packages and runtime-service images',

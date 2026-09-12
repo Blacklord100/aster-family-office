@@ -122,10 +122,37 @@ jobs:
         id: build_processor
         if: ${{ !cancelled() }}
         run: docker build -f processor/Dockerfile -t aster-processor:verify processor
+      - name: Verify detached processor source tamper controls without Docker
+        if: ${{ !cancelled() }}
+        run: python3 -m unittest discover -s processor/runtime -p 'test_export_sources.py' -v
       - name: Verify app runtime identity and filesystem controls
         if: ${{ !cancelled() && steps.build_web.outcome == 'success' }}
         run: |
           docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint node aster-web:verify -e "if(process.getuid()===0)process.exit(1);try{require('fs').writeFileSync('/app/forbidden','x');process.exit(1)}catch(e){if(e.code!=='EROFS'&&e.code!=='EACCES')throw e}"
+      - name: Export and verify custom processor originals against the exact image
+        id: processor_sources
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
+        run: |
+          docker build --platform linux/amd64 -f processor/Dockerfile --target source-evidence \
+            --output "type=local,dest=$RUNNER_TEMP/processor-source-export" processor
+          processor_image_id="$(docker image inspect --format '{{.Id}}' aster-processor:verify)"
+          python3 operations/appliance/scripts/collect-processor-sources.py \
+            --export "$RUNNER_TEMP/processor-source-export" --image-id "$processor_image_id" \
+            --output "$RUNNER_TEMP/processor-custom-sources"
+          python3 operations/appliance/scripts/collect-processor-sources.py --verify \
+            --export "$RUNNER_TEMP/processor-custom-sources" --image-id "$processor_image_id"
+      - name: Retain custom processor sources and exact-image receipt
+        if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: processor-custom-sources
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/processor-source-export
+            ${{ runner.temp }}/processor-custom-sources/receipt.json
+            ${{ runner.temp }}/processor-custom-sources/runtime-attestation.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Verify processor runtime identity
         if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         run: |

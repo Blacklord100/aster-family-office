@@ -1,10 +1,13 @@
 // Copyright 2026 Aster contributors. Apache-2.0.
-// Serialized network cases are adapted from Tesseract's Apache-2.0 upstream
-// fullyconnected_test.cc and lstm_layer_test.cc (retained in source-provenance).
+// Serialized cases are adapted from Tesseract's Apache-2.0 upstream tests
+// retained in the original security patches under source-provenance.
 // This build-only executable links the exact shared libraries shipped at runtime.
 #include "network.h"
 #include "serialis.h"
 #include "classify.h"
+#include "genericvector.h"
+#include "intproto.h"
+#include "unicharset.h"
 #include <tiffio.h>
 #include <cstdint>
 #include <cstdio>
@@ -74,6 +77,63 @@ void normproto() {
     require(classifier.NormProtos != nullptr, "normproto parse failed"); classifier.FreeNormProtos();
   }
 }
+void generic_vectors() {
+  // The callback loop must never run with a used count outside its allocation.
+  // Include negative counts, the allocation cap, and a valid two-element vector.
+  for (auto shape : {std::vector<int>{4,8,8}, {-1,-1,0}, {4,-1,0},
+                     {50000001,0,0}, {4,2,2}}) {
+    Bytes b; b.u32(shape[0]); b.u32(shape[1]);
+    for (int i=0;i<shape[2];i++) b.u32(i);
+    TFile fp; require(fp.Open(b.data.data(),b.data.size()),"vector fixture open failed");
+    GenericVector<int> values; int callbacks=0;
+    bool accepted=values.read(&fp,[&callbacks](TFile* file,int* value) {
+      callbacks++; return file->DeSerialize(value);
+    });
+    bool expected=shape[1]==2;
+    require(accepted==expected,"GenericVector count validation failed");
+    if (expected) require(values.size()==2 && values[0]==0 && values[1]==1 && callbacks==2,
+                          "valid GenericVector contents changed");
+    else require(callbacks==0,"invalid GenericVector entered callback loop");
+  }
+}
+void unicharsets() {
+  const char* inputs[]={"3\nA 0 Latin\nA 0 Latin\nB 0 Latin\n", "0\n", "-1\n",
+                        "3\nA 0 Latin\nB 0 Latin\nC 0 Latin\n"};
+  for (int i=0;i<4;i++) {
+    TFile fp; require(fp.Open(inputs[i],strlen(inputs[i])),"unicharset fixture open failed");
+    UNICHARSET chars;
+    require(chars.load_from_file(&fp,false)==(i==3),"unicharset count/duplicate regression failed");
+    if (i==3) require(chars.size()==3 && strcmp(chars.id_to_unichar(1),"B")==0,
+                       "valid unicharset contents changed");
+  }
+}
+void intprotos() {
+  // Exercise the deserializer directly so missing traineddata components cannot
+  // make negative initialization tests pass for an unrelated reason.
+  for (int scenario=0;scenario<5;scenario++) {
+    uint32_t unichars=scenario==3 ? MAX_NUM_CLASSES+1 : 1;
+    uint32_t pruners=scenario==0 ? MAX_NUM_CLASS_PRUNERS+1 : 0;
+    uint32_t classes=scenario==1 ? MAX_NUM_CLASSES+1 : (scenario==2 || scenario==4 ? 1 : 0);
+    Bytes b; b.u32(unichars); b.u32(static_cast<uint32_t>(scenario==3 ? -1 : -5));
+    b.u32(pruners); b.u32(classes);
+    if (classes==1) {
+      b.u8(0); b.u8(0); // uint16 NumProtos
+      b.u8(scenario==2 ? MAX_NUM_PROTO_SETS+1 : 0);
+      b.u8(scenario==4 ? MAX_NUM_CONFIGS+1 : 0);
+    }
+    TFile fp; require(fp.Open(b.data.data(),b.data.size()),"intproto fixture open failed");
+    Classify classifier; auto* parsed=classifier.ReadIntTemplates(&fp);
+    bool rejected=parsed==nullptr; delete parsed;
+    require(rejected,"unsafe intproto count was accepted");
+  }
+  // Complete valid version3 component: no classes/pruners and no font tables.
+  Bytes b; b.u32(0); b.u32(static_cast<uint32_t>(-3)); b.u32(0); b.u32(0);
+  TFile fp; require(fp.Open(b.data.data(),b.data.size()),"valid intproto fixture open failed");
+  Classify classifier; auto* parsed=classifier.ReadIntTemplates(&fp);
+  require(parsed!=nullptr,"valid intproto component was rejected");
+  bool correct=parsed->NumClasses==0 && parsed->NumClassPruners==0; delete parsed;
+  require(correct,"valid intproto counts changed");
+}
 void tiff() {
   // TIFFGetMaxCompressionRatio is part of the CVE-2026-36849 fix. Exercise
   // codec dispatch in the actual linked library, including a known-safe control.
@@ -104,7 +164,8 @@ void tiff() {
   TIFFClose(tif);
 }
 int main() {
-  try { dimensions(); normproto(); tiff(); }
+  try { dimensions(); normproto(); tiff(); generic_vectors(); unicharsets(); intprotos(); }
   catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
-  std::cout << "{\"schemaVersion\":1,\"networkCases\":12,\"normprotoCases\":3,\"tiffCodecCases\":3,\"passed\":true}\n";
+  std::cout << "{\"schemaVersion\":1,\"networkCases\":12,\"normprotoCases\":3,\"tiffCodecCases\":3,"
+               "\"genericVectorCases\":5,\"unicharsetCases\":4,\"intprotoCases\":6,\"passed\":true}\n";
 }
