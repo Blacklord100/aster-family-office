@@ -87,6 +87,40 @@ APT simulation and installation both forbid downloads and package removal. An
 incompatible existing Docker installation is refused, not replaced. The connected
 profile keeps inference local; separate mailbox/delivery setup is still required.
 
+For a connected office, choose optional services explicitly on the **initial**
+`install` command: add `--profile connected --optional-services mailbox,delivery`
+in place of `--profile offline`. Use `mailbox` or `delivery` alone to select only
+that service. Omit `--optional-services` to leave both disabled; offline installs
+reject it when nonempty. Selecting delivery also enables application email
+delivery. It is an authorization to run that worker, not provider credential setup
+or a cloud-inference switch.
+
+The choice is stored in `installation.json` and carried through continuation,
+update, backup and restore. Existing installations without this field have neither
+service enabled. There is no command to change the choice after installation yet;
+do not edit the generated `.env` file or installation/journal JSON, and do not rely
+on shell `COMPOSE_PROFILES`. Those overrides are deliberately not adopted.
+
+The appliance creates private `data/secrets/mailbox_providers` and
+`data/secrets/smtp_settings` files. Populate only the approved fields described in
+[mail provider setup](../../mailbox-oauth.md) and
+[SMTP setup](../../access-recovery-maintenance.md#optional-password-reset-delivery), preserving their
+existing ownership and private modes. These references describe credential
+formats; their legacy Compose commands are not appliance lifecycle commands.
+Selected workers start automatically and can access configured providers, so
+complete provider approval and host egress policy before making credentials live.
+For credential changes, use `asterctl stop --root /var/lib/aster` during an agreed
+maintenance window, update those private files, then use
+`asterctl resume --root /var/lib/aster` to restart the fleet with the new credentials.
+This restarts all services; it does not change the recorded optional-service choice.
+Do not put credentials in command arguments, public configuration or this repository.
+
+Fresh Gmail/Microsoft authorization is currently blocked in the appliance profile:
+its callback performs the token exchange in `web`, which deliberately has no
+external network or DNS route. The optional-service selection fixes worker
+lifecycle persistence; it does not yet qualify that OAuth connection flow. Keep
+web egress closed until a reviewed internal exchange path is implemented and tested.
+
 For customer PKI use `--tls-mode supplied --tls-cert /secure/server.crt
 --tls-key /secure/server.key`. Supply a matching, current leaf certificate and its
 chain. For internal TLS, distribute only the public CA certificate at
@@ -186,6 +220,12 @@ sudo asterctl restore --root /var/lib/aster-recovery \
 `--install-runtime` is needed on a fresh server without the exact bundled runtime;
 omit it only when those versions are already installed. The original server must
 remain fenced even when recovery is performed on another host.
+Before starting recovery, isolate the destination's incoming traffic/intake and
+outbound provider access. `restore` and `continue-restore` automatically start and
+resume the restored fleet after their built-in checks, including optional services
+selected on the original connected installation. They do not pause for operator
+inspection, and pending local work can run. Keep provider credentials and host
+egress fenced until financial/archive checks and duplicate-delivery review pass.
 
 The byte limit also reserves that much free capacity before extraction; choose it
 above the known restored size. Existing directories are refused. The outer encrypted

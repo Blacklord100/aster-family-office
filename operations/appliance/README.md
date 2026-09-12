@@ -155,10 +155,25 @@ and captures external DNS and direct-IP attempts on the actual target.
 
 Connected: local processing remains internal. An explicitly enabled `mailbox`
 profile can access configured mail providers; the `delivery` profile can reach
-configured SMTP. Both are omitted by default and require separate provider setup.
+configured SMTP. Select them only at initial installation with
+`--profile connected --optional-services mailbox,delivery`, or select just one
+name. Omission leaves both disabled, including on existing installations. The
+controller records this choice and preserves it through update, restart and
+restore; offline installations reject any optional network service. Separate
+provider/SMTP credentials and office connections are still required. Delivery
+selection enables application email delivery, so configure it only for an office
+authorized to send mail. See the [operator setup guide](cli/README.md#first-installation).
+Changing this selection on an installed appliance is not yet supported; do not
+edit generated environment files or use ambient `COMPOSE_PROFILES` as a workaround.
 The collector has database access needed to retain mail but no route to private
 inference. Its authorized provider access is a confidentiality boundary; this
 mode is not an end-to-end air gap. Cloud inference is not enabled by this profile.
+**Connected OAuth remains unqualified:** the current authorization callback
+exchanges provider tokens in `web`, whose appliance networks and DNS remain
+internal. Selecting the mailbox worker does not enable a fresh Gmail/Microsoft
+connection through that callback. A reviewed internal exchange path and its
+qualification are still required; do not attach `web` to an egress network to
+work around this limitation.
 
 TLS: `internal` creates a fresh local CA in protected persistent Caddy storage.
 Distribute only its public root certificate to customer browsers through office

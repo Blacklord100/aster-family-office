@@ -1,8 +1,64 @@
 # Processor release blockers
 
-## Current baseline and security candidate — 12 September 2026
+## Current processor image qualified — 12 September 2026
 
-The latest completed baseline is commit `0e0bed07a2867118e75aa00bda110b9bc6a36bdd`,
+Commit `25118b8f74c056a973661542aea67554a7f85a4f` passed both jobs in
+[Verify release run 34710535770](https://github.com/Blacklord100/aster-family-office/actions/runs/34710535770).
+The qualified processor image is
+`sha256:768bb1f0c558c80b0155e909e4c59c6c8bebb042fc397c6b71021baecc0e2b55`.
+Its actual Linux build passed **33 native security cases**: 12 network
+deserialization, 3 normproto, 3 TIFF, 5 GenericVector, 4 unicharset and 6 intproto
+cases, including valid controls. The completed image passed nonroot/read-only
+identity checks, authenticated OCR without network or a model, PNG/JPEG/TIFF
+round trips, and **625 processor tests in the built runtime**. The web-image and
+repository secret scans also passed.
+
+The retained Trivy scan, created `2026-09-12T18:20:50.821589506Z`, still reports
+**nine HIGH findings**, all without a scanner `FixedVersion`. It is not a
+zero-finding scan. The independent exact-image assessment passed with **zero
+unassessed HIGH/CRITICAL findings** and records the following dispositions:
+
+| CVE | Retained package | Exact-image disposition and evidence |
+| --- | --- | --- |
+| [CVE-2026-36849](https://security-tracker.debian.org/tracker/CVE-2026-36849) | `libtiff6 4.7.2-1+aster1` | Fixed: signed libtiff 4.7.2, verified decoder linkage and malformed-strip regression. |
+| [CVE-2026-52490](https://security-tracker.debian.org/tracker/CVE-2026-52490) | `libtiff6 4.7.2-1+aster1` | Not affected: affected `tiffcrop` executable absent from both inventory and actual runtime; signed 4.7.2 also contains the upstream fix. |
+| [CVE-2026-73066](https://security-tracker.debian.org/tracker/CVE-2026-73066) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: signed Tesseract 5.5.3 and malformed Convolve/Reconfig deserialization controls. |
+| [CVE-2026-88047](https://security-tracker.debian.org/tracker/CVE-2026-88047) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `1bda507` backport and bounded normproto cases. |
+| [CVE-2026-88048](https://security-tracker.debian.org/tracker/CVE-2026-88048) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `103dc134` backport and mismatched/valid FullyConnected cases. |
+| [CVE-2026-88049](https://security-tracker.debian.org/tracker/CVE-2026-88049) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `b494ac18` backport and malformed/valid LSTM cases. |
+| [CVE-2026-88051](https://security-tracker.debian.org/tracker/CVE-2026-88051) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `56e09ca` backport and GenericVector bounds cases with a valid control. |
+| [CVE-2026-88052](https://security-tracker.debian.org/tracker/CVE-2026-88052) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `2d04d64` backport and duplicate/non-positive unicharset cases with a valid control. |
+| [CVE-2026-88053](https://security-tracker.debian.org/tracker/CVE-2026-88053) | `tesseract-ocr 5.5.3-1+aster3` | Fixed: pinned upstream `8b05746` backport plus the required `b27e1bd` initialization hunk; five malformed intproto count cases and a complete valid version-3 control. |
+
+Inventory coverage passed: all 27 retained native package identities appear among
+34 scanned OS packages, and all 32 locked Linux Python packages are represented.
+The assessment binds the raw scan, source/backport/configuration/harness evidence
+and inspected runtime files to the exact image above. An independent local replay
+of the retained artifact produced the same assessment. Unknown advisories,
+changed severity or package identity, stale scans and missing/mismatched evidence
+still fail the gate. Canonical Debian source identities and all raw findings are
+preserved; no scanner exclusions or ignored statuses were added.
+
+The seven retained upstream patch records are unsigned official HTTPS downloads,
+SHA256-pinned with exact preimage/postimage checks and zero fuzz; they are not
+claimed to be signed releases. The Tesseract base tag and libtiff base archive
+retain separate signature verification. This run also passed detached original
+source collection and its exact-image runtime attestation, retaining the reviewed
+Tesseract/libtiff/Pillow originals, build recipe, backports and receipts. That
+source closure has a declared component scope; the complete appliance's other
+native libraries and OS components have separate distribution gates.
+
+The run retains `processor-image-security` and `processor-custom-sources`
+artifacts. The security artifact ZIP has SHA256
+`7c95ecc04416ad7e4e699be5f729f25a336146f0386091499cdbf4562c987df6`,
+verified against GitHub's artifact digest. The raw scan's canonical digest is
+`2b45767716889bedc1c96fd279932ea314faaecabafde827842606dd14118cdf`.
+This qualifies this processor image; it does not qualify a subsequent image or
+complete the appliance's remaining packaging and full-host recovery checks.
+
+## Historical six-finding baseline and initial candidate — 12 September 2026
+
+The pre-backport baseline was commit `0e0bed07a2867118e75aa00bda110b9bc6a36bdd`,
 [CI run 34580076948](https://github.com/Blacklord100/aster-family-office/actions/runs/34580076948).
 It passed 801 application tests, 90 database integrations (including 16 archive
 cases), 637 host Python tests and 625 built-runtime processor tests. Application
@@ -10,8 +66,9 @@ build, migrations, npm audit, web-image scan, repository checkout secret scan an
 network-disabled authenticated OCR passed. The processor security gate failed with
 **six HIGH findings**, all with no scanner `FixedVersion`: two libtiff and four
 Tesseract advisories. Inventory coverage passed: 27/27 retained native identities
-within 34 OS packages and 32/32 locked Linux Python packages. The older three-CVE
-records below are historical evidence, not the current finding count.
+within 34 OS packages and 32/32 locked Linux Python packages. This and all dated
+candidate sections below retain historical evidence; their counts and blocked
+statuses do not describe the qualified image above.
 
 | CVE | Baseline component | Current source evidence and candidate action |
 | --- | --- | --- |
@@ -95,8 +152,8 @@ At verification, the [NVD API for 73066](https://services.nvd.nist.gov/rest/json
 
 Before release:
 
-1. Preserve and repeat the authenticated source, native linkage, superseded-payload removal and functional evidence for each new image revision. The latest built-runtime checks passed for `c9beb14`; the original authenticated-source evidence is retained below.
-2. Retain truthful upstream source/SBOM identities and complete Debian dependency inventories; verify every retained component remains covered. Retained runtime inventory coverage passed for `c9beb14`, while the separate application SBOM step was skipped.
-3. Resolve the outstanding advisory/coverage qualification and pass the image-security gate. Require scanner canaries that detect the known vulnerable versions, plus explicit evidence for the official fixes. Missing coverage keeps the gate blocked; no release exception is granted by this record.
+1. Preserve and repeat authenticated source, native linkage, superseded-payload removal and functional evidence for every new image revision; the exact qualified image and run are recorded at the top.
+2. Retain truthful upstream source/SBOM identities and complete dependency inventories; verify every retained native and locked Python component remains covered.
+3. Pass the raw scan and independent exact-image assessment with complete reviewed evidence. Require negative controls that reject known vulnerable versions, missing patches and altered runtime files. New or unassessed findings and missing coverage keep the gate blocked; a previous image's receipt cannot qualify a new build.
 
 Do not clear findings through exclusions, ignored statuses, deleted metadata, or version-only relabeling.

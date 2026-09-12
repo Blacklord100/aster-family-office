@@ -528,6 +528,9 @@ func (c Controller) Restore(ctx context.Context, input, identity, backupSHA, tru
 	if s.Format != 1 || !identifier.MatchString(s.ReleaseID) {
 		return fmt.Errorf("invalid recovered installation")
 	}
+	if e = validateOptionalServices(s.Profile, s.OptionalServices); e != nil {
+		return e
+	}
 	if s.RootSHA != trustedSHA {
 		return fmt.Errorf("recovery belongs to another publisher trust root")
 	}

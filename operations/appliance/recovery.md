@@ -43,7 +43,9 @@ on a second host before accepting the office's recovery objectives.
    management plane; removing DNS alone is insufficient. Record who fenced it.
 2. Verify the spare host, clock, runtime/platform, trusted publisher root, retained
    release and backup hashes. Place the spare on an isolated network with mail,
-   delivery and cloud routes disabled during the recovery drill.
+   delivery and cloud routes disabled during the recovery drill. Fence external
+   credential use and incoming client/intake traffic before starting recovery;
+   copied credentials must not reach real providers during validation.
 3. Restore with the offline age identity and explicit old-primary-fenced
    acknowledgement. Restore to a new private installation root; never overwrite
    unrelated files or merge independent databases. Keep the recovery journal and
@@ -54,13 +56,20 @@ on a second host before accepting the office's recovery objectives.
    never trust a publisher root found only inside an encrypted backup. Recovery
    of a historical release uses its pinned verification receipt and the original
    TUF verification time; ordinary updates still enforce current expiry.
+   `restore` and `continue-restore` start the restored fleet and automatically
+   resume its writer generation after their built-in checks. They do not pause
+   for manual financial inspection. The original connected installation's selected
+   mailbox/delivery services are preserved. Pending local work can run after this point;
+   keep the destination isolated until the following checks are complete.
 4. Verify database decryption, accepted financial history, family/entity access
    boundaries, archive receipt/file hashes (including purged originals), intake and
    pending work, secrets/TLS/model identity and schema/writer generation. Confirm
    restored sessions are revoked according to the controller's recovery policy.
 5. Check account/MFA recovery through customer controls. Validate HTTPS from a
-   separately trusted client, then resume one writer fleet. Connect mail/delivery
-   only after duplicate-delivery checks and operator approval for the real office.
+   separately trusted client and confirm that only the recovered fleet is writable.
+   Permit mail/delivery access only after duplicate-delivery checks and operator
+   approval for the real office. Do not issue a second resume merely because this
+   checklist has reached this step.
 6. Move the service address, measure data loss and elapsed restoration time, and
    retain the restore receipt. Keep the old primary fenced until it is rebuilt
    from the current approved state. Never let an old writer rejoin by changing DNS.

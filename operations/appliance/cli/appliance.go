@@ -30,20 +30,21 @@ import (
 )
 
 type Installation struct {
-	Format            int    `json:"format"`
-	Root              string `json:"root"`
-	ReleaseID         string `json:"releaseId"`
-	Sequence          int64  `json:"sequence"`
-	Generation        int    `json:"generation"`
-	Project           string `json:"project"`
-	Hostname          string `json:"hostname"`
-	Profile           string `json:"profile"`
-	TLSMode           string `json:"tlsMode"`
-	RootSHA           string `json:"rootSha256"`
-	RecoveryRecipient string `json:"recoveryRecipient"`
-	InstalledAt       string `json:"installedAt"`
-	ManifestSHA       string `json:"manifestSha256"`
-	VerifiedAt        string `json:"verifiedAt"`
+	Format            int      `json:"format"`
+	Root              string   `json:"root"`
+	ReleaseID         string   `json:"releaseId"`
+	Sequence          int64    `json:"sequence"`
+	Generation        int      `json:"generation"`
+	Project           string   `json:"project"`
+	Hostname          string   `json:"hostname"`
+	Profile           string   `json:"profile"`
+	OptionalServices  []string `json:"optionalServices,omitempty"`
+	TLSMode           string   `json:"tlsMode"`
+	RootSHA           string   `json:"rootSha256"`
+	RecoveryRecipient string   `json:"recoveryRecipient"`
+	InstalledAt       string   `json:"installedAt"`
+	ManifestSHA       string   `json:"manifestSha256"`
+	VerifiedAt        string   `json:"verifiedAt"`
 }
 type Journal struct {
 	Operation            string        `json:"operation"`
@@ -132,6 +133,9 @@ func (c Controller) load() (Installation, error) {
 	if e == nil && (s.Format != 1 || s.Root != c.Root || !identifier.MatchString(s.ReleaseID) || !identifier.MatchString(s.Project) || s.Generation < 1) {
 		e = fmt.Errorf("invalid installation state")
 	}
+	if e == nil {
+		e = validateOptionalServices(s.Profile, s.OptionalServices)
+	}
 	return s, e
 }
 func (c Controller) journal(j *Journal, phase string) error {
@@ -186,6 +190,9 @@ func (c Controller) manifest(s Installation) (*Manifest, error) {
 	return &m, m.Validate()
 }
 func (c Controller) compose(ctx context.Context, s Installation, in io.Reader, out io.Writer, args ...string) ([]byte, error) {
+	if e := validateOptionalServices(s.Profile, s.OptionalServices); e != nil {
+		return nil, e
+	}
 	m, e := c.manifest(s)
 	if e != nil {
 		return nil, e
@@ -195,10 +202,17 @@ func (c Controller) compose(ctx context.Context, s Installation, in io.Reader, o
 		file = m.Compose.Connected
 	}
 	base := []string{"compose", "--project-name", s.Project, "--env-file", filepath.Join(c.Root, "config", s.ReleaseID+".env"), "--file", filepath.Join(c.release(s), file)}
+	for _, service := range s.OptionalServices {
+		base = append(base, "--profile", service)
+	}
 	return c.Commands.Run(ctx, in, out, "docker", append(base, args...)...)
 }
 func (c Controller) writeEnv(s Installation, m *Manifest) error {
+	if e := validateOptionalServices(s.Profile, s.OptionalServices); e != nil {
+		return e
+	}
 	vars := map[string]string{"ASTER_PROJECT_NAME": s.Project, "ASTER_DATA_ROOT": filepath.Join(c.Root, "data"), "ASTER_RELEASE_ROOT": c.release(s), "ASTER_RELEASE_ID": s.ReleaseID, "ASTER_WRITER_GENERATION": strconv.Itoa(s.Generation), "ASTER_SCHEMA_MIN": strconv.Itoa(m.Schema.Min), "ASTER_SCHEMA_MAX": strconv.Itoa(m.Schema.Max), "ASTER_DOMAIN": s.Hostname, "BETTER_AUTH_URL": "https://" + s.Hostname, "ASTER_TLS_MODE": s.TLSMode, "OLLAMA_MODEL": m.Model.Name}
+	vars["EMAIL_DELIVERY_ENABLED"] = strconv.FormatBool(s.hasOptionalService("delivery"))
 	names := map[string]string{"app": "ASTER_IMAGE", "processor": "PROCESSOR_IMAGE", "postgres": "POSTGRES_IMAGE", "ollama": "OLLAMA_IMAGE", "caddy": "CADDY_IMAGE"}
 	for _, im := range m.Images {
 		vars[names[im.Service]] = im.Reference
@@ -612,6 +626,14 @@ func (c Controller) checkTLS(ctx context.Context, s Installation) error {
 	return nil
 }
 func (c Controller) Install(ctx context.Context, opt InstallOptions) error {
+	if opt.Continue && len(opt.OptionalServices) != 0 {
+		return fmt.Errorf("continue-install preserves the original optional services; they cannot be changed")
+	}
+	if !opt.Continue {
+		if e := validateOptionalServices(opt.Profile, opt.OptionalServices); e != nil {
+			return e
+		}
+	}
 	if e := platformPreflight(); e != nil {
 		return e
 	}
@@ -635,6 +657,9 @@ func (c Controller) Install(ctx context.Context, opt InstallOptions) error {
 			return fmt.Errorf("there is no interrupted installation to continue")
 		}
 		s = *j.Candidate
+		if e = validateOptionalServices(s.Profile, s.OptionalServices); e != nil {
+			return e
+		}
 		m, e = c.manifest(s)
 		if e != nil {
 			return e
@@ -664,6 +689,7 @@ func (c Controller) Install(ctx context.Context, opt InstallOptions) error {
 			return e
 		}
 		s = Installation{Format: 1, Root: c.Root, ReleaseID: m.ReleaseID, Sequence: m.Sequence, Generation: 1, Project: "aster-" + id()[:8], Hostname: opt.Hostname, Profile: opt.Profile, TLSMode: opt.TLSMode, RootSHA: opt.TrustSHA, RecoveryRecipient: opt.Recipient, InstalledAt: time.Now().UTC().Format(time.RFC3339), ManifestSHA: fingerprint(m.raw), VerifiedAt: time.Now().UTC().Format(time.RFC3339)}
+		s.OptionalServices = append([]string(nil), opt.OptionalServices...)
 		if e = atomicWrite(filepath.Join(c.Root, "trust", "initial-root.json"), m.trustedRoot, 0644); e != nil {
 			return e
 		}
@@ -774,6 +800,7 @@ func (c Controller) Install(ctx context.Context, opt InstallOptions) error {
 
 type InstallOptions struct {
 	Bundle, TrustRoot, TrustSHA, Hostname, Profile, TLSMode, Recipient, CertFile, KeyFile string
+	OptionalServices                                                                      []string
 	InstallRuntime, Continue                                                              bool
 }
 

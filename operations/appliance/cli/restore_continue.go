@@ -65,6 +65,9 @@ func validateRestoreJournal(root string, j *Journal) error {
 	if s.Format != 1 || s.Root != root || !identifier.MatchString(s.ReleaseID) || !identifier.MatchString(s.Project) || s.Generation < 1 || (s.Profile != "offline" && s.Profile != "connected") {
 		return fmt.Errorf("restore journal does not identify this isolated destination")
 	}
+	if err := validateOptionalServices(s.Profile, s.OptionalServices); err != nil {
+		return err
+	}
 	switch j.Phase {
 	case "database-restored":
 		if j.ActivationID != "" || j.ActivationGeneration != 0 {

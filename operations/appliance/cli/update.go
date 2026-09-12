@@ -70,6 +70,14 @@ func (c Controller) Update(ctx context.Context, bundle, backup string, continuin
 		return e
 	}
 	defer unlock()
+	return c.updateOperation(ctx, bundle, backup, continuing)
+}
+
+// The public operation always holds the host lock and passes platform preflight.
+// Keeping its journal execution separate also allows inert Commander regressions
+// to exercise interruption branches without a Docker daemon or host mutation.
+func (c Controller) updateOperation(ctx context.Context, bundle, backup string, continuing bool) error {
+	var e error
 	var j Journal
 	var m *Manifest
 	if continuing {
@@ -82,6 +90,9 @@ func (c Controller) Update(ctx context.Context, bundle, backup string, continuin
 		}
 		if j.Operation != "update" || j.Phase == "complete" || j.Candidate == nil || j.Previous == nil {
 			return fmt.Errorf("there is no interrupted update to continue")
+		}
+		if e = validateUpdateNetworkPolicy(*j.Previous, *j.Candidate); e != nil {
+			return e
 		}
 		if backup != "" {
 			if j.BackupSHA != "" {
@@ -128,6 +139,9 @@ func (c Controller) Update(ctx context.Context, bundle, backup string, continuin
 		}
 	}
 	old, next := *j.Previous, *j.Candidate
+	if e = validateUpdateNetworkPolicy(old, next); e != nil {
+		return e
+	}
 	oldManifest, e := c.manifest(old)
 	if e != nil {
 		return e

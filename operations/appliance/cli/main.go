@@ -72,6 +72,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	identity := f.String("identity", "", "private age recovery identity file (0600)")
 	hostname := f.String("hostname", "", "DNS hostname, without scheme or port")
 	profile := f.String("profile", "offline", "offline or connected; inference stays local in both")
+	optionalServices := f.String("optional-services", "", "initial connected install only: mailbox, delivery, or mailbox,delivery; omitted disables both")
 	tlsMode := f.String("tls-mode", "internal", "internal private CA or supplied certificate")
 	cert := f.String("tls-cert", "", "supplied TLS certificate chain PEM")
 	key := f.String("tls-key", "", "supplied TLS private key PEM")
@@ -100,6 +101,15 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	if len(f.Args()) != 0 {
 		return fmt.Errorf("unexpected positional arguments")
+	}
+	optionalServicesSet := false
+	f.Visit(func(value *flag.Flag) {
+		if value.Name == "optional-services" {
+			optionalServicesSet = true
+		}
+	})
+	if optionalServicesSet && name != "install" {
+		return fmt.Errorf("--optional-services is an initial-install choice; other operations preserve the installed setting")
 	}
 	ctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -167,12 +177,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		fmt.Fprintln(out, recipient)
 		return nil
 	case "install", "continue-install":
+		services, err := parseOptionalServices(*profile, *optionalServices)
+		if err != nil {
+			return err
+		}
 		if *tlsMode == "supplied" {
 			if _, e = tls.LoadX509KeyPair(*cert, *key); e != nil {
 				return fmt.Errorf("supplied certificate/key pair is invalid: %w", e)
 			}
 		}
-		e = c.Install(ctx, InstallOptions{Bundle: *bundle, TrustRoot: *trustRoot, TrustSHA: *trustSHA, Hostname: *hostname, Profile: *profile, TLSMode: *tlsMode, Recipient: *recipient, CertFile: *cert, KeyFile: *key, InstallRuntime: *installRuntime, Continue: name == "continue-install"})
+		e = c.Install(ctx, InstallOptions{Bundle: *bundle, TrustRoot: *trustRoot, TrustSHA: *trustSHA, Hostname: *hostname, Profile: *profile, OptionalServices: services, TLSMode: *tlsMode, Recipient: *recipient, CertFile: *cert, KeyFile: *key, InstallRuntime: *installRuntime, Continue: name == "continue-install"})
 		if e == nil {
 			installed, err := c.load()
 			if err != nil {
