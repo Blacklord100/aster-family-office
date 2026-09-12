@@ -8,3 +8,6 @@ benchmark/mailroom-v1/fixtures/emails/*.eml binary
 # whitespace in public-key armor headers; never normalize those source files.
 processor/runtime/source-provenance/* -text
 processor/runtime/source-provenance/*.asc whitespace=-blank-at-eol
+# Native recipe/source evidence retains exact upstream bytes and patch context.
+licenses/native/sharp-libvips-1.3.3/** -text
+licenses/native/sharp-libvips-1.3.3/metadata/*.patch whitespace=-blank-at-eol

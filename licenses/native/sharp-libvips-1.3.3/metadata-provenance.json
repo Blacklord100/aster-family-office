@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "metadata/glib-gvdb.wrap",
+      "url": "https://raw.githubusercontent.com/GNOME/glib/2.89.4/subprojects/gvdb.wrap",
+      "sha256": "d669f93cb531a04d719dcc5b790838452c918eea0a6134ae2bf17b470eb7838c",
+      "bytes": 163
+    },
+    {
+      "path": "metadata/librsvg-Cargo.lock",
+      "url": "https://raw.githubusercontent.com/GNOME/librsvg/2.62.91/Cargo.lock",
+      "sha256": "fcca33feb66f75fb02199902cee0a5072cb491020d655463dfeffffc9d626941",
+      "bytes": 84674
+    },
+    {
+      "path": "metadata/glib-without-gregex.patch",
+      "url": "https://gist.github.com/kleisauke/284d685efa00908da99ea6afbaaf39ae/raw/bdad5489a61c217850631571caf57f5db6ea8b2c/glib-without-gregex.patch",
+      "sha256": "b1f2930a11292e529de137c7eb723850e0cc0969b1a2b0358196389312acd272",
+      "bytes": 7759
+    },
+    {
+      "path": "metadata/mozjpeg-f90668e0.patch",
+      "url": "https://github.com/mozilla/mozjpeg/commit/f90668e0e4fb79c81e1f24a0ccc0e2090af761bf.patch",
+      "sha256": "a65f87cadf3a6052e44d6314c906f6e2891352f82646b8a6f0b8fcf2c1891e7c",
+      "bytes": 8103
+    },
+    {
+      "path": "metadata/libultrahdr-383.patch",
+      "url": "https://patch-diff.githubusercontent.com/raw/google/libultrahdr/pull/383.patch",
+      "sha256": "57658db2a11ae964755e513b01db21bcfa408c350b11b3a6ef9bc8576fb749ba",
+      "bytes": 7567
+    },
+    {
+      "path": "metadata/libvips-cpp-soversion.patch",
+      "url": "https://gist.githubusercontent.com/lovell/313a6901e9db1bf285f2a1f1180499e4/raw/3988223c7dfa4d22745d9392034b0117abef1446/libvips-cpp-soversion.patch",
+      "sha256": "256b7d6f8c973bb53b20cff5171c7117d6b35d3aa4e72d22cb906f4fe1e2c890",
+      "bytes": 514
+    },
+    {
+      "path": "metadata/LGPL-3.0.txt",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/LGPL-3.0-or-later.txt",
+      "sha256": "996af0513df21f7496288951c41428a03c174e9e4a9d63665c57d670f845ccb1",
+      "bytes": 42098
+    },
+    {
+      "path": "metadata/GPL-3.0.txt",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/GPL-3.0-or-later.txt",
+      "sha256": "fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0",
+      "bytes": 34674
+    }
+  ]
+}

@@ -98,7 +98,7 @@ func TestManifestRejectsAmbiguity(t *testing.T) {
 	}
 }
 func TestPayloadRejectsTamperAndLinks(t *testing.T) {
-	for _, kind := range []string{"modified", "missing", "unlisted", "symlink", "hardlink"} {
+	for _, kind := range []string{"modified", "missing", "unlisted", "symlink", "hardlink", "executable-mode", "special-mode"} {
 		t.Run(kind, func(t *testing.T) {
 			dir, m := fixture(t)
 			target := filepath.Join(dir, m.Files[0].Path)
@@ -114,6 +114,14 @@ func TestPayloadRejectsTamperAndLinks(t *testing.T) {
 				os.Symlink(filepath.Join(dir, m.Files[1].Path), target)
 			case "hardlink":
 				os.Link(target, filepath.Join(t.TempDir(), "alias"))
+			case "executable-mode":
+				if e := os.Chmod(target, 0755); e != nil {
+					t.Fatal(e)
+				}
+			case "special-mode":
+				if e := os.Chmod(target, 0644|os.ModeSetuid); e != nil {
+					t.Fatal(e)
+				}
 			}
 			if e := verifyPayload(dir, m); e == nil {
 				t.Fatal("unsafe payload accepted")

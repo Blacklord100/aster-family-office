@@ -27,6 +27,20 @@ asterctl verify --bundle /media/aster/release \
   --trust-root-sha256 PUBLISHER_ROOT_SHA256
 ```
 
+For a download containing `parts.json` and numbered parts, use the independently
+trusted controller to unpack it into a new directory:
+
+```sh
+asterctl unpack --input /media/download/parts.json --output /media/aster/release \
+  --trust-root /media/trusted/initial-root.json \
+  --trust-root-sha256 PUBLISHER_ROOT_SHA256 --max-unpack-gib 64
+```
+
+Unpacking checks the consumed part hashes, bounds expansion, rejects unsafe archive
+entries and verifies current TUF metadata plus every payload file before publishing
+the output directory. Existing destinations are refused. Transport hashes alone
+do not authenticate a release. The size limit must exceed the expanded release.
+
 The standalone check has no previous installation state. Installation and update
 add persistent TUF version/expiry checks, a strictly increasing release sequence,
 exact runtime and image checks, payload path/link checks, and another verification

@@ -8,7 +8,7 @@ import { createOTP } from '@better-auth/utils/otp';
 import { base32 } from '@better-auth/utils/base32';
 
 const [phase, root, privateState, output] = process.argv.slice(2);
-assert(['initial', 'restored'].includes(phase));
+assert(['initial', 'restart', 'restored', 'updated', 'maintenance'].includes(phase));
 assert(root && privateState && output);
 const installation = JSON.parse(await fs.readFile(root + '/installation.json', 'utf8'));
 assert.equal(installation.hostname, 'aster-qualification.example.invalid');
@@ -17,6 +17,7 @@ const origin = 'https://' + installation.hostname;
 const ca = await fs.readFile(root + '/data/caddy/data/caddy/pki/authorities/local/root.crt');
 const state = JSON.parse(await fs.readFile(privateState, 'utf8'));
 const cookies = new Map();
+if(phase!=='initial')for(const [name,value] of state.sessionCookies||[])cookies.set(name,value);
 let organizationId;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const checks = [];
@@ -47,7 +48,7 @@ function call(path, method = 'GET', body, type = 'application/json') {
         resolve({status:response.statusCode,headers:response.headers,bytes:raw,json});
       });
     });
-    request.on('error',reject);request.setTimeout(30000,()=>request.destroy(new Error('QA request timeout')));
+    request.on('error',reject);request.setTimeout(30000,()=>request.destroy(Object.assign(new Error('QA request timeout'),{code:'ETIMEDOUT'})));
     if(bytes)request.write(bytes);request.end();
   });
 }
@@ -57,6 +58,15 @@ async function ok(path, method, body, type) {
   return result;
 }
 async function json(path,method,body){return (await ok(path,method,body)).json;}
+async function authenticatedWorkspace(){
+  const session=await json('/api/auth/get-session');assert(session?.session?.mfaVerifiedAt);
+  assert.equal(session.user.email,state.email);
+  if(state.userId)assert.equal(session.user.id,state.userId);else state.userId=session.user.id;
+  const workspace=await json('/api/workspace');assert.equal(workspace.officeName,'SYNTHETIC appliance qualification');
+  organizationId=workspace.identity.organizationId;
+  if(state.organizationId)assert.equal(organizationId,state.organizationId);else state.organizationId=organizationId;
+  return workspace;
+}
 async function login(){
   const result=await ok('/api/auth/sign-in/email','POST',{email:state.email,password:state.password});
   assert((result.headers['set-cookie']||[]).some(c=>/httponly/i.test(c)&&/secure/i.test(c)&&/samesite=lax/i.test(c)));
@@ -67,10 +77,7 @@ async function login(){
     state.totpSecret=new TextDecoder().decode(base32.decode(new URL(enrollment.totpURI).searchParams.get('secret')));
   }
   await ok('/api/auth/two-factor/verify-totp','POST',{code:await createOTP(state.totpSecret).totp()});
-  const session=await json('/api/auth/get-session');assert(session.session.mfaVerifiedAt);
-  const workspace=await json('/api/workspace');assert.equal(workspace.officeName,'SYNTHETIC appliance qualification');
-  organizationId=workspace.identity.organizationId;
-  if(state.organizationId)assert.equal(organizationId,state.organizationId);else state.organizationId=organizationId;
+  const workspace=await authenticatedWorkspace();
   checks.push('TLS certificate and hostname verified; actual owner sign-in and MFA succeeded');
   return workspace;
 }
@@ -180,7 +187,32 @@ async function financialFixture(){
   const workspace=await financialProof();state.financialDigest=financialDigest(workspace);
 }
 
-const before=await login();
+if(phase==='maintenance'){
+  organizationId=state.organizationId;
+  let refusal;
+  try{
+    const response=await call('/api/workspace','POST',{type:'settings',name:'SYNTHETIC appliance qualification'});
+    assert.equal(response.status,503,'A sealed candidate must reject authenticated workspace writes');
+    refusal='HTTP503 maintenance write barrier';
+  }catch(error){
+    if(!['ECONNREFUSED','ECONNRESET','ETIMEDOUT','EPIPE'].includes(error.code))throw error;
+    refusal='Ingress unavailable while sealed: '+error.code;
+  }
+  await fs.writeFile(output,JSON.stringify({phase,checks:[refusal],checkedAt:new Date().toISOString()},null,2));
+  console.log(JSON.stringify({phase,refusal}));
+  process.exit(0);
+}
+let before;
+if(phase==='initial')before=await login();
+else if(phase==='restored'){
+  const old=await json('/api/auth/get-session');assert(!old?.session,'Restored deployment must revoke the pre-backup browser session');
+  assert([401,403].includes((await call('/api/workspace')).status));
+  checks.push('Pre-backup session was revoked by restore before a fresh MFA sign-in');
+  before=await login();
+}else{
+  before=await authenticatedWorkspace();
+  checks.push('Existing MFA session retained its original user and office after compatible restart/update');
+}
 if(phase==='initial'){
   state.financialDigest=financialDigest(before);
   await json('/api/archive','POST',{action:'configure',expectedRevision:0,idempotencyKey:randomUUID(),destination:{provider:'local',label:'SYNTHETIC qualification archive',directory:'synthetic-qualification',enabled:true}});
@@ -217,4 +249,6 @@ if(phase==='initial'){
   checks.push('Restored authentication/decryption, accepted-state digest, review jobs and original archive hashes survived');
 }
 await fs.writeFile(output,JSON.stringify({phase,checks,organizationId,documentId:state.documentId,financialDigest:state.financialDigest,checkedAt:new Date().toISOString()},null,2));
+state.sessionCookies=[...cookies];
+await fs.writeFile(privateState,JSON.stringify(state),{mode:0o600});
 console.log(JSON.stringify({phase,checks}));

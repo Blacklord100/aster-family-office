@@ -538,7 +538,7 @@ func (c Controller) Restore(ctx context.Context, input, identity, backupSHA, tru
 	if m.Schema.Target != inv.DatabaseSchema {
 		return fmt.Errorf("backup database and release schema do not match")
 	}
-	if e = verifyRecoveryRelease(c.release(s), rootBytes, s); e != nil {
+	if e = prepareRecoveryRelease(c.release(s), rootBytes, s, m); e != nil {
 		return e
 	}
 	if e = c.runtime(ctx, m, c.release(s), installRuntime); e != nil {
@@ -583,30 +583,73 @@ func (c Controller) Restore(ctx context.Context, input, identity, backupSHA, tru
 	return c.finishRestore(ctx, &j, m)
 }
 
-func (c Controller) restorePermissions(inv *BackupInventory) error {
-	for _, entry := range inv.Entries {
-		p := filepath.Join(c.Root, entry.Path)
-		mode := fs.FileMode(entry.Mode)
-		uid := 0
-		if strings.HasPrefix(entry.Path, "config/") || strings.HasPrefix(entry.Path, "trust/") {
-			mode = 0600
-		}
-		if strings.HasPrefix(entry.Path, "data/secrets/") {
-			mode = 0444
-		}
-		if strings.HasPrefix(entry.Path, "data/caddy/") {
-			mode = 0600
-		}
-		switch {
-		case strings.HasPrefix(entry.Path, "data/ollama/"), strings.HasPrefix(entry.Path, "data/caddy/"):
-			uid = 10001
-		case strings.HasPrefix(entry.Path, "data/archive/"), strings.HasPrefix(entry.Path, "data/intake/"), strings.HasPrefix(entry.Path, "data/receipts/"):
-			uid = 1000
-		}
-		if e := os.Chmod(p, mode); e != nil {
+// Fresh backup extraction quarantines every file at 0600. Restore only the
+// validated release payload's declared 0644/0755 modes, then require the pinned
+// historical publisher proof and payload integrity before any runtime command.
+// Secrets and customer data remain quarantined until restorePermissions below.
+func prepareRecoveryRelease(bundle string, trustedRoot []byte, s Installation, m *Manifest) error {
+	if e := m.Validate(); e != nil {
+		return e
+	}
+	root, e := os.OpenRoot(bundle)
+	if e != nil {
+		return e
+	}
+	defer root.Close()
+	for _, entry := range m.Files {
+		f, e := openRegular(root, entry.Path)
+		if e != nil {
 			return e
 		}
-		if e := os.Chown(p, uid, uid); e != nil {
+		e = f.Chmod(fs.FileMode(entry.Mode))
+		if e == nil {
+			e = f.Sync()
+		}
+		ce := f.Close()
+		if e != nil {
+			return e
+		}
+		if ce != nil {
+			return ce
+		}
+	}
+	return verifyRecoveryRelease(bundle, trustedRoot, s)
+}
+
+func (c Controller) restoreArchiveEntryPermissions(entry FileEntry) error {
+	// Release payload modes were established by the signed manifest and verified
+	// before runtime inspection. Retain those and root-owned private metadata;
+	// incidental tar permission bits must never override the publisher's modes.
+	if strings.HasPrefix(entry.Path, "releases/") {
+		return nil
+	}
+	p := filepath.Join(c.Root, entry.Path)
+	mode := fs.FileMode(entry.Mode)
+	uid := 0
+	if strings.HasPrefix(entry.Path, "config/") || strings.HasPrefix(entry.Path, "trust/") {
+		mode = 0600
+	}
+	if strings.HasPrefix(entry.Path, "data/secrets/") {
+		mode = 0444
+	}
+	if strings.HasPrefix(entry.Path, "data/caddy/") {
+		mode = 0600
+	}
+	switch {
+	case strings.HasPrefix(entry.Path, "data/ollama/"), strings.HasPrefix(entry.Path, "data/caddy/"):
+		uid = 10001
+	case strings.HasPrefix(entry.Path, "data/archive/"), strings.HasPrefix(entry.Path, "data/intake/"), strings.HasPrefix(entry.Path, "data/receipts/"):
+		uid = 1000
+	}
+	if e := os.Chmod(p, mode); e != nil {
+		return e
+	}
+	return os.Chown(p, uid, uid)
+}
+
+func (c Controller) restorePermissions(inv *BackupInventory) error {
+	for _, entry := range inv.Entries {
+		if e := c.restoreArchiveEntryPermissions(entry); e != nil {
 			return e
 		}
 	}

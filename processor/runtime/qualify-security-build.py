@@ -23,7 +23,11 @@ def main():
     # installed development package metadata as Tesseract's own build.
     lept_flags = shlex.split(subprocess.run(['pkg-config', '--cflags', 'lept'], check=True,
                                            capture_output=True, text=True, timeout=10).stdout)
-    subprocess.run(['g++', '-std=c++17', '-O1', '-fstack-protector-strong', '-DGRAPHICS_DISABLED',
+    # Match internal header ABI to Tesseract's generated build configuration,
+    # including FAST_FLOAT (enabled by default), legacy engine and graphics flags.
+    # Upstream selects C++20 when the Debian builder supports it; internal
+    # constexpr coordinate helpers rely on that standard's initialization rules.
+    subprocess.run(['g++', '-std=c++20', '-O1', '-fstack-protector-strong', '-DHAVE_CONFIG_H',
                     *(f'-I{path}' for path in includes), *lept_flags, '-I/opt/libtiff/include',
                     str(root / 'security-regression.cc'), '-o', str(binary),
                     '-L/opt/tesseract/lib', '-L/opt/libtiff/lib', '-ltesseract', '-ltiff', '-llept', '-pthread'],

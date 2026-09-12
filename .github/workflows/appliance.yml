@@ -2,9 +2,9 @@ name: Appliance packaging
 on:
   push:
     branches: [main, 'feat/**']
-    paths: ['operations/appliance/**', 'operations/Dockerfile*', '.github/workflows/appliance.yml']
+    paths: ['operations/appliance/**', 'operations/Dockerfile*', 'tools/release/**', 'licenses/**', '.github/workflows/appliance.yml']
   pull_request:
-    paths: ['operations/appliance/**', 'operations/Dockerfile*', '.github/workflows/appliance.yml']
+    paths: ['operations/appliance/**', 'operations/Dockerfile*', 'tools/release/**', 'licenses/**', '.github/workflows/appliance.yml']
   workflow_dispatch:
     inputs:
       qualification:
@@ -41,6 +41,23 @@ jobs:
           GOTOOLCHAIN=go1.27.1 go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.27.1 go build -trimpath -o "$RUNNER_TEMP/asterctl" .
           file "$RUNNER_TEMP/asterctl"
+      - name: Exercise actual CLI signing and versioned TUF media packaging
+        run: python3 operations/appliance/tests/qualify-signed-packaging.py --asterctl "$RUNNER_TEMP/asterctl"
+      - name: Bind SPDX, retained notices and strict binary scan to the built controller
+        run: |
+          GOBIN="$RUNNER_TEMP/aster-tools" GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          aster_go_root=$(GOTOOLCHAIN=go1.27.1 go env GOROOT)
+          python3 operations/appliance/scripts/collect-controller.py --binary "$RUNNER_TEMP/asterctl" \
+            --go "$aster_go_root/bin/go" --govulncheck "$RUNNER_TEMP/aster-tools/govulncheck" \
+            --output "$RUNNER_TEMP/aster-controller-evidence"
+      - name: Retain exact controller evidence, including refused scans
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: appliance-controller-evidence
+          path: ${{ runner.temp }}/aster-controller-evidence
+          if-no-files-found: warn
+          retention-days: 30
 
   bounded-model:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualification == 'bounded' }}
@@ -52,6 +69,8 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with: {python-version: '3.12'}
+      - name: Admit bounded model storage and reclaim only unused hosted SDKs
+        run: python3 operations/appliance/scripts/prepare-hosted-model.py --output "$RUNNER_TEMP/aster-model-smoke/host-admission.json"
       - name: Build only the pinned inference image and fetch exact approved assets
         run: |
           mkdir -p "$RUNNER_TEMP/aster-model-smoke"
@@ -83,6 +102,7 @@ jobs:
           path: |
             ${{ runner.temp }}/aster-model-smoke/linux-smoke.json
             ${{ runner.temp }}/aster-model-smoke/model/inventory.json
+            ${{ runner.temp }}/aster-model-smoke/host-admission.json
           if-no-files-found: error
           retention-days: 30
       - name: Stop only this job's disposable model
@@ -109,7 +129,7 @@ jobs:
           test "$(uname -m)" = x86_64
           test "$(. /etc/os-release; printf '%s:%s' "$ID" "$VERSION_ID")" = ubuntu:24.04
           test -z "$(docker ps -aq)"
-          python3 -c 'import shutil; m=int(next(x.split()[1] for x in open("/proc/meminfo") if x.startswith("MemTotal:")))*1024; assert m>=31*1024**3,"Full qualification requires32GiB RAM"; assert shutil.disk_usage(".").free>=100*1024**3,"Need100GiB free"'
+          python3 -c 'import os,shutil; m=int(next(x.split()[1] for x in open("/proc/meminfo") if x.startswith("MemTotal:")))*1024; assert m>=31*1024**3,"Full qualification requires32GiB RAM"; assert min(shutil.disk_usage(p).free for p in (".",os.environ["RUNNER_TEMP"],"/var/lib/docker"))>=250*1024**3,"Need250GiB free for complete media, retained candidates and sealed recovery copies"'
           mkdir -p "$RUNNER_TEMP/aster-release"
       - name: Build all images, runtime closure, controller and model without office data
         run: |
@@ -133,6 +153,11 @@ jobs:
         run: |
           command -v trivy
           sh operations/appliance/scripts/collect-compliance.sh "$RUNNER_TEMP/aster-release/images" "$RUNNER_TEMP/aster-release/compliance"
+          GOBIN="$RUNNER_TEMP/aster-release/tools" GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          aster_go_root=$(GOTOOLCHAIN=go1.27.1 go env GOROOT)
+          python3 operations/appliance/scripts/collect-controller.py --binary "$RUNNER_TEMP/aster-release/asterctl" \
+            --go "$aster_go_root/bin/go" --govulncheck "$RUNNER_TEMP/aster-release/tools/govulncheck" \
+            --output "$RUNNER_TEMP/aster-release/compliance/controller"
       - name: Stage complete candidate and sign with ephemeral test trust
         run: |
           python3 operations/appliance/scripts/stage-bundle.py --spec operations/appliance/release-spec.json \
@@ -146,9 +171,10 @@ jobs:
             --trust-root "$RUNNER_TEMP/aster-release/test-signing-keys/root.json" \
             --trust-root-sha256 "$(cat "$RUNNER_TEMP/aster-release/test-signing-keys/root.sha256")"
           python3 operations/appliance/scripts/pack-bundle.py --bundle "$RUNNER_TEMP/aster-release/bundle" --output "$RUNNER_TEMP/aster-release/media"
-      - name: Actual TLS, MFA, both ingestion modes, cold restart and same-host sealed restore
+      - name: Actual TLS, MFA, both modes, sealed restore and observed update interruptions
         run: |
-          sudo --preserve-env=RUNNER_TEMP,ASTER_DISPOSABLE_RUNNER sh operations/appliance/scripts/qualify-install.sh "$RUNNER_TEMP/aster-release"
+          export ASTER_QUALIFICATION_NODE=$(realpath "$(command -v node)")
+          sudo --preserve-env=RUNNER_TEMP,ASTER_DISPOSABLE_RUNNER,ASTER_QUALIFICATION_NODE sh operations/appliance/scripts/qualify-install.sh "$RUNNER_TEMP/aster-release"
       - name: Retain release evidence and complete media; no release is published
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -21,6 +21,7 @@ var version = "development"
 const usage = `asterctl — local Aster appliance operations
 
   verify           Verify an offline bundle against independently trusted TUF root
+  unpack           Safely unpack and verify downloaded split release media
   install          Install a verified bundle on a dedicated Ubuntu 24.04 amd64 host
   continue-install Continue a journaled installation after interruption
   bootstrap        Create the first owner from a private password file
@@ -76,7 +77,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	key := f.String("tls-key", "", "supplied TLS private key PEM")
 	recipient := f.String("recovery-recipient", "", "customer's public age1 recovery recipient")
 	installRuntime := f.Bool("install-runtime", false, "install the signed offline .deb runtime closure on this dedicated host")
-	input := f.String("input", "", "encrypted backup path")
+	input := f.String("input", "", "encrypted backup path, or parts.json for unpack")
+	unpackLimit := f.Int64("max-unpack-gib", 64, "maximum expanded release media size in GiB")
 	fenced := f.Bool("source-fenced", false, "confirm the original host is isolated before bringing up recovery")
 	limit := f.Int64("max-restore-gib", 256, "maximum recovery size and required free capacity in GiB")
 	keys := f.String("keys", "", "publisher signing keys directory")
@@ -107,6 +109,15 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	c := Controller{Root: filepath.Clean(absolute), Commands: systemCommands{}}
 	switch name {
+	case "unpack":
+		if *unpackLimit < 1 || *unpackLimit > 4096 {
+			return fmt.Errorf("max-unpack-gib must be between 1 and 4096")
+		}
+		if e = UnpackMedia(ctx, *input, *output, *trustRoot, *trustSHA, *unpackLimit<<30); e != nil {
+			return e
+		}
+		fmt.Fprintln(out, "Release media unpacked and verified. Use install or update with the verified output directory.")
+		return nil
 	case "verify":
 		if *bundle == "" {
 			return fmt.Errorf("--bundle is required")

@@ -14,6 +14,42 @@ import stat
 import tarfile
 
 
+def signed_metadata_layout(bundle):
+    """Check the real offline TUF file chain; this does not authenticate signatures."""
+    def read(name, kind, reference=None):
+        path = bundle / 'metadata' / name
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > 5 * 1024**2:
+            raise ValueError('Sign the bundle with the offline TUF protocol before packing')
+        raw = path.read_bytes()
+        if reference and (reference.get('length') != len(raw) or reference.get('hashes', {}).get('sha256') != hashlib.sha256(raw).hexdigest()):
+            raise ValueError('TUF metadata hash/length differs from its parent')
+        value = json.loads(raw)
+        if value.get('signed', {}).get('_type') != kind or not value.get('signatures'):
+            raise ValueError('Required signed TUF metadata is missing')
+        return value['signed']
+    def version(meta):
+        value = meta.get('version')
+        if type(value) is not int or value < 1:
+            raise ValueError('TUF references require a positive metadata version')
+        return value
+    timestamp = read('timestamp.json', 'timestamp')
+    snapshot_ref = timestamp['meta']['snapshot.json']
+    snapshot = read(str(version(snapshot_ref)) + '.snapshot.json', 'snapshot', snapshot_ref)
+    if snapshot.get('version') != snapshot_ref['version']:
+        raise ValueError('TUF snapshot version differs from its parent')
+    targets_ref = snapshot['meta']['targets.json']
+    targets = read(str(version(targets_ref)) + '.targets.json', 'targets', targets_ref)
+    if targets.get('version') != targets_ref['version']:
+        raise ValueError('TUF targets version differs from its parent')
+    release = (bundle / 'release.json').read_bytes()
+    target = targets['targets']['release.json']
+    if target.get('length') != len(release) or target.get('hashes', {}).get('sha256') != hashlib.sha256(release).hexdigest():
+        raise ValueError('Signed release target differs from release.json')
+    for path in (bundle / 'metadata').iterdir():
+        if not re.fullmatch(r'(?:timestamp|[1-9][0-9]*\.(?:targets|snapshot|root))\.json', path.name) or not path.is_file() or path.is_symlink():
+            raise ValueError('Unexpected file in the offline TUF metadata directory')
+
+
 class PartsWriter:
     def __init__(self, destination, prefix, limit):
         self.destination, self.prefix, self.limit = destination, prefix, limit
@@ -56,14 +92,13 @@ def main():
     parser.add_argument('--part-mib', type=int, default=1900)
     args = parser.parse_args()
     manifest = json.loads((args.bundle / 'release.json').read_text())
-    if not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,80}', manifest['releaseId']):
+    if not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,79}', manifest['releaseId']):
         raise ValueError('Invalid release ID')
     if not 1 <= args.part_mib <= 1900:
         raise ValueError('Each part must fit below the 2GB hosting limit')
     if args.output.exists():
         raise ValueError('Refusing an existing output directory')
-    if not all((args.bundle / 'metadata' / p).is_file() for p in ('root.json', 'targets.json', 'snapshot.json', 'timestamp.json')):
-        raise ValueError('Sign the bundle before packing its media')
+    signed_metadata_layout(args.bundle)
     expected = {item['path']: item for item in manifest['files']}
     files = []
     for path in sorted(args.bundle.rglob('*')):

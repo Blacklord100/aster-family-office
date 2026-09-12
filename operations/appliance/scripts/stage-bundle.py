@@ -16,6 +16,7 @@ import shutil
 import stat
 import sys
 
+FROZEN_INPUTS = {}
 
 def sha256(path):
     h = hashlib.sha256()
@@ -45,16 +46,24 @@ def checked_file(root, name, expected_hash=None, expected_size=None):
         raise ValueError(f'Expected an independent regular file: {name}')
     if expected_size is not None and info.st_size != expected_size:
         raise ValueError(f'Asset length mismatch: {name}')
-    if expected_hash is not None and sha256(p) != expected_hash:
+    actual_hash = sha256(p)
+    if expected_hash is not None and actual_hash != expected_hash:
         raise ValueError(f'Asset hash mismatch: {name}')
+    identity = (actual_hash, info.st_size)
+    if FROZEN_INPUTS.setdefault(str(p.absolute()), identity) != identity:
+        raise ValueError(f'Asset changed after validation: {name}')
     return p
 
 
 def copy_file(source, destination, executable=False):
+    checked_file(source.parent, source.name)
+    expected = FROZEN_INPUTS[str(source.absolute())]
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         raise ValueError(f'Duplicate payload path: {destination.name}')
     shutil.copyfile(source, destination)
+    if (sha256(destination), destination.stat().st_size) != expected:
+        raise ValueError(f'Copied asset changed after validation: {source.name}')
     os.chmod(destination, 0o755 if executable else 0o644)
 
 
@@ -71,6 +80,131 @@ def copy_tree(source, destination):
         count += 1
     if not count:
         raise ValueError(f'Required payload directory is empty: {source.name}')
+
+
+def controller_evidence(root, binary):
+    gate = json.loads(checked_file(root, 'security-gate.json').read_text())
+    if (gate.get('schemaVersion') != 1 or gate.get('type') != 'aster-controller-security-gate-v1'
+            or gate.get('result') != 'passed' or gate.get('strictBinaryScanExitCode') != 0
+            or gate.get('binarySha256') != sha256(binary) or gate.get('binaryBytes') != binary.stat().st_size):
+        raise ValueError('Controller security receipt must cover the exact installer binary')
+    expected = {'govulncheck.json', 'govulncheck.txt', 'notices/receipt.json',
+                'notices/inventory.json', 'notices/controller.spdx.json', 'notices/build-info.json'}
+    files = gate.get('files', {})
+    if not isinstance(files, dict) or not expected.issubset(files):
+        raise ValueError('Controller scan, notices and SPDX evidence are incomplete')
+    for name, digest in files.items():
+        if not re.fullmatch(r'[0-9a-f]{64}', digest):
+            raise ValueError('Invalid controller evidence hash')
+        checked_file(root, name, digest)
+    actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()} - {'security-gate.json'}
+    if actual != set(files):
+        raise ValueError('Controller evidence inventory differs from the retained files')
+    notices = json.loads((root / 'notices/receipt.json').read_text())
+    if (notices.get('type') != 'aster-go-binary-notice-inventory-v1' or notices.get('binarySha256') != gate['binarySha256']
+            or notices.get('spdxSha256') != files['notices/controller.spdx.json']
+            or notices.get('licenseInventorySha256') != files['notices/inventory.json']):
+        raise ValueError('Controller notice receipt does not match the exact installer and SPDX inventory')
+    spec = importlib.util.spec_from_file_location('controller_scan', Path(__file__).with_name('collect-controller.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.scan_messages((root / 'govulncheck.json').read_text())
+
+
+def image_evidence(root, image_inventory):
+    gate = json.loads(checked_file(root, 'security-gate.json').read_text())
+    images = {i['service']: i['imageId'] for i in image_inventory['images']}
+    records = gate.get('scans', [])
+    if (gate.get('result') != 'passed' or gate.get('releaseId') != image_inventory['releaseId']
+            or gate.get('imageIds') != images or len(records) != 5 or {r.get('service') for r in records} != set(images)):
+        raise ValueError('Passing image evidence must include all five exact image scans')
+    for record in records:
+        service = record['service']
+        scan_path = checked_file(root, f'{service}-scan.json', record.get('scanSha256'))
+        sbom_path = checked_file(root, f'{service}.cdx.json', record.get('sbomSha256'))
+        if not all(re.fullmatch(r'[0-9a-f]{64}', record.get(k, '')) for k in ('scanSha256', 'sbomSha256')):
+            raise ValueError('Image evidence lacks raw scan/SBOM hashes')
+        scan, sbom = json.loads(scan_path.read_text()), json.loads(sbom_path.read_text())
+        if scan.get('Metadata', {}).get('ImageID') != images[service] or record.get('imageId') != images[service]:
+            raise ValueError('Raw scan does not identify the exact image')
+        created = datetime.datetime.fromisoformat(scan['CreatedAt'].replace('Z', '+00:00'))
+        if not -300 <= (datetime.datetime.now(datetime.timezone.utc) - created).total_seconds() <= 86400:
+            raise ValueError('Image scan is stale or future dated')
+        if not any(r.get('Packages') for r in scan.get('Results', [])) or sbom.get('bomFormat') != 'CycloneDX' or not sbom.get('components'):
+            raise ValueError('Raw scan/SBOM package inventory is missing')
+        findings = [v for r in scan.get('Results', []) for v in r.get('Vulnerabilities', []) if v.get('Severity') in ('HIGH', 'CRITICAL')]
+        if record.get('rawHighOrCritical') != len(findings) or (service != 'processor' and findings):
+            raise ValueError('Unresolved image findings differ from the passing receipt')
+        if service == 'processor':
+            names = {'processor-runtime-manifest.json', 'processor-runtime-security.json', 'processor-assessment.json'}
+            if set(gate.get('processorEvidence', {})) != names:
+                raise ValueError('Exact processor assessment inputs are missing')
+            for name, digest in gate['processorEvidence'].items():
+                if not re.fullmatch(r'[0-9a-f]{64}', digest):
+                    raise ValueError('Invalid processor evidence hash')
+                checked_file(root, name, digest)
+            assessment = json.loads((root / 'processor-assessment.json').read_text())
+            manifest = json.loads((root / 'processor-runtime-manifest.json').read_text())
+            runtime = json.loads((root / 'processor-runtime-security.json').read_text())
+            manifest_sha = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+            if (assessment.get('type') != 'aster-exact-image-security-assessment-v1' or assessment.get('imageID') != images[service]
+                    or assessment.get('scanSha256') != hashlib.sha256(json.dumps(scan, sort_keys=True).encode()).hexdigest()
+                    or assessment.get('manifestSha256') != manifest_sha or runtime.get('manifestSha256') != manifest_sha
+                    or assessment.get('rawHighOrCritical') != len(findings) or assessment.get('unassessedHighOrCritical') != 0
+                    or len(assessment.get('assessments', [])) != len(findings)):
+                raise ValueError('Processor assessment is not bound to the exact raw scan/runtime inputs')
+            runtime_root = Path(__file__).resolve().parents[3] / 'processor/runtime'
+            modules = {}
+            for name in ('security-assessment', 'verify-scan'):
+                spec = importlib.util.spec_from_file_location(name, runtime_root / (name + '.py'))
+                modules[name] = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(modules[name])
+            rechecked = modules['security-assessment'].assess(manifest, scan, runtime, images[service],
+                json.loads((runtime_root / 'security-policy.json').read_text()),
+                (runtime_root / 'upstream-sources.json').read_bytes(), (runtime_root / 'security-regression.cc').read_bytes())
+            rechecked['inventory'] = modules['verify-scan'].verify(manifest, scan,
+                (runtime_root.parent / 'requirements.lock.txt').read_text(), rechecked)
+            if assessment != rechecked:
+                raise ValueError('Retained processor assessment differs from independent current-policy verification')
+
+
+def native_source_evidence(root, image_id, policy_root):
+    receipt = json.loads(checked_file(root, 'receipt.json').read_text())
+    lock_file = checked_file(root, 'source-lock.json', receipt.get('sourceLockSha256'))
+    lock = json.loads(lock_file.read_text())
+    if (receipt.get('schemaVersion') != 1 or receipt.get('type') != 'aster-sharp-native-source-receipt-v1'
+            or receipt.get('result') != 'source-materials-verified' or receipt.get('appImageId') != image_id
+            or lock.get('schemaVersion') != 1 or lock.get('type') != 'aster-sharp-native-source-lock-v1' or lock.get('runtime', {}).get('appImageId') != image_id
+            or not re.fullmatch(r'[0-9a-f]{64}', receipt.get('sourceLockSha256', ''))
+            or receipt.get('runtimePackage') != lock['runtime'].get('runtimePackage')
+            or not receipt.get('nativeFiles') or receipt['nativeFiles'] != lock['runtime'].get('nativeFiles')):
+        raise ValueError('Native source receipt must cover the exact application image and native files')
+    sources, material, notices = lock.get('sources', []), lock.get('material', []), receipt.get('notices', [])
+    spec = importlib.util.spec_from_file_location('native_policy', Path(__file__).resolve().parents[3] / 'tools/release/collect-native-sources.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    policy, expected_material, crates = module.load_policy(policy_root)
+    if lock.get('policySha256') != sha256(policy_root / 'source-policy.json') or material != expected_material:
+        raise ValueError('Native source receipt differs from the reviewed repository policy or recipe')
+    expected_sources = module.expected_records(policy, crates)
+    if len(sources) != len(expected_sources) or any(any(actual.get(k) != v for k, v in expected.items()) for actual, expected in zip(sources, expected_sources)):
+        raise ValueError('Native source receipt omits or changes reviewed transitive source coverage')
+    if not sources or not material or not notices or len(sources) != receipt.get('sourceArchiveCount') or len(sources) != lock.get('sourceArchiveCount'):
+        raise ValueError('Native source closure or retained notices are incomplete')
+    if (sum(s.get('kind') == 'native-source' for s in sources) != receipt.get('nativeSourceCount')
+            or sum(s.get('kind') == 'cargo-source' for s in sources) != receipt.get('cargoSourceCount')
+            or any(s.get('kind') not in ('native-source', 'cargo-source') for s in sources)):
+        raise ValueError('Native source transitive inventory differs from its verification receipt')
+    retained = {'receipt.json', 'source-lock.json'}
+    for item, prefix, field in [(i, 'reviewed-recipe/', 'path') for i in material] + [(i, '', 'path') for i in sources + [lock['registryArchive']]] + [(i, '', 'file') for i in notices]:
+        name = prefix + item[field]
+        if not re.fullmatch(r'[0-9a-f]{64}', item.get('sha256', '')) or not isinstance(item.get('bytes'), int) or item['bytes'] <= 0:
+            raise ValueError('Native source material hash/length is missing')
+        checked_file(root, name, item['sha256'], item['bytes'])
+        retained.add(name)
+    actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
+    if actual != retained:
+        raise ValueError('Native source retained files differ from the complete receipt inventory')
 
 
 def main():
@@ -95,17 +229,17 @@ def main():
     schema = spec['schema']
     if not all(isinstance(schema.get(k), int) for k in ('min', 'max', 'target')) or not (1 <= schema['min'] <= schema['target'] <= schema['max']):
         raise ValueError('Invalid schema compatibility range')
-    image_inventory = json.loads((args.images / 'inventory.json').read_text())
+    image_inventory = json.loads(checked_file(args.images, 'inventory.json').read_text())
     if image_inventory['releaseId'] != spec['releaseId'] or image_inventory['platform'] != 'linux/amd64':
         raise ValueError('Image set belongs to another release or platform')
     if {i['service'] for i in image_inventory['images']} != {'app', 'processor', 'postgres', 'ollama', 'caddy'} or len(image_inventory['images']) != 5:
         raise ValueError('The complete five-image set is required')
-    runtime = json.loads((args.runtime / 'inventory.json').read_text())
+    runtime = json.loads(checked_file(args.runtime, 'inventory.json').read_text())
     if any(runtime.get(k) != v for k, v in {'kind': 'ubuntu-deb', 'os': 'ubuntu', 'version': '24.04', 'arch': 'amd64'}.items()):
         raise ValueError('Incorrect runtime target')
     if not {'docker.io', 'docker-compose-v2', 'containerd', 'runc', 'iptables', 'openssl'}.issubset({p['name'] for p in runtime['packages']}):
         raise ValueError('Incomplete runtime package inventory')
-    model = json.loads((args.model / 'inventory.json').read_text())
+    model = json.loads(checked_file(args.model, 'inventory.json').read_text())
     if model.get('format') != 'ollama-cache-v2' or not re.fullmatch(r'sha256:[0-9a-f]{64}', model['digest']):
         raise ValueError('Expected a digest-pinned complete native Ollama cache')
     required_layers = {'manifest', 'application/vnd.ollama.image.model', 'application/vnd.ollama.image.projector', 'application/vnd.ollama.image.license'}
@@ -123,6 +257,7 @@ def main():
     expected_ids = {i['service']: i['imageId'] for i in image_inventory['images']}
     if gate.get('imageIds') != expected_ids:
         raise ValueError('Security receipt does not cover the exact five image IDs')
+    image_evidence(args.compliance / 'sbom', image_inventory)
     # Validate the entire input before creating any output.
     for item in image_inventory['images']:
         if not re.fullmatch(r'sha256:[0-9a-f]{64}', item['imageId']):
@@ -138,6 +273,9 @@ def main():
     header = args.asterctl.read_bytes()[:20]
     if header[:6] != b'\x7fELF\x02\x01' or header[18:20] != b'\x3e\x00':
         raise ValueError('asterctl must be a Linux amd64 executable')
+    controller_evidence(args.compliance / 'controller', args.asterctl)
+    native_policy_root = args.source / 'licenses/native/sharp-libvips-1.3.3'
+    native_source_evidence(args.compliance / 'licenses/native-sources', expected_ids['app'], native_policy_root)
     if args.output.exists():
         raise ValueError('Refusing an existing bundle directory')
     args.output.mkdir(parents=True)
@@ -152,6 +290,7 @@ def main():
         copy_file(args.source / name, payload / 'licenses/project' / name)
     copy_tree(args.source / 'licenses', payload / 'licenses/project/third-party')
     copy_tree(args.compliance / 'sbom', payload / 'sbom')
+    copy_tree(args.compliance / 'controller', payload / 'sbom/controller')
     for name, root in [('images', args.images), ('runtime', args.runtime), ('models', args.model)]:
         copy_file(root / 'inventory.json', payload / name / 'inventory.json')
     images = []
@@ -174,6 +313,16 @@ def main():
     copy_file(args.source / 'operations/appliance/README.md', payload / 'docs/README.md')
     copy_file(args.source / 'operations/appliance/cli/README.md', payload / 'docs/operator-cli.md')
     copy_file(args.source / 'operations/appliance/recovery.md', payload / 'docs/recovery.md')
+    # Re-evaluate the copied artifacts; a passing input receipt does not authorize
+    # a source file to change while staging is in progress.
+    image_evidence(payload / 'sbom', image_inventory)
+    controller_evidence(payload / 'sbom/controller', payload / 'bin/asterctl')
+    native_source_evidence(payload / 'licenses/native-sources', expected_ids['app'], payload / 'licenses/project/third-party/native/sharp-libvips-1.3.3')
+    (payload / 'docs/distribution-status.json').write_text(json.dumps({
+        'schemaVersion': 1, 'distributionReady': False, 'scope': 'Internal signed test candidate only',
+        'remainingObligations': ['Corresponding-source closure for OS packages and runtime-service images',
+                                 'Final license and distribution review', 'Required target qualification receipts']}, indent=2) + '\n')
+    os.chmod(payload / 'docs/distribution-status.json', 0o644)
     files = []
     for item in sorted(payload.rglob('*')):
         if item.is_file():

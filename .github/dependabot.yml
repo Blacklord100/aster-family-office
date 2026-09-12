@@ -12,3 +12,9 @@ updates:
   - package-ecosystem: docker
     directory: /processor
     schedule: {interval: weekly}
+  - package-ecosystem: docker
+    directory: /operations
+    schedule: {interval: weekly}
+  - package-ecosystem: gomod
+    directory: /operations/appliance/cli
+    schedule: {interval: weekly}

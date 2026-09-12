@@ -312,6 +312,11 @@ func verifyPayload(bundle string, m *Manifest) error {
 		if e != nil {
 			return e
 		}
+		info, e := f.Stat()
+		if e != nil || uint32(info.Mode().Perm()) != entry.Mode || info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
+			f.Close()
+			return fmt.Errorf("payload permissions differ from signed manifest: %s", entry.Path)
+		}
 		hash, n, e := fileHash(f)
 		f.Close()
 		if e != nil {

@@ -6,6 +6,12 @@ The initial history review was performed on 12 September 2026 against
 No tracked history paths matching private environment files, private keys, backup
 payloads or browser authentication storage were found.
 
+The follow-up scan at `921d4e0` covered 36 reachable commits and retained the same
+ten exact reviewed false positives, with no unresolved credential candidate.
+The release tooling retains upstream notices and provenance for newly imported
+native build recipes and source metadata; no model weights or customer files were
+added to Git.
+
 Gitleaks 8.30.1 scanned all reachable history with full redaction. Its ten candidates
 were individually reviewed: nine source-file SHA256 values in a synthetic benchmark
 reproducibility record and one replay UUID in a schema validation test. No unresolved
@@ -22,6 +28,16 @@ Geist's upstream SIL Open Font License notices are retained under `licenses/geis
 Imported Tesseract security patches retain upstream license and authorship headers.
 Generated shadcn/ui registry components retain their MIT notice in
 `licenses/shadcn-ui/`; the Apache project license does not remove that notice.
+
+Before changing visibility, the separate GitHub-surface review captured all 63
+workflow runs, 117 job records, 45 workflow-source versions, 21 small artifacts
+(33 SBOM/runtime/security files), 12 Dependabot PRs and one Dependabot comment.
+There were no releases, standalone issues, reviews, wiki or discussions. No
+customer/office data or production credentials were found. Five completed
+historical CI runs contain 15 random disposable test credentials; their exact
+workflow and database setup establish their isolated CI scope. Current setup
+masks those values. Signed API download URLs and temporary audit tokens belong to
+the private review evidence and are never included in source or release media.
 
 Run the repeatable credential check against the final publication commit:
 

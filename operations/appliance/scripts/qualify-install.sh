@@ -6,6 +6,14 @@ umask 077
 test "$#" = 1
 test "$(id -u)" = 0
 test "${ASTER_DISPOSABLE_RUNNER:-}" = 1
+aster_node=${ASTER_QUALIFICATION_NODE:?Exact setup-node executable must be preserved through sudo}
+python3 - "$aster_node" <<'PY'
+import os,stat,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+if not p.is_absolute() or p.is_symlink() or not stat.S_ISREG(p.stat().st_mode) or not os.access(p,os.X_OK):
+ raise ValueError('Qualification Node path must be an absolute regular executable')
+PY
 aster_base=$(realpath "$1")
 test -f "$aster_base/bundle/release.json"
 test -d "$aster_base/test-signing-keys"
@@ -49,7 +57,7 @@ PY
   --recovery-recipient "$aster_recipient" --install-runtime --timeout 45m
 "$aster_cli" bootstrap --root "$aster_base/installed" --email owner-appliance@example.invalid \
   --name 'Synthetic owner' --organization 'SYNTHETIC appliance qualification' --password-file "$aster_base/private/password"
-node operations/appliance/scripts/qualify-api.mjs initial "$aster_base/installed" \
+"$aster_node" operations/appliance/scripts/qualify-api.mjs initial "$aster_base/installed" \
   "$aster_base/private/api-state.json" "$aster_base/proof/initial-api.json"
 "$aster_cli" doctor --root "$aster_base/installed" > "$aster_base/proof/doctor-initial.txt"
 
@@ -57,7 +65,7 @@ node operations/appliance/scripts/qualify-api.mjs initial "$aster_base/installed
 aster_compose "$aster_base/installed" down
 aster_compose "$aster_base/installed" up -d --wait --wait-timeout 300 --pull never --no-build
 "$aster_cli" doctor --root "$aster_base/installed" > "$aster_base/proof/doctor-restart.txt"
-node operations/appliance/scripts/qualify-api.mjs restored "$aster_base/installed" \
+"$aster_node" operations/appliance/scripts/qualify-api.mjs restart "$aster_base/installed" \
   "$aster_base/private/api-state.json" "$aster_base/proof/restart-api.json"
 
 # A sealed backup coordinates accepted state, pending review, original files and
@@ -71,21 +79,24 @@ aster_compose "$aster_base/installed" down
   --trust-root "$aster_trust" --trust-root-sha256 "$aster_trust_sha" --source-fenced \
   --max-restore-gib 32 --timeout 60m
 "$aster_cli" doctor --root "$aster_base/restored" > "$aster_base/proof/doctor-restored.txt"
-node operations/appliance/scripts/qualify-api.mjs restored "$aster_base/restored" \
+"$aster_node" operations/appliance/scripts/qualify-api.mjs restored "$aster_base/restored" \
   "$aster_base/private/api-state.json" "$aster_base/proof/restored-api.json"
 "$aster_cli" status --root "$aster_base/restored" > "$aster_base/proof/restored-status.json"
+python3 operations/appliance/scripts/qualify-updates.py --base "$aster_base"
 python3 - "$aster_base" <<'PY'
 import datetime,json,sys
 from pathlib import Path
-p=Path(sys.argv[1]);proofs=[json.loads((p/'proof'/name).read_text()) for name in ('initial-api.json','restart-api.json','restored-api.json')]
+p=Path(sys.argv[1]);proofs=[json.loads((p/'proof'/name).read_text()) for name in ('initial-api.json','restart-api.json','restored-api.json','update-interruption.json')]
 receipt={'schemaVersion':1,'result':'passed-bounded-installation-recovery-drill',
+ 'distributionReady':False,
  'releaseId':json.loads((p/'bundle/release.json').read_text())['releaseId'],
  'topology':'Second private installation directory on one disposable Linux host; original fleet stopped before restore',
  'checks':proofs,'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
  'notYetQualified':['Empty host with every runtime/image/package cache absent and physical network disconnected',
  'Independent spare-host failure-domain recovery and measured RPO/RTO','Source retention purge followed by archive recovery',
- 'Power loss at each update/migration boundary and full interrupted-update matrix','Full32GiB workload capacity/latency',
- 'Supplied customer PKI rotation and generalized VM first boot','Complete host IPv4/IPv6/DNS/metadata egress capture','Automatic high availability']}
+ 'Physical power loss, interruption inside a migration and remaining update boundaries','Full32GiB workload capacity/latency',
+ 'Supplied customer PKI rotation and generalized VM first boot','Complete host IPv4/IPv6/DNS/metadata egress capture','Automatic high availability',
+ 'Corresponding-source closure for OS packages and runtime-service images; final binary distribution review']}
 (p/'qualification.json').write_text(json.dumps(receipt,indent=2)+'\n')
 print(json.dumps({'result':receipt['result'],'releaseId':receipt['releaseId'],'remainingGates':receipt['notYetQualified']}))
 PY

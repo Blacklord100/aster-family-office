@@ -41,12 +41,15 @@ def main():
         elif findings:
             raise ValueError(f'{service}: {len(findings)} unresolved HIGH/CRITICAL findings')
         records.append({'service': service, 'imageId': image_id, 'rawHighOrCritical': len(findings),
-                        'scanSha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+                        'scanSha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                        'sbomSha256': hashlib.sha256((args.evidence / f'{service}.cdx.json').read_bytes()).hexdigest()})
         sbom = json.loads((args.evidence / f'{service}.cdx.json').read_text())
         if sbom.get('bomFormat') != 'CycloneDX' or not sbom.get('components'):
             raise ValueError(f'Missing complete CycloneDX inventory: {service}')
     receipt = {'schemaVersion': 1, 'releaseId': inventory['releaseId'], 'result': 'passed',
                'imageIds': images, 'scans': records,
+               'processorEvidence': {name: hashlib.sha256((args.evidence / name).read_bytes()).hexdigest()
+                    for name in ('processor-runtime-manifest.json', 'processor-runtime-security.json', 'processor-assessment.json')},
                'checkedAt': datetime.datetime.now(datetime.timezone.utc).isoformat()}
     path = args.evidence / 'security-gate.json'
     if path.exists():
