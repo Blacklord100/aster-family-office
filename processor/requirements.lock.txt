@@ -11,7 +11,7 @@ httpx==0.28.1
 idna==3.19
 iniconfig==2.3.0
 joblib==1.6.0
-narwhals==2.25.0
+narwhals==2.26.0
 numpy==2.5.3
 packaging==26.3
 pluggy==1.6.0
