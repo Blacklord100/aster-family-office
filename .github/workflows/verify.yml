@@ -183,14 +183,14 @@ jobs:
           --mount "type=bind,source=${{ github.workspace }}/processor/tests,target=/srv/processor/tests,readonly"
           --mount "type=bind,source=${{ github.workspace }}/processor/corpus,target=/srv/processor/corpus,readonly"
           --entrypoint python aster-processor:verify -m pytest -q -p no:cacheprovider tests
-      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: ${{ !cancelled() && steps.build_web.outcome == 'success' }}
         with:
           image-ref: aster-web:verify
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL
-      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: ${{ !cancelled() && steps.build_processor.outcome == 'success' }}
         env:
           TRIVY_LIST_ALL_PKGS: 'true'
@@ -221,7 +221,7 @@ jobs:
             processor-security-assessment.json
           if-no-files-found: error
           retention-days: 14
-      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: ${{ !cancelled() }}
         with:
           scan-type: fs
